@@ -363,6 +363,9 @@ class Handler(BaseHTTPRequestHandler):
             if rig.cat_actief(r) and rig.doelfrequentie():
                 mis += rig.zet_set(r)
             return self._terug("/radio", ("fout:" + "; ".join(mis)) if mis else "ok:Station opgeslagen.")
+        if pad == "frequentie":
+            fouten, melding = radio.verwerk_eigen(f)
+            return self._terug("/radio", ("fout:" + "; ".join(fouten)) if fouten else "ok:" + melding)
         if pad == "set_zoek":
             if not ZOEK_LOCK.acquire(blocking=False):
                 return self._terug("/radio", "fout:Er wordt al gezocht; wacht even.")

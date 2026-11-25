@@ -218,6 +218,31 @@ class TestRadio(unittest.TestCase):
         radio.verwerk_station({"roepnaam": "PD3PAM-7", "frequentie": "0"})       # zelf instellen: mode uit de set
         self.assertEqual(rig.doelmode({"cat_mode": "PKTUSB"}), "PKTUSB")
 
+    def test_mijn_frequenties(self):
+        self.assertEqual(rig.lees_mhz("144,775"), 144775000)
+        self.assertEqual(rig.lees_mhz("7.0449 MHz"), 7044900)
+        self.assertIsNone(rig.lees_mhz("abc"))
+        for mhz, mode, baud, naam in [("144,775", "PKTUSB", "auto", "PD4R ssb"), ("14,105", "PKTUSB", "300", "PD4R"),
+                                      ("438,175", "PKTFM", "9600", "PD4R 9k6")]:
+            fouten, _ = radio.verwerk_eigen({"actie": "toe", "mhz": mhz, "mode": mode, "baud": baud, "naam": naam})
+            self.assertEqual(fouten, [])
+        self.assertTrue(radio.verwerk_eigen({"actie": "toe", "mhz": "146,5", "mode": "", "baud": "auto"})[0])  # geen band
+        self.assertTrue(radio.verwerk_eigen({"actie": "toe", "mhz": "144,8", "mode": "AM", "baud": "auto"})[0])
+        self.assertIn("PD4R 9k6", rig.html_frequentie_keuze(144900000))
+        fouten, _ = radio.verwerk_station({"roepnaam": "PD3PAM-7", "frequentie": "438175000", "mode": ""})
+        self.assertEqual(fouten, [])
+        r = {"cat_model": 3081, "modem": "auto"}
+        self.assertEqual((rig.doelmode(r), radio.modem(r)), ("PKTFM", 9600))       # van de eigen frequentie
+        radio.verwerk_station({"roepnaam": "PD3PAM-7", "frequentie": "144775000", "mode": ""})
+        self.assertEqual((rig.doelmode(r), radio.modem(r)), ("PKTUSB", 1200))
+        radio.verwerk_station({"roepnaam": "PD3PAM-7", "frequentie": "144775000", "mode": "PKTFM"})   # Station wint
+        self.assertEqual(rig.doelmode(r), "PKTFM")
+        self.assertIn("MODEM 9600", radio.direwolf_tekst("PD3PAM-7", dict(r, modem="9600")))
+        radio.verwerk_eigen({"actie": "weg", "hz": "144775000"})
+        self.assertEqual([x["hz"] for x in rig.eigen_frequenties()], [14105000, 438175000])
+        self.assertIn("Mijn frequenties", radio.html_eigen(""))
+        radio.verwerk_station({"roepnaam": "PD3PAM-7", "frequentie": "144900000", "mode": ""})
+
     def test_meet_geluid(self):
         stil = array.array("h", [0] * 4800).tobytes()
         self.assertEqual(radio.advies_luister(*radio.meet_geluid(stil))[0], "fout")

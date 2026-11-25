@@ -56,6 +56,10 @@ de Pi zit dan niet meer op je thuis-wifi.
    **Mode** (alleen met CAT): *Automatisch* zet de set in FM-D (op HF in USB-D). Packet met 1200 baud op 2 m is
    FM-D; kies USB-D alleen als het tegenstation SSB-packet gebruikt. Draait iemand aan de set, dan zet de Pi
    frequentie en mode binnen een minuut terug.
+   **Mijn frequenties**: voeg frequenties van stations, bakens en BBS'en bij jou in de buurt toe, elk met mode en
+   snelheid (bijv. 144,775 USB-D, of 438,175 FM-D 9600 baud). Ze staan daarna in de lijst bij Station. Met
+   Mode en Modem op *Automatisch* neemt de Pi de mode en snelheid van die frequentie over. 9600 baud werkt alleen
+   met een set die daarvoor een aansluiting heeft; HF alleen met een HF-set (IC-7300, FT-818).
 4. **Zoek mijn set**. Lees eerst de oranje waarschuwing (bij een Icom: *USB SEND* = OFF). De Pi toont
    wat hij gevonden heeft. Geef de set een naam (bijv. *UV-5R onderweg*) en tik op **Gebruiken en bewaren**.
 5. **Luistertest**: open de ruisonderdrukking (squelch) van de set en tik op *Luister 5 seconden*.
