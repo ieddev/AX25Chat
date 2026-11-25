@@ -29,7 +29,10 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, quote, urlparse
 
+import queue
+
 import ax25chat_bijwerken as bijwerken
+import ax25chat_chatpagina as chatpagina
 import ax25chat_radio as radio
 
 rig = radio.rig
@@ -38,6 +41,7 @@ MAP = radio.MAP
 WW_FILE = os.path.join(MAP, "web_wachtwoord.json")
 CSRF = secrets.token_urlsafe(24)
 ZOEK_LOCK = threading.Lock()
+CHAT = None                                # ax25chat_chat.Chat, gestart in main()
 
 CSS = """
 :root{--bg:#f6f7f9;--kaart:#fff;--tekst:#1b1f24;--zacht:#5b6470;--lijn:#dde1e6;--rood:#b3261e;--rood-z:#fbe9e7;
@@ -119,7 +123,7 @@ def pagina(actief, inhoud, melding=""):
     rn = "" if str(s.get("roepnaam")).startswith("N0CALL") else s.get("roepnaam")
     return f"""<!doctype html><html lang="nl"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>AX25Chat {e(rn or '')}</title>
-<style>{CSS}</style></head><body>
+<style>{CSS}</style></head><body data-mij="{e(rn or '')}">
 <header><b>AX25Chat</b><span>{e(rn or 'roepnaam nog niet ingesteld')}{' · versie ' + e(versie()) if versie() else ''}</span></header>
 <nav>{nav}</nav><main>{melding}{inhoud}</main></body></html>"""
 
@@ -141,14 +145,9 @@ def html_chat():
     stap = ("" if klaar else
             "<div class='melding let'>Nog niet ingesteld: ga naar <a href='/radio'>Radio</a>, vul je roepnaam in en "
             "gebruik <b>Zoek mijn set</b>.</div>")
-    dw = radio.dienst_status(radio.DW) == "active"
-    freq = rig.mhz(rig.doelfrequentie())
-    return f"""{stap}<section><h2>Chat</h2><p class="uitleg">Hier komen straks je berichten: lezen, sturen en CQ roepen.
-Dat is stap 2 van AX25Chat. Nu kun je de set al instellen en testen op het tabblad Radio.</p>
-<table><tr><td>Roepnaam</td><td><b>{e(rn if klaar else '-')}</b></td></tr>
-<tr><td>Set</td><td>{e(r.get('set_naam') or '-')}</td></tr>
-<tr><td>Frequentie</td><td>{e(freq)}</td></tr>
-<tr><td>Direwolf</td><td><span class="punt {'p-ok' if dw else 'p-uit'}"></span>{'draait' if dw else 'draait niet'}</td></tr></table></section>"""
+    if radio.dienst_status(radio.DW) not in ("active", "onbekend"):
+        stap += "<div class='melding fout'>Direwolf draait niet: er wordt niets verzonden of ontvangen. Zie tabblad Status.</div>"
+    return chatpagina.html(stap)
 
 
 def html_status():
@@ -249,6 +248,8 @@ class Handler(BaseHTTPRequestHandler):
             meld = meldingen(ok=m[3:])
         if pad in ("", "chat"):
             return self._stuur(pagina("chat", html_chat(), meld))
+        if pad.startswith("api/"):
+            return self._api_get(pad[4:], parse_qs(url.query))
         if pad == "status.json":                      # voor de webapp (stap 3)
             s, r = radio.station(), radio.instellingen()
             return self._stuur(json.dumps({"roepnaam": s.get("roepnaam"), "frequentie": rig.doelfrequentie(),
@@ -271,7 +272,80 @@ class Handler(BaseHTTPRequestHandler):
         ruw = self.rfile.read(lengte).decode("utf-8", "replace")
         return {k: v[-1] for k, v in parse_qs(ruw, keep_blank_values=True).items()}
 
+    def _json(self, data, code=200):
+        return self._stuur(json.dumps(data, ensure_ascii=False), code, "application/json; charset=utf-8")
+
+    def _api_get(self, pad, q):
+        if CHAT is None:
+            return self._json({"fout": "chat niet gestart"}, 503)
+        if pad == "berichten":
+            try:
+                sinds = float(q.get("sinds", ["0"])[0])
+            except ValueError:
+                sinds = 0
+            nu = time.time()
+            return self._json({"nu": nu, "mij": CHAT.mijn_call(), "berichten": CHAT.opslag.lijst(sinds)})
+        if pad == "monitor":
+            return self._json(CHAT.opslag.monitor(200))
+        if pad == "live":
+            return self._live()
+        return self._json({"fout": "onbekend"}, 404)
+
+    def _live(self):
+        """Server-sent events: elk nieuw of gewijzigd bericht en elk gehoord frame, zodra het er is."""
+        rij = queue.Queue(maxsize=500)
+
+        def nieuw(soort, data):
+            try:
+                rij.put_nowait((soort, data))
+            except queue.Full:
+                pass
+        self.send_response(200)
+        self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        CHAT.luister(nieuw)
+        try:
+            self.wfile.write(b"retry: 3000\n\n")
+            self.wfile.flush()
+            while True:
+                try:
+                    soort, data = rij.get(timeout=20)
+                    regel = f"event: {soort}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
+                except queue.Empty:
+                    regel = ": hartslag\n\n"
+                self.wfile.write(regel.encode("utf-8"))
+                self.wfile.flush()
+        except (OSError, ValueError):
+            pass
+        finally:
+            CHAT.stop_luisteren(nieuw)
+
+    def _api_post(self, pad):
+        # Alleen JSON: een formulier van een andere website kan dat niet sturen (geen CSRF nodig)
+        if not (self.headers.get("Content-Type") or "").startswith("application/json"):
+            return self._json({"fout": "alleen JSON"}, 415)
+        if CHAT is None:
+            return self._json({"fout": "chat niet gestart"}, 503)
+        lengte = min(int(self.headers.get("Content-Length", 0) or 0), 20000)
+        try:
+            d = json.loads(self.rfile.read(lengte).decode("utf-8") or "{}")
+        except ValueError:
+            return self._json({"fout": "ongeldige JSON"}, 400)
+        if pad == "berichten":
+            fouten, uit = CHAT.verstuur(str(d.get("aan", "")), str(d.get("tekst", "")))
+            return self._json({"fouten": fouten, "berichten": uit}, 400 if fouten else 200)
+        if pad == "opnieuw":
+            try:
+                return self._json({"ok": CHAT.opnieuw(int(d.get("id")))})
+            except (TypeError, ValueError):
+                return self._json({"fout": "ongeldig id"}, 400)
+        return self._json({"fout": "onbekend"}, 404)
+
     def do_POST(self):
+        pad = urlparse(self.path).path.strip("/")
+        if pad.startswith("api/"):
+            return self._api_post(pad[4:])
         if not self._auth():
             return
         f = self._formulier()
@@ -355,6 +429,9 @@ def main():
     if not radio.lees(WW_FILE):
         sys.exit("Stel eerst een wachtwoord in:  python3 ax25chat_web.py --wachtwoord")
     rig.start_bewaker(radio.instellingen, lambda t: print("Set: " + t, flush=True))
+    global CHAT
+    import ax25chat_chat
+    CHAT = ax25chat_chat.open_chat(MAP, radio.station, log=lambda t: print(t, flush=True))
     server = ThreadingHTTPServer(("0.0.0.0", args.poort), Handler)
     print(f"AX25Chat op http://0.0.0.0:{args.poort}", flush=True)
     try:

@@ -97,6 +97,23 @@ dan is dat bijna altijd RF in de kabel of de voeding.
 | GM-340 + DigiRig | DigiRig, PTT via RTS | Kanaal met de packetfrequentie vooraf programmeren |
 | UV-5R + DigiRig | DigiRig, PTT via RTS | TXDELAY 300-400 ms (Handmatig instellen), lage zendstand, squelch laag |
 
+## Chatten
+
+Open **http://10.42.0.1** (tabblad **Chat**, zonder inloggen).
+
+- **CQ (iedereen)**: een bericht aan iedereen. Gaat één keer de lucht in, zonder bevestiging.
+- **+ Nieuw gesprek**: vul de roepnaam van het tegenstation in (met SSID als die er een heeft, bijv. PA1ABC-9).
+  Je bericht wordt herhaald tot het tegenstation het bevestigt: eerst *verzonden*, dan *bevestigd ✓✓*.
+  Komt er na 5 keer geen bevestiging, dan staat er *niet bevestigd* met een knop **Opnieuw**.
+- **Monitor**: alles wat de Pi hoort, ook APRS-posities en berichten tussen anderen.
+
+Het tegenstation kan AX25Chat gebruiken, maar ook APRSdroid, een Kenwood TH-D74/TM-D710, een Yaesu met
+APRS of een ander APRS-programma: die zien je bericht als gewoon APRS-bericht. Spreek dan wel dezelfde
+frequentie af (bijv. 144,800 of een van de kanalen 144,850 - 144,950).
+
+**Digipeaterpad** (tabblad Radio, Station): leeg = alleen rechtstreeks. Vul `WIDE1-1` in om via een
+digipeater verder te komen. Op 144,800 doen de APRS-digipeaters dat; op de andere kanalen meestal niet.
+
 ## Wisselen van set
 
 Sluit de andere set aan en kies op het tabblad Radio bij **Mijn sets** het profiel en *Gebruiken*.

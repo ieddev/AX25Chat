@@ -78,7 +78,7 @@ def instellingen():
 
 
 def station():
-    s = {"roepnaam": "N0CALL", "frequentie": rig.STANDAARD_FREQ}
+    s = {"roepnaam": "N0CALL", "frequentie": rig.STANDAARD_FREQ, "pad": ""}
     s.update(lees(STATION_FILE, {}) or {})
     return s
 
@@ -565,9 +565,12 @@ def verwerk_station(f):
         hz = -1
     if hz and hz not in rig.frequentie_keuzes():
         fouten.append("Kies een frequentie uit de lijst.")
+    pad = [x for x in re.split(r"[ ,]+", (f.get("pad") or "").strip().upper()) if x]
+    if len(pad) > 2 or not all(ROEPNAAM_RE.match(x) for x in pad):
+        fouten.append("Digipeaterpad: leeg laten, of bijv. WIDE1-1 (hoogstens twee, gescheiden door een komma).")
     if fouten:
         return fouten, s
-    s.update(roepnaam=rn, frequentie=hz)
+    s.update(roepnaam=rn, frequentie=hz, pad=",".join(pad))
     schrijf(STATION_FILE, s)
     return [], s
 
@@ -594,6 +597,8 @@ Met CAT zet de Pi de set zelf op deze frequentie; zonder CAT zet je de set (het 
 <div class="rij"><div><label>Roepnaam</label><input type="text" name="roepnaam" value="{e(rn)}" placeholder="PD3PAM-7"
 autocapitalize="characters" required></div>
 <div><label>Frequentie <small>2 m: APRS of 144,850 - 144,950 MHz</small></label>{rig.html_frequentie_keuze(s.get('frequentie'))}</div></div>
+<label>Digipeaterpad <small>leeg = alleen rechtstreeks; bijv. WIDE1-1 om via een digipeater verder te komen</small></label>
+<input type="text" name="pad" value="{e(s.get('pad') or '')}" placeholder="leeg" autocapitalize="characters">
 <div class="balk"><button type="submit">Opslaan</button></div></form></section>"""
 
 
