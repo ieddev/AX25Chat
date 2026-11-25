@@ -15,7 +15,7 @@ CSS = """
  font-weight:500;padding:8px 12px;white-space:nowrap;position:relative}
 .gesprekken button.actief{background:var(--blauw-z);color:var(--blauw);border-color:var(--blauw)}
 .gesprekken .nieuw{display:inline-block;min-width:8px;height:8px;border-radius:4px;background:var(--rood);margin-left:6px}
-.venster{display:flex;flex-direction:column;background:var(--kaart);border:1px solid var(--lijn);border-radius:12px;min-height:0}
+.venster{display:flex;flex-direction:column;background:var(--kaart);border:1px solid var(--lijn);border-radius:12px;min-height:0;min-width:0}
 @media(max-width:640px){.venster{height:calc(100vh - 210px);min-height:380px}}
 .kop{padding:10px 14px;border-bottom:1px solid var(--lijn);font-weight:600;display:flex;gap:8px;align-items:center}
 .kop small{font-weight:400;color:var(--zacht)}
@@ -28,6 +28,7 @@ CSS = """
 .bel button{padding:2px 8px;font-size:12px;margin-left:6px}
 .mon{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;border-bottom:1px solid var(--lijn);padding:4px 0;word-break:break-all}
 .mon .t{color:var(--zacht)}
+.mon .i{white-space:pre-wrap;word-break:break-all}.mon .i.blok{display:block;margin-top:2px;line-height:1.2;white-space:pre;overflow-x:auto;word-break:normal}
 .typen{display:flex;gap:8px;padding:10px;border-top:1px solid var(--lijn)}
 .typen input[name=aan]{width:104px;flex:0 0 104px;text-transform:uppercase;padding:10px 8px}
 .typen input[name=tekst]{flex:1;min-width:0}
@@ -44,6 +45,10 @@ var $ = function (s) { return document.querySelector(s); };
 function tegen(b) { return b.aan === 'CQ' ? 'CQ' : (b.richting === 'uit' ? b.aan : b.van); }
 function tijd(t) { var d = new Date(t * 1000); return d.toLocaleTimeString('nl-NL', {hour: '2-digit', minute: '2-digit'}); }
 function txt(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
+function info(s) {    // regeleinden (CR, zoals in BBS-banners) als echte regels tonen
+  s = String(s == null ? '' : s).replace(/\r\n?/g, '\n').replace(/^\n+|\n+$/g, '');
+  return '<span class="i' + (s.indexOf('\n') >= 0 ? ' blok' : '') + '">' + txt(s) + '</span>';
+}
 var STAND = {wacht: 'wacht op zenden', verzonden: 'verzonden, wacht op bevestiging', bevestigd: 'bevestigd ✓✓',
   mislukt: 'niet bevestigd', geweigerd: 'geweigerd', cq: 'verzonden', ontvangen: ''};
 function gesprekken() {
@@ -65,7 +70,7 @@ function teken() {
   if (actief === 'MONITOR') {
     $('.kop').innerHTML = 'Monitor <small>alles wat de Pi hoort</small>';
     monitor.forEach(function (m) { b += '<div class="mon"><span class="t">' + tijd(m.tijd) + '</span> ' + txt(m.van) + '&gt;' + txt(m.aan) +
-      (m.pad ? ',' + txt(m.pad) : '') + ':' + txt(m.info) + '</div>'; });
+      (m.pad ? ',' + txt(m.pad) : '') + ':' + info(m.info) + '</div>'; });
     $('.typen').style.display = 'none';
   } else {
     $('.kop').innerHTML = actief === 'CQ' ? 'CQ <small>aan iedereen, zonder bevestiging</small>' : txt(actief) + ' <small>bericht met bevestiging</small>';
