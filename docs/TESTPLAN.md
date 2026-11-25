@@ -16,6 +16,11 @@ en een tweede ontvanger op dezelfde frequentie.
 | A4 | Inloggen | Tabblad Radio | Vraagt gebruiker `beheer` en wachtwoord | ☐ |
 | A5 | Laptop | Laptop met de hotspot verbinden, http://10.42.0.1 | Zelfde pagina's | ☐ |
 | A6 | Bijwerken | `hotspot.sh thuiswifi`, dan `ax25chat-bijwerken` | Bijgewerkt; instellingen en profielen bewaard | ☐ |
+| A7 | Hotspot uit | Status → Hotspot tijdelijk uitschakelen → Hotspot uit, thuis-wifi aan | Pi op de thuis-wifi; Status toont *Thuis-wifi actief* en het adres | ☐ |
+| A8 | Bijwerken via de knop | Na A7: Controleren op nieuwe versie, Nu bijwerken | Voortgang loopt, eindigt met *Klaar*; hotspot na 1 minuut terug | ☐ |
+| A9 | Thuis-wifi mislukt | Thuis-wifi-router uit, dan A7 | Hotspot binnen 2 minuten terug | ☐ |
+| A10 | Terug zonder bijwerken | Na A7: Hotspot nu weer aanzetten | Hotspot binnen een halve minuut terug | ☐ |
+| A11 | Herstart op thuis-wifi | Na A7: Pi herstarten (stroom eraf en erop) | Hotspot is na het opstarten weer aan | ☐ |
 
 ## B. Zoek mijn set
 

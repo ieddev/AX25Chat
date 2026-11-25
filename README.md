@@ -46,7 +46,8 @@ bash <(curl -sL https://raw.githubusercontent.com/ieddev/AX25Chat/main/installee
    Op het tabblad **Radio** (gebruiker *beheer*): **Zoek mijn set**, daarna de **luistertest** en een
    **testuitzending**.
 
-Bijwerken: `ax25chat-bijwerken` via ssh (instellingen blijven bewaard).
+Bijwerken: tabblad **Status**, *AX25Chat bijwerken*. Een Pi Zero zet daarvoor even de hotspot uit en gaat via je
+thuis-wifi; daarna komt de hotspot vanzelf terug. Of via ssh: `ax25chat-bijwerken`. Instellingen blijven bewaard.
 
 De volledige procedure, met per set waar je op moet letten, staat in [docs/PROCEDURE.md](docs/PROCEDURE.md).
 

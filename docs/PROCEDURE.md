@@ -121,12 +121,34 @@ Een nieuwe set? Doe **Zoek mijn set** opnieuw.
 
 ## Bijwerken
 
-De Pi heeft internet nodig. Twee manieren:
+Bijwerken heeft internet nodig. Een Pi Zero 2W heeft alleen wifi, en die wifi is normaal de hotspot. Daarom zet
+je de hotspot even uit en gaat de Pi via je thuis-wifi (de wifi die je in de Raspberry Pi Imager hebt ingevuld).
 
-- netwerkkabel (Pi 4), of
-- tijdelijk de thuis-wifi: `~/ax25chat/hotspot.sh thuiswifi` (tot de volgende herstart)
+**Via de webpagina** (tabblad **Status**, blok *AX25Chat bijwerken*):
 
-Typ dan `ax25chat-bijwerken`. Instellingen en profielen blijven bewaard.
+1. **Hotspot tijdelijk uitschakelen**, daarna **Hotspot uit, thuis-wifi aan**. Je telefoon verliest de verbinding.
+2. Verbind je telefoon met je thuis-wifi en open `http://<naam van de Pi>.local` (bijvoorbeeld
+   `http://ax25chat.local`). Lukt dat niet: zoek het adres van de Pi in je router.
+3. Tabblad Status: je ziet *Thuis-wifi actief*. Kies **Controleren op nieuwe versie**, daarna **Nu bijwerken**.
+   De voortgang staat op het scherm (op een Pi Zero 5 tot 15 minuten).
+4. Klaar: de hotspot gaat na 1 minuut vanzelf weer aan. Verbind je telefoon weer met **AX25Chat-&lt;roepnaam&gt;**.
+
+Vangnetten: lukt de thuis-wifi niet, dan staat de hotspot binnen 2 minuten weer aan. Na een uur, en na een
+herstart, staat de hotspot altijd weer aan. Met **Hotspot nu weer aanzetten** kun je ook zonder bijwerken terug.
+
+**Via ssh** (bijvoorbeeld met een netwerkkabel aan een Pi 4): typ `ax25chat-bijwerken`.
+
+Instellingen, profielen en berichten blijven bewaard.
+
+**Eén keer nodig:** was de Pi geïnstalleerd vóór er een bijwerkknop was, dan werkt de knop pas na één keer
+bijwerken via ssh. Verbind je telefoon met de hotspot en log in met `ssh <gebruiker>@10.42.0.1`, dan:
+
+```bash
+~/ax25chat/hotspot.sh thuiswifi     # de ssh-verbinding valt weg; de Pi gaat naar je thuis-wifi
+```
+
+Verbind je laptop met de thuis-wifi, log opnieuw in met `ssh <gebruiker>@<naam>.local` en typ `ax25chat-bijwerken`.
+Daarna `sudo reboot`: de hotspot is terug en de knop werkt voortaan.
 
 ## Uitzetten
 
