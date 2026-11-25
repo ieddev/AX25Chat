@@ -192,7 +192,9 @@ class TestRadio(unittest.TestCase):
         fouten, _ = radio.verwerk_station({"roepnaam": "pd3pam-7", "frequentie": "144862500"})
         self.assertEqual(fouten, [])
         self.assertEqual(rig.doelfrequentie(), 144862500)
-        fouten, _ = radio.verwerk_station({"roepnaam": "PD3PAM-7", "frequentie": "144800000"})   # APRS: niet in de lijst
+        fouten, _ = radio.verwerk_station({"roepnaam": "PD3PAM-7", "frequentie": "144800000"})   # APRS mag
+        self.assertEqual(fouten, [])
+        fouten, _ = radio.verwerk_station({"roepnaam": "PD3PAM-7", "frequentie": "144812500"})   # niet in de lijst
         self.assertTrue(fouten)
         radio.verwerk_station({"roepnaam": "PD3PAM-7", "frequentie": "0"})
         self.assertIsNone(rig.doelfrequentie())
@@ -209,7 +211,7 @@ class TestRadio(unittest.TestCase):
 
     def test_html_radio(self):
         tekst = radio.html_radio("<input type=hidden name=csrf value=x>")
-        for woord in ("Zoek mijn set", "Mijn sets", "Luistertest", "144,850 MHz", "Handmatig instellen"):
+        for woord in ("Zoek mijn set", "Mijn sets", "Luistertest", "144,800 MHz (APRS)", "144,850 MHz", "Handmatig instellen"):
             self.assertIn(woord, tekst)
 
 

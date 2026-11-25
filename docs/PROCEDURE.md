@@ -51,7 +51,7 @@ de Pi zit dan niet meer op je thuis-wifi.
 1. Verbind je telefoon of laptop met de wifi **AX25Chat-&lt;roepnaam&gt;**. Android meldt "geen internet":
    kies *Verbonden blijven*.
 2. Open **http://10.42.0.1** en ga naar het tabblad **Radio** (gebruiker `beheer`).
-3. **Station**: controleer je roepnaam en kies de frequentie (144,850 - 144,950 MHz). Heeft de set geen
+3. **Station**: controleer je roepnaam en kies de frequentie (144,800 APRS, of 144,850 - 144,950 MHz). Heeft de set geen
    CAT (DigiRig), of gebruik je een andere band? Kies *Zelf instellen op de set*.
 4. **Zoek mijn set**. Lees eerst de oranje waarschuwing (bij een Icom: *USB SEND* = OFF). De Pi toont
    wat hij gevonden heeft. Geef de set een naam (bijv. *UV-5R onderweg*) en tik op **Gebruiken en bewaren**.

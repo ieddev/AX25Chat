@@ -31,6 +31,7 @@ HOST, POORT = "127.0.0.1", int(os.environ.get("AX25CHAT_RIGCTLD_POORT", "4532"))
 
 # 2 m: 144,850 - 144,950 MHz op het 12,5 kHz-raster (afgesproken 25-11-2026). 70 cm en HF volgen later.
 FREQ_2M = list(range(144850000, 144950001, 12500))
+APRS_FREQ = 144800000                     # APRS: om te luisteren en APRS-berichten (bijv. met APRSdroid)
 STANDAARD_FREQ = 144900000
 PAKKET_MODES = {"PKTFM", "FM-D", "FMD", "DATA-FM", "FM-DATA", "PKTUSB", "PKTLSB", "USB-D", "LSB-D"}
 HF_GRENS = 30000000                       # onder 30 MHz: HF, modem 300 baud, mode PKTUSB
@@ -96,7 +97,7 @@ def mhz(hz):
 
 
 def frequentie_keuzes():
-    return list(FREQ_2M)
+    return [APRS_FREQ] + list(FREQ_2M)
 
 
 def html_frequentie_keuze(huidig, naam="frequentie"):
@@ -105,12 +106,12 @@ def html_frequentie_keuze(huidig, naam="frequentie"):
               f'(geen CAT, of een andere band)</option>')
     for k in frequentie_keuzes():
         opties += (f'<option value="{k}"{" selected" if k == huidig else ""}>'
-                   f'{_html.escape(mhz(k))}{" (standaard)" if k == STANDAARD_FREQ else ""}</option>')
+                   f'{_html.escape(mhz(k))}{" (standaard)" if k == STANDAARD_FREQ else " (APRS)" if k == APRS_FREQ else ""}</option>')
     let = ""
-    if huidig and huidig not in FREQ_2M:
+    if huidig and huidig not in frequentie_keuzes():
         opties += f'<option value="{int(huidig)}" selected>{_html.escape(mhz(huidig))} (eerder ingesteld)</option>'
         let = ('<p class="melding let" style="margin:6px 0">De ingestelde frequentie staat niet in de lijst '
-               '(144,850 - 144,950 MHz, 12,5 kHz-raster). Kies er een en sla op.</p>')
+               '(144,800 APRS of 144,850 - 144,950 MHz, 12,5 kHz-raster). Kies er een en sla op.</p>')
     return f'{let}<select name="{naam}">{opties}</select>'
 
 
