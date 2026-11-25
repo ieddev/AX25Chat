@@ -232,7 +232,7 @@ class TestRadio(unittest.TestCase):
         radio.verwerk_eigen({"actie": "toe", "mhz": "144,925", "mode": "PKTFM", "baud": "1200", "naam": "PD4R"})
         keuze = rig.html_frequentie_keuze(144925000)
         self.assertEqual(keuze.count('value="144925000"'), 1)                   # eigen gaat voor de standaard
-        self.assertIn('value="144925000" selected>144,925 MHz · FM-D · 1200 baud · PD4R', keuze)
+        self.assertIn('value="144925000" data-mode="FM-D" selected>144,925 MHz · FM-D · 1200 baud · PD4R', keuze)
         radio.verwerk_eigen({"actie": "toe", "mhz": "432,6", "mode": "", "baud": "9600", "naam": ""})
         self.assertIn("auto (FM-D)", radio.html_eigen(""))
         r9 = {"cat_model": 3081, "modem": "auto"}
@@ -246,8 +246,12 @@ class TestRadio(unittest.TestCase):
         self.assertEqual((rig.doelmode(r), radio.modem(r)), ("PKTFM", 9600))       # van de eigen frequentie
         radio.verwerk_station({"roepnaam": "PD3PAM-7", "frequentie": "144775000", "mode": ""})
         self.assertEqual((rig.doelmode(r), radio.modem(r)), ("PKTUSB", 1200))
-        radio.verwerk_station({"roepnaam": "PD3PAM-7", "frequentie": "144775000", "mode": "PKTFM"})   # Station wint
-        self.assertEqual(rig.doelmode(r), "PKTFM")
+        radio.verwerk_station({"roepnaam": "PD3PAM-7", "frequentie": "144775000", "mode": "PKTFM"})
+        self.assertEqual(rig.doelmode(r), "PKTUSB")             # de mode van de eigen frequentie wint
+        radio.verwerk_station({"roepnaam": "PD3PAM-7", "frequentie": "144775000"})   # keuzelijst uitgeschakeld
+        self.assertEqual(radio.station()["mode"], "PKTFM")      # vorige keuze blijft bewaard
+        radio.verwerk_station({"roepnaam": "PD3PAM-7", "frequentie": "144900000"})
+        self.assertEqual(rig.doelmode(r), "PKTFM")              # 144,900: weer de keuze bij Station
         self.assertIn("MODEM 9600", radio.direwolf_tekst("PD3PAM-7", dict(r, modem="9600")))
         radio.verwerk_eigen({"actie": "weg", "hz": "144775000"})
         self.assertEqual([x["hz"] for x in rig.eigen_frequenties()], [14105000, 438175000])

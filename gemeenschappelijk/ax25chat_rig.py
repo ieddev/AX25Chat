@@ -178,7 +178,8 @@ def html_frequentie_keuze(huidig, naam="frequentie"):
     opties += '</optgroup>'
     if mijn:
         opties += '<optgroup label="Mijn frequenties">' + "".join(
-            f'<option value="{x["hz"]}"{" selected" if x["hz"] == huidig else ""}>{_html.escape(eigen_tekst(x))}</option>'
+            f'<option value="{x["hz"]}" data-mode="{_html.escape(MODE_NAAM.get(x["mode"], ""))}"'
+            f'{" selected" if x["hz"] == huidig else ""}>{_html.escape(eigen_tekst(x))}</option>'
             for x in mijn) + '</optgroup>'
     let = ""
     if huidig and huidig not in frequentie_keuzes():
@@ -193,15 +194,16 @@ def is_hf(hz):
 
 
 def doelmode(r):
-    """De mode waarin de set moet staan: de keuze bij Station, of automatisch op basis van de frequentie."""
-    d = _lees(STATION_FILE)
-    gekozen = d.get("mode") if isinstance(d, dict) else ""
-    if gekozen in MODE_NAAM:
-        return gekozen
+    """De mode waarin de set moet staan: die van de eigen frequentie (Mijn frequenties), anders de keuze bij
+    Station, anders automatisch op basis van de frequentie."""
     doel = doelfrequentie()
     x = eigen(doel) if doel else None
     if x and x["mode"]:
         return x["mode"]
+    d = _lees(STATION_FILE)
+    gekozen = d.get("mode") if isinstance(d, dict) else ""
+    if gekozen in MODE_NAAM:
+        return gekozen
     if doel:
         return "PKTUSB" if is_hf(doel) else "PKTFM"
     return r.get("cat_mode") or "PKTFM"

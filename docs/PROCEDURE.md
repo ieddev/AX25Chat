@@ -53,7 +53,8 @@ de Pi zit dan niet meer op je thuis-wifi.
 2. Open **http://10.42.0.1** en ga naar het tabblad **Radio** (gebruiker `beheer`).
 3. **Station**: controleer je roepnaam en kies de frequentie (144,800 APRS, of 144,850 - 144,950 MHz). Heeft de set geen
    CAT (DigiRig), of gebruik je een andere band? Kies *Zelf instellen op de set*.
-   **Mode** (alleen met CAT): *Automatisch* zet de set in FM-D (op HF in USB-D). Packet met 1200 baud op 2 m is
+   **Mode** (alleen met CAT): *Automatisch* zet de set in FM-D (op HF in USB-D). Kies je een frequentie uit Mijn
+   frequenties met een eigen mode, dan geldt die mode en doet deze keuzelijst niet mee. Packet met 1200 baud op 2 m is
    FM-D; kies USB-D alleen als het tegenstation SSB-packet gebruikt. Draait iemand aan de set, dan zet de Pi
    frequentie en mode binnen een minuut terug.
    **Mijn frequenties**: voeg frequenties van stations, bakens en BBS'en bij jou in de buurt toe, elk met mode en
