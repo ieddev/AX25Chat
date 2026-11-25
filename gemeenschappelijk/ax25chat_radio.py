@@ -565,12 +565,15 @@ def verwerk_station(f):
         hz = -1
     if hz and hz not in rig.frequentie_keuzes():
         fouten.append("Kies een frequentie uit de lijst.")
+    mode = (f.get("mode") or "").strip().upper()
+    if mode not in dict(rig.MODES):
+        fouten.append("Kies een mode uit de lijst.")
     pad = [x for x in re.split(r"[ ,]+", (f.get("pad") or "").strip().upper()) if x]
     if len(pad) > 2 or not all(ROEPNAAM_RE.match(x) for x in pad):
         fouten.append("Digipeaterpad: leeg laten, of bijv. WIDE1-1 (hoogstens twee, gescheiden door een komma).")
     if fouten:
         return fouten, s
-    s.update(roepnaam=rn, frequentie=hz, pad=",".join(pad))
+    s.update(roepnaam=rn, frequentie=hz, mode=mode, pad=",".join(pad))
     schrijf(STATION_FILE, s)
     return [], s
 
@@ -597,6 +600,8 @@ Met CAT zet de Pi de set zelf op deze frequentie; zonder CAT zet je de set (het 
 <div class="rij"><div><label>Roepnaam</label><input type="text" name="roepnaam" value="{e(rn)}" placeholder="PD3PAM-7"
 autocapitalize="characters" required></div>
 <div><label>Frequentie <small>2 m: APRS of 144,850 - 144,950 MHz</small></label>{rig.html_frequentie_keuze(s.get('frequentie'))}</div></div>
+<label>Mode <small>alleen met CAT; FM-packet (1200 baud) is FM-D</small></label>
+<select name="mode">{_opties(rig.MODES, s.get('mode') or '')}</select>
 <label>Digipeaterpad <small>leeg = alleen rechtstreeks; bijv. WIDE1-1 om via een digipeater verder te komen</small></label>
 <input type="text" name="pad" value="{e(s.get('pad') or '')}" placeholder="leeg" autocapitalize="characters">
 <div class="balk"><button type="submit">Opslaan</button></div></form></section>"""
@@ -621,7 +626,7 @@ def html_set(verborgen, r):
         live = (f"<table><tr><td>Frequentie</td><td><b>{rig.mhz(st['frequentie'])}</b> "
                 f"{'✓' if freq_goed else '<span style=color:var(--rood)>≠ ingesteld ' + rig.mhz(doel) + '</span>'}</td></tr>"
                 f"<tr><td>Mode</td><td>{e(st.get('mode') or '?')} "
-                f"{'✓' if mode_goed else '<span style=color:var(--rood)>verwacht: datamode</span>'}</td></tr>"
+                f"{'✓' if mode_goed else '<span style=color:var(--rood)>verwacht: ' + rig.MODE_NAAM.get(rig.doelmode(r), '?') + '</span>'}</td></tr>"
                 f"<tr><td>S-meter</td><td>{rig.s_meter(st.get('s'))}</td></tr>"
                 f"<tr><td>Vermogen</td><td>{rig.watt_tekst(st)}</td></tr>"
                 f"<tr><td>Zenden</td><td>{'ja' if st.get('ptt') else 'nee'}</td></tr></table>")

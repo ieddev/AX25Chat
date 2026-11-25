@@ -53,6 +53,9 @@ de Pi zit dan niet meer op je thuis-wifi.
 2. Open **http://10.42.0.1** en ga naar het tabblad **Radio** (gebruiker `beheer`).
 3. **Station**: controleer je roepnaam en kies de frequentie (144,800 APRS, of 144,850 - 144,950 MHz). Heeft de set geen
    CAT (DigiRig), of gebruik je een andere band? Kies *Zelf instellen op de set*.
+   **Mode** (alleen met CAT): *Automatisch* zet de set in FM-D (op HF in USB-D). Packet met 1200 baud op 2 m is
+   FM-D; kies USB-D alleen als het tegenstation SSB-packet gebruikt. Draait iemand aan de set, dan zet de Pi
+   frequentie en mode binnen een minuut terug.
 4. **Zoek mijn set**. Lees eerst de oranje waarschuwing (bij een Icom: *USB SEND* = OFF). De Pi toont
    wat hij gevonden heeft. Geef de set een naam (bijv. *UV-5R onderweg*) en tik op **Gebruiken en bewaren**.
 5. **Luistertest**: open de ruisonderdrukking (squelch) van de set en tik op *Luister 5 seconden*.
