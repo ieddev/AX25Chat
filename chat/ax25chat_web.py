@@ -168,6 +168,7 @@ def html_status():
                f"<p class='uitleg' style='margin-top:10px'>Adres: http://10.42.0.1 · Android meldt \"geen internet\": "
                f"kies <i>Verbonden blijven</i>.</p>")
     log = radio._uit([radio.JOURNALCTL, "-u", radio.DW, "-n", "40", "--no-pager", "-o", "cat"], timeout=10).strip()
+    log = log.replace("<0x0d><0x0a>", "\n").replace("<0x0d>", "\n").replace("<0x0a>", "\n")   # regeleinden in banners
     return f"""<section><h2>Diensten</h2><table>{rijen}{radio.html_set_kort()}</table></section>
 <section><h2>Wifi-hotspot</h2>{hotspot}</section>
 {bijwerken.html_sectie(verborgen())}
