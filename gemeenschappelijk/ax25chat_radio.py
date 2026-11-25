@@ -167,13 +167,14 @@ def maak_direwolf(roepnaam, r):
     os.replace(tmp, DIREWOLF_CONF)
 
 
-def pas_toe(r, roepnaam=None):
-    """Instellingen opslaan, rigctld.env en direwolf.conf maken, diensten herstarten. Geeft [fouten]."""
+def pas_toe(r, roepnaam=None, met_rig=True):
+    """Instellingen opslaan, rigctld.env en direwolf.conf maken, diensten herstarten. Geeft [fouten].
+    met_rig=False: rigctld laten draaien (alleen Station gewijzigd), zodat de set meteen ingesteld kan worden."""
     schrijf(RADIO_FILE, r)
     rig.schrijf_env(r)
     maak_direwolf(roepnaam or station()["roepnaam"], r)
     mis = []
-    for d in (RIGD, DW):
+    for d in ((RIGD, DW) if met_rig else (DW,)):
         ok, fout = dienst("restart", d)
         if not ok:
             mis.append(f"{d} herstarten lukte niet: {fout}")

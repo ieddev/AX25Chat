@@ -57,6 +57,7 @@ Zie [docs/TESTPLAN.md](docs/TESTPLAN.md): scenario's per set voor installatie, Z
 frequentie, luistertest en testuitzending.
 
 De code zelf testen, zonder hardware: `python3 -m unittest discover -s tests`.
+Is Hamlib geïnstalleerd (`rigctld`), dan wordt ook het zetten van de mode op een nagebootste IC-9700 getest.
 
 ## Inhoud
 
