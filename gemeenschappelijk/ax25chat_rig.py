@@ -67,7 +67,10 @@ MODELLEN = [
 ]
 MODEL_NAAM = {m: f"{merk} {naam}" for m, merk, naam, _ in MODELLEN}
 SNELHEDEN = [4800, 9600, 19200, 38400, 57600, 115200]
-ALLEEN_HF = {3073}                        # sets zonder 2 m (IC-7300: HF + 6 m)
+ALLEEN_HF = {3073}
+# Standaard CI-V-adres per Icom (hamlib-nummer). Nodig voor het vangnet in zet_mode().
+ICOM_ADRES = {3081: 0xA2, 3073: 0x94, 3085: 0xA4, 3070: 0x88, 3068: 0x7C, 3044: 0x60, 3071: 0x8C}
+_ICOM_MODE = {"PKTLSB": 0x00, "PKTUSB": 0x01, "PKTFM": 0x05, "FM": 0x05}                        # sets zonder 2 m (IC-7300: HF + 6 m)
 
 
 # ---------------------------------------------------------------------------
@@ -204,6 +207,39 @@ def doelmode(r):
     return r.get("cat_mode") or "PKTFM"
 
 
+def lees_mode():
+    """Mode zoals de set hem nu heeft. Hamlib onthoudt de laatst gezette mode een halve seconde (cache) en
+    zou anders de gevraagde mode teruggeven in plaats van wat de set echt doet: cache dus uit."""
+    opdracht("\\set_cache 0")
+    ok, m = opdracht("m")
+    return _waarde(m, "Mode") if ok else None
+
+
+def zet_mode(r, mode):
+    """Zet de mode en controleer hem door terug te lezen. Geeft (gelukt, mode van de set, fouttekst).
+
+    Hamlib 4.5 op een Icom (IC-9700) zegt 'gelukt' terwijl alleen de datamode verandert als de set het
+    nieuwe modecommando (0x26) weigert: FM-D wordt dan nooit USB-D. Daarom terugkijken, en bij een Icom
+    de mode zelf met het oude CI-V-commando 0x06 zetten en daarna de datamode via hamlib.
+    """
+    ok, uit = opdracht(f"M {mode} 0")
+    fout = "" if ok else " ".join(uit)
+    nu = lees_mode()
+    if _FAMILIE.get((nu or "").upper()) == mode:
+        return True, nu, ""
+    adres = ICOM_ADRES.get(int(r.get("cat_model") or 0))
+    if adres and mode in _ICOM_MODE:
+        civ = "".join(f"\\0x{b:02X}" for b in (0xFE, 0xFE, adres, 0xE0, 0x06, _ICOM_MODE[mode], 0x01, 0xFD))
+        ok, uit = opdracht("w " + civ)
+        if ok:
+            ok, uit = opdracht(f"M {mode} 0")                    # datamode aan of uit
+        fout = fout or ("" if ok else " ".join(uit))
+        nu = lees_mode()
+        if _FAMILIE.get((nu or "").upper()) == mode:
+            return True, nu, ""
+    return False, nu, fout
+
+
 def mode_goed(r, mode):
     """Staat de set in de gekozen mode? (FM-D en USB-D zijn niet hetzelfde: de bewaker zet het terug.)"""
     nu, doel = _FAMILIE.get((mode or "").upper()), doelmode(r)
@@ -232,7 +268,17 @@ def schrijf_env(r):
 # ---------------------------------------------------------------------------
 
 def opdracht(cmd, timeout=4):
-    """Stuurt één opdracht in het uitgebreide protocol (+). Geeft (ok, [regels])."""
+    """Stuurt één opdracht in het uitgebreide protocol (+). Geeft (ok, [regels]).
+    rigctld verbreekt soms een nieuwe verbinding meteen (connection reset): dan één keer opnieuw."""
+    for poging in range(2):
+        ok, regels = _opdracht(cmd, timeout)
+        if ok or poging or not regels or "reset by peer" not in regels[0]:
+            return ok, regels
+        time.sleep(0.2)
+    return ok, regels
+
+
+def _opdracht(cmd, timeout):
     try:
         with socket.create_connection((HOST, POORT), timeout=timeout) as s:
             s.sendall(("+" + cmd + "\n").encode())
@@ -327,14 +373,15 @@ def zet_set(r, freq=None):
         if not ok:
             return ["Frequentie zetten lukte niet: " + " ".join(uit)]
     mode = doelmode(r)
-    ok, uit = opdracht(f"M {mode} 0")
+    ok, nu, fout = zet_mode(r, mode)
     if not ok and mode == "PKTFM":
-        ok, uit = opdracht("M FM 0")
+        ok, nu, _ = zet_mode(r, "FM")
         if ok:
             _GEEN_DATAMODE.add(int(r.get("cat_model") or 0))
             meld.append("Deze set kent geen datamode via CAT; FM gekozen. Controleer of het geluid van USB komt.")
     if not ok:
-        meld.append("Mode zetten lukte niet: " + " ".join(uit))
+        meld.append(f"Mode {MODE_NAAM.get(mode, mode)} zetten lukte niet: de set staat op {nu or '?'}"
+                    + (f" ({fout})" if fout else "") + ". Zet de mode op de set zelf.")
     watt = r.get("cat_watt")
     if watt and freq:
         deel = None

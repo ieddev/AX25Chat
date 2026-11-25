@@ -359,7 +359,7 @@ class Handler(BaseHTTPRequestHandler):
             if fouten:
                 return self._stuur(pagina("radio", radio.html_radio(verborgen()), meldingen(fouten=fouten)))
             r = radio.instellingen()
-            mis = radio.pas_toe(r, s2["roepnaam"]) if r.get("geluidskaart") else []
+            mis = radio.pas_toe(r, s2["roepnaam"], met_rig=False) if r.get("geluidskaart") else []
             if rig.cat_actief(r) and rig.doelfrequentie():
                 mis += rig.zet_set(r)
             return self._terug("/radio", ("fout:" + "; ".join(mis)) if mis else "ok:Station opgeslagen.")
