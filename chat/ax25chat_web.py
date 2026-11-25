@@ -5,7 +5,7 @@ ax25chat_web.py - webserver van AX25Chat op de Pi.
 Open via de wifi-hotspot van de Pi:   http://10.42.0.1
   Chat      (stap 2: berichten lezen en sturen; nu nog een overzicht)
   Radio     station, Zoek mijn set, mijn sets, luistertest, testuitzending   (inloggen: gebruiker beheer)
-  Status    diensten, hotspot, log van Direwolf, Pi uitschakelen               (inloggen: gebruiker beheer)
+  Status    diensten, hotspot, bijwerken, log van Direwolf, Pi uitschakelen    (inloggen: gebruiker beheer)
 
 Eenmalig een wachtwoord instellen:
     python3 ax25chat_web.py --wachtwoord
@@ -29,6 +29,7 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, quote, urlparse
 
+import ax25chat_bijwerken as bijwerken
 import ax25chat_radio as radio
 
 rig = radio.rig
@@ -170,6 +171,7 @@ def html_status():
     log = radio._uit([radio.JOURNALCTL, "-u", radio.DW, "-n", "40", "--no-pager", "-o", "cat"], timeout=10).strip()
     return f"""<section><h2>Diensten</h2><table>{rijen}{radio.html_set_kort()}</table></section>
 <section><h2>Wifi-hotspot</h2>{hotspot}</section>
+{bijwerken.html_sectie(verborgen())}
 <section><h2>Log van Direwolf</h2><pre>{e(log or '(geen logregels)')}</pre></section>
 <section><h2>Raspberry Pi</h2><p class="uitleg">Haal nooit zomaar de stroom eraf: dan kan de SD-kaart beschadigen.
 Schakel de Pi hier uit en wacht tot het groene lampje niet meer knippert (± 20 seconden).</p>
@@ -252,10 +254,14 @@ class Handler(BaseHTTPRequestHandler):
             return self._stuur(json.dumps({"roepnaam": s.get("roepnaam"), "frequentie": rig.doelfrequentie(),
                                            "set": r.get("set_naam"), "direwolf": radio.dienst_status(radio.DW)}),
                                soort="application/json; charset=utf-8")
-        if pad not in ("radio", "status"):
+        if pad not in ("radio", "status", "bijwerken", "bijwerken.json"):
             return self._stuur("Niet gevonden", 404, "text/plain; charset=utf-8")
         if not self._auth():
             return
+        if pad == "bijwerken":
+            return self._stuur(pagina("status", bijwerken.html_voortgang(), meld))
+        if pad == "bijwerken.json":
+            return self._stuur(bijwerken.als_json(), soort="application/json; charset=utf-8")
         if pad == "radio":
             return self._stuur(pagina("radio", radio.html_radio(verborgen()), meld))
         return self._stuur(pagina("status", html_status(), meld))
@@ -328,6 +334,11 @@ class Handler(BaseHTTPRequestHandler):
         if pad == "herstart":
             ok, fout = radio.dienst("restart", f.get("dienst", ""))
             return self._terug("/status", "ok:Dienst herstart." if ok else "fout:Herstart lukte niet: " + fout)
+        if pad == "bijwerken":
+            uit = bijwerken.verwerk(f, verborgen())
+            if uit[0] == "naar":
+                return self._terug(uit[1], uit[2])
+            return self._stuur(pagina("status", uit[1]))
         if pad == "pi":
             uit = pi_actie(f.get("actie", ""))
             return self._stuur(uit) if uit else self._terug("/status", "fout:Ongeldige opdracht.")

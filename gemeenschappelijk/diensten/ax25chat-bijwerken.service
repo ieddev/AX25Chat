@@ -1,0 +1,11 @@
+[Unit]
+Description=AX25Chat bijwerken (gestart vanaf de webpagina, tabblad Status)
+After=network-online.target
+
+[Service]
+Type=oneshot
+# Als root, zodat sudo geen wachtwoord vraagt; de installatie zelf draait als @GEBRUIKER@
+ExecStart=/bin/bash /usr/local/lib/ax25chat/ax25chat-bijwerken.sh @GEBRUIKER@ @MAP@
+TimeoutStartSec=90min
+# Niet stoppen als de installatie de webpagina en andere diensten herstart
+KillMode=process

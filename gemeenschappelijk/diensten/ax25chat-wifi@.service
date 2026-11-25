@@ -1,0 +1,6 @@
+[Unit]
+Description=AX25Chat: wifi wisselen (%i), gestart vanaf de webpagina (tabblad Status)
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash /usr/local/lib/ax25chat/ax25chat-wifi.sh %i
