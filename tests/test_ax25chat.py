@@ -22,7 +22,8 @@ for k, v in {"AX25CHAT_MAP": os.path.join(TMP, "map"), "AX25CHAT_SYS": os.path.j
              "AX25CHAT_SYSTEMCTL": "true", "AX25CHAT_SUDO": "true", "AX25CHAT_RIGCTL": "false"}.items():
     os.environ[k] = v
 os.makedirs(os.environ["AX25CHAT_MAP"])
-sys.path.insert(0, os.path.join(HIER, "..", "pi"))
+sys.path.insert(0, os.path.join(HIER, "..", "gemeenschappelijk"))
+sys.path.insert(0, os.path.join(HIER, "..", "chat"))
 
 import ax25chat_ax25 as ax25    # noqa: E402
 import ax25chat_radio as radio  # noqa: E402

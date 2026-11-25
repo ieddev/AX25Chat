@@ -1,80 +1,79 @@
 # AX25Chat
 
-Chatten via AX.25 packetradio met je telefoon of laptop. Een Raspberry Pi met **Direwolf**
-maakt van je bericht packet-geluid en de set zendt het uit. Wat binnenkomt, lees je weer op je scherm.
+Chatten via **AX.25 packetradio** met je telefoon of laptop. Je typt een bericht, een Raspberry Pi
+met **Direwolf** maakt er packet-geluid van en je set zendt het uit. Wat binnenkomt, lees je weer
+op je scherm.
 
 ```
-telefoon / laptop ──wifi──► Raspberry Pi (hotspot 10.42.0.1) ──USB──► set
+telefoon / laptop ──wifi──► RASPBERRY PI (hotspot 10.42.0.1) ──USB──► SET ──► 2 m
                              webserver · Direwolf · rigctld
 ```
 
 Onderweg met een Baofeng UV-5R, een DigiRig, een Pi Zero 2W en je telefoon, of in de shack met een
-IC-9700, IC-7300 of FT-818. Een set tegelijk, een gebruiker per Pi.
+IC-9700, IC-7300 of FT-818. Eén set tegelijk, één gebruiker per Pi. Op de amateurband gaat niets
+versleuteld: berichten gaan als gewone, leesbare tekst.
 
-## Stand van zaken
-
-| Stap | Wat | Stand |
-|---|---|---|
-| 1 | Pi: hotspot, Direwolf, CAT (rigctld), **Zoek mijn set**, profielen, luistertest, testuitzending | klaar om te testen |
-| 2 | Chat-brug (APRS-berichten met bevestiging, CQ roepen) en API | volgt |
-| 3 | Webapp voor telefoon en laptop (later ook als Android-app) | volgt |
-| fase 2 | Connected mode (BBS en nodes, via AGW) | later |
+**Stand van zaken:** stap 1 (de Pi en de set: hotspot, Direwolf, CAT, Zoek mijn set) is klaar om te
+testen. Stap 2 (chat: APRS-berichten met bevestiging, CQ roepen) en stap 3 (webapp, later ook een
+Android-app) volgen. Connected mode (BBS en nodes) komt in fase 2.
 
 ## Installeren
 
-1. Zet met de **Raspberry Pi Imager** *Raspberry Pi OS Lite (64-bit)* op een SD-kaart. Bij *OS-instellingen
-   bewerken*: een gebruiker, SSH aan, je wifi, tijdzone Europe/Amsterdam.
-2. Start de Pi, log in met ssh en typ:
+1. Zet met de **Raspberry Pi Imager** *Raspberry Pi OS Lite (64-bit)* op een SD-kaart.
+   Bij *OS-instellingen bewerken*: een gebruiker, SSH aan, je wifi, tijdzone Europe/Amsterdam.
+2. Start de Pi, log in (`ssh <gebruiker>@<naam>.local`) en typ:
 
 ```bash
 bash <(curl -sL https://raw.githubusercontent.com/ieddev/AX25Chat/main/installeer.sh)
 ```
 
-3. Beantwoord de vragen (roepnaam met SSID, wachtwoord voor de hotspot en voor de beheerpagina) en herstart.
+3. Beantwoord de vragen (roepnaam met SSID, wachtwoorden) en herstart.
 4. Verbind je telefoon met de wifi **AX25Chat-&lt;roepnaam&gt;** en open **http://10.42.0.1**.
-   Op het tabblad **Radio** (gebruiker *beheer*): **Zoek mijn set**, daarna de **luistertest** en een **testuitzending**.
+   Op het tabblad **Radio** (gebruiker *beheer*): **Zoek mijn set**, daarna de **luistertest** en een
+   **testuitzending**.
 
-Bijwerken: `ax25chat-bijwerken` (instellingen blijven bewaard).
+Bijwerken: `ax25chat-bijwerken` via ssh (instellingen blijven bewaard).
 
-## Sets
+De volledige procedure, met per set waar je op moet letten, staat in [docs/PROCEDURE.md](docs/PROCEDURE.md).
 
-| Set | Geluid | Besturing | Modem |
-|---|---|---|---|
-| Icom IC-9700 | ingebouwd (USB) | CAT via rigctld, ook PTT | 1200 baud, FM-D |
-| Icom IC-7300 | ingebouwd (USB) | CAT via rigctld, ook PTT | 300 baud (HF), USB-D |
-| Yaesu FT-818 + SCU-17 | SCU-17 | CAT (poort A), of RTS op poort B | 1200 baud (2 m) |
-| Motorola GM-340 + DigiRig | DigiRig | PTT via RTS, geen CAT | 1200 baud |
-| Baofeng UV-5R + DigiRig | DigiRig | PTT via RTS, geen CAT | 1200 baud |
+## Testen
 
-**Zoek mijn set** kijkt welke geluidskaart en welke poort aan hetzelfde USB-hubje hangen. Zo weet de Pi
-welke geluidskaart bij welke set hoort, en herkent hij een DigiRig (die heeft geen CAT). Icom- en
-Yaesu-sets worden via CAT opgezocht. Elke gekozen set wordt bewaard als profiel; wisselen is daarna een tik.
+Zie [docs/TESTPLAN.md](docs/TESTPLAN.md): scenario's per set voor installatie, Zoek mijn set,
+frequentie, luistertest en testuitzending.
 
-Frequenties op 2 m: **144,850 tot 144,950 MHz** op het 12,5 kHz-raster. Bij sets zonder CAT kies je
-"Zelf instellen op de set" en zet je het kanaal zelf goed. 70 cm en HF volgen later.
+De code zelf testen, zonder hardware: `python3 -m unittest discover -s tests`.
 
 ## Inhoud
 
-| Bestand | Wat |
+| Map | Wat |
 |---|---|
 | `installeer.sh` | Installeert en werkt bij |
-| `pi/ax25chat_web.py` | Webserver: tabbladen Chat, Radio, Status (poort 80) |
-| `pi/ax25chat_radio.py` | Instellingen, profielen, direwolf.conf, Zoek mijn set, luistertest, testuitzending |
-| `pi/ax25chat_usb.py` | USB-geluidskaarten en poorten vinden en per set groeperen |
-| `pi/ax25chat_rig.py` | CAT via hamlib (rigctld), frequentie bewaken |
-| `pi/ax25chat_ax25.py` | KISS en AX.25 UI-frames, verbinding met Direwolf |
-| `pi/hotspot.sh` | Wifi-hotspot met hostapd en dnsmasq |
-| `pi/diensten/` | systemd-diensten |
-| `tests/` | Tests zonder hardware: `python3 -m unittest discover -s tests` |
+| `gemeenschappelijk/` | Set en modem: Zoek mijn set, CAT (rigctld), Direwolf, USB-herkenning, AX.25/KISS, hotspot, diensten |
+| `chat/` | Webserver (tabbladen Chat, Radio en Status); straks ook de chat-brug |
+| `docs/` | Procedure en testplan |
+| `tests/` | Tests zonder hardware (nagebootste USB-sets) |
 
-## Licentie
+## Licentie en openheid
 
-[EUPL-1.2](LICENSE), net als Noodnet. Iedereen mag AX25Chat gebruiken, aanpassen en doorgeven; wie een
-aangepaste versie verspreidt, geeft de broncode daarvan ook vrij.
+AX25Chat is open en blijft open. Wat geldt voor welk deel:
 
-AX25Chat bouwt voort op [Noodnet](https://github.com/ieddev/noodnet) (hotspot, Direwolf, CAT en Zoek mijn set)
-en gebruikt [Direwolf](https://github.com/wb2osz/direwolf) (GPL-2.0) en [Hamlib](https://hamlib.github.io)
-(LGPL/GPL) uit de gewone pakketbronnen.
+| Deel | Licentie |
+|---|---|
+| De AX25Chat-code (installatie, webserver, scripts) | [EUPL-1.2](LICENSE), de open-sourcelicentie van de Europese Unie, ook officieel in het Nederlands |
+| `docs/` (procedure, testplan) | [CC BY-SA 4.0](docs/LICENSE) |
 
-Ontworpen door Gert de Haan, PD3PAM. Een groot deel van de code is in samenwerking met een AI-assistent
-(Claude, van Anthropic) geschreven.
+Iedereen mag AX25Chat gebruiken, aanpassen en doorgeven. Wie een aangepaste versie verspreidt, geeft de
+broncode daarvan ook vrij, onder dezelfde licentie.
+
+### Waar AX25Chat op voortbouwt
+
+- [Noodnet](https://github.com/ieddev/noodnet) (EUPL-1.2): de hotspot, Direwolf, CAT en Zoek mijn set komen
+  daaruit.
+- [Direwolf](https://github.com/wb2osz/direwolf) (GPL-2.0) en [Hamlib](https://hamlib.github.io) (LGPL/GPL).
+  Die worden bij de installatie uit de gewone pakketbronnen gehaald.
+
+### Hoe AX25Chat gemaakt is
+
+Gert de Haan, PD3PAM, heeft AX25Chat ontworpen, de keuzes gemaakt en test alles in de praktijk op echte
+sets en Raspberry Pi's. Een groot deel van de code en documentatie is in samenwerking met een
+AI-assistent (Claude, van Anthropic) geschreven. Elke wijziging wordt door hem beoordeeld en getest.

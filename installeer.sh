@@ -107,7 +107,8 @@ fi
 # 3. Programma's kopiëren (instellingen en gegevens blijven staan)
 # ---------------------------------------------------------------------------
 stap "AX25Chat-programma's naar $DOEL"
-cp "$BRON"/pi/*.py "$BRON"/pi/*.sh "$DOEL"/
+cp "$BRON"/gemeenschappelijk/*.py "$BRON"/gemeenschappelijk/*.sh "$DOEL"/
+cp "$BRON"/chat/*.py "$DOEL"/
 chmod +x "$DOEL"/*.sh
 git -C "$BRON" log -1 --format='%h %cd' --date=format:'%Y-%m-%d' > "$DOEL/versie.txt"
 
@@ -127,7 +128,7 @@ fi
 stap "Diensten"
 plaats() { sed -e "s#@GEBRUIKER@#$GEBRUIKER#g" -e "s#@MAP@#$DOEL#g" "$1" \
              | sudo tee "/etc/systemd/system/$(basename "$1")" >/dev/null; }
-for f in "$BRON"/pi/diensten/*.service "$BRON"/pi/diensten/*.timer; do plaats "$f"; done
+for f in "$BRON"/gemeenschappelijk/diensten/*.service "$BRON"/gemeenschappelijk/diensten/*.timer "$BRON"/chat/diensten/*.service; do plaats "$f"; done
 
 # De webpagina mag deze diensten herstarten (en Direwolf even stoppen voor de luistertest), en de Pi uitzetten
 SC="$(command -v systemctl)"
