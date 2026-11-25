@@ -633,7 +633,7 @@ def html_eigen(verborgen):
     lijst = rig.eigen_frequenties()
     rijen = "".join(
         f"<tr><td style='white-space:nowrap'>{e(rig.mhz(x['hz']).replace(' MHz', ''))}</td>"
-        f"<td style='white-space:nowrap'>{e(rig.MODE_NAAM.get(x['mode'], 'auto'))}</td>"
+        f"<td style='white-space:nowrap'>{e(rig.MODE_NAAM.get(x['mode']) or 'auto (' + rig.MODE_NAAM['PKTUSB' if rig.is_hf(x['hz']) else 'PKTFM'] + ')')}</td>"
         f"<td>{e(x['baud'])}</td><td>{e(x['naam'])}</td>"
         f"<td style='text-align:right'><form method='post' action='/frequentie' style='margin:0'>{verborgen}"
         f"<input type='hidden' name='actie' value='weg'><input type='hidden' name='hz' value='{x['hz']}'>"

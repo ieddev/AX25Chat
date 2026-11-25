@@ -229,6 +229,17 @@ class TestRadio(unittest.TestCase):
         self.assertTrue(radio.verwerk_eigen({"actie": "toe", "mhz": "146,5", "mode": "", "baud": "auto"})[0])  # geen band
         self.assertTrue(radio.verwerk_eigen({"actie": "toe", "mhz": "144,8", "mode": "AM", "baud": "auto"})[0])
         self.assertIn("PD4R 9k6", rig.html_frequentie_keuze(144900000))
+        radio.verwerk_eigen({"actie": "toe", "mhz": "144,925", "mode": "PKTFM", "baud": "1200", "naam": "PD4R"})
+        keuze = rig.html_frequentie_keuze(144925000)
+        self.assertEqual(keuze.count('value="144925000"'), 1)                   # eigen gaat voor de standaard
+        self.assertIn('value="144925000" selected>144,925 MHz · FM-D · 1200 baud · PD4R', keuze)
+        radio.verwerk_eigen({"actie": "toe", "mhz": "432,6", "mode": "", "baud": "9600", "naam": ""})
+        self.assertIn("auto (FM-D)", radio.html_eigen(""))
+        r9 = {"cat_model": 3081, "modem": "auto"}
+        radio.verwerk_station({"roepnaam": "PD3PAM-7", "frequentie": "432600000", "mode": ""})
+        self.assertEqual((rig.doelmode(r9), radio.modem(r9)), ("PKTFM", 9600))    # auto-mode + 9600 komt door
+        radio.verwerk_eigen({"actie": "weg", "hz": "432600000"})
+        radio.verwerk_eigen({"actie": "weg", "hz": "144925000"})
         fouten, _ = radio.verwerk_station({"roepnaam": "PD3PAM-7", "frequentie": "438175000", "mode": ""})
         self.assertEqual(fouten, [])
         r = {"cat_model": 3081, "modem": "auto"}

@@ -164,12 +164,15 @@ def html_frequentie_keuze(huidig, naam="frequentie"):
     """Keuzelijst: de vaste 2 m-kanalen, of 'zelf instellen' (sets zonder CAT, of een andere band)."""
     opties = (f'<option value="0"{" selected" if not huidig else ""}>Zelf instellen op de set '
               f'(geen CAT, of een andere band)</option>')
+    mijn = eigen_frequenties()
+    eigen_hz = {x["hz"] for x in mijn}
     opties += '<optgroup label="2 m">'
     for k in [APRS_FREQ] + list(FREQ_2M):
+        if k in eigen_hz:                          # staat bij Mijn frequenties, met mode, snelheid en naam
+            continue
         opties += (f'<option value="{k}"{" selected" if k == huidig else ""}>'
                    f'{_html.escape(mhz(k))}{" (standaard)" if k == STANDAARD_FREQ else " (APRS)" if k == APRS_FREQ else ""}</option>')
     opties += '</optgroup>'
-    mijn = [x for x in eigen_frequenties() if x["hz"] not in FREQ_2M and x["hz"] != APRS_FREQ]
     if mijn:
         opties += '<optgroup label="Mijn frequenties">' + "".join(
             f'<option value="{x["hz"]}"{" selected" if x["hz"] == huidig else ""}>{_html.escape(eigen_tekst(x))}</option>'
