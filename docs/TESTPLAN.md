@@ -1,7 +1,7 @@
-# AX25Chat - testplan stap 1 (radio)
+# AX25Chat - testplan
 
 Volg de scenario's per set. Vink af wat werkt en noteer wat anders gaat dan verwacht (wat je zag,
-met welke set, hoe laat). Het chatten zelf komt in stap 2; dit testplan gaat over de Pi en de set.
+met welke set, hoe laat). A tot en met E gaan over de Pi en de set (stap 1), F over het chatten (stap 2).
 
 Handig tijdens het testen: tabblad **Status** (log van Direwolf onderaan) open op een tweede apparaat,
 en een tweede ontvanger op dezelfde frequentie.
@@ -56,3 +56,22 @@ en een tweede ontvanger op dezelfde frequentie.
 | E2 | Wisselen | UV-5R aansluiten, profiel *Gebruiken* | Direwolf herstart met de DigiRig; testuitzending werkt | ☐ |
 | E3 | Set niet aangesloten | Profiel gebruiken zonder de set | Waarschuwing "niet aangesloten" | ☐ |
 | E4 | Na herstart | Pi herstarten | Laatst gekozen set is nog actief | ☐ |
+
+## F. Chatten
+
+Nodig: een tegenstation. Dat kan een tweede AX25Chat-Pi zijn, of een telefoon met APRSdroid (met een
+TNC of via geluid), of een set met APRS-berichten. Spreek een frequentie af.
+
+| # | Scenario | Hoe | Verwacht | OK |
+|---|---|---|---|---|
+| F1 | CQ roepen | Chat → CQ (iedereen), typ een bericht, Zenden | Set zendt één keer; tegenstation ziet het bericht aan CQ | ☐ |
+| F2 | CQ ontvangen | Tegenstation stuurt een bericht aan CQ | Verschijnt bij CQ (iedereen), met de roepnaam erboven | ☐ |
+| F3 | Bericht met bevestiging | + Nieuw gesprek, roepnaam tegenstation, bericht sturen | Eerst *verzonden*, na de ack *bevestigd ✓✓* | ☐ |
+| F4 | Bericht ontvangen | Tegenstation stuurt een bericht aan mijn roepnaam (met SSID) | Verschijnt in het gesprek; tegenstation krijgt een bevestiging | ☐ |
+| F5 | Geen antwoord | Bericht aan een roepnaam die niet in de lucht is | 5 keer herhaald, daarna *niet bevestigd* en knop Opnieuw | ☐ |
+| F6 | Lang bericht | Bericht van meer dan 67 tekens | Opgesplitst in delen, elk bevestigd | ☐ |
+| F7 | APRSdroid | Bericht van en naar APRSdroid | Beide kanten zien het bericht en de bevestiging | ☐ |
+| F8 | Monitor | Op 144,800 luisteren | APRS-verkeer verschijnt in de Monitor | ☐ |
+| F9 | Telefoon en laptop tegelijk | Beide de chatpagina open | Een bericht verschijnt op beide meteen | ☐ |
+| F10 | Na herstart | Pi herstarten, chatpagina openen | Eerdere berichten staan er nog | ☐ |
+| F11 | Digipeater | Station: pad `WIDE1-1`, bericht op 144,800 | In de Monitor komt het bericht terug met `WIDE1-1*` (niet als nieuw bericht) | ☐ |

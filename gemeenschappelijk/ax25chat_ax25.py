@@ -135,6 +135,26 @@ def ax25_parse(frame):
     return _decode_addr(addrs[1]), _decode_addr(addrs[0]), frame[i + 2:]
 
 
+def ax25_parse_pad(frame):
+    """Als ax25_parse, maar met het digipeaterpad: (bron, bestemming, [pad], info) of None.
+    Een digipeater die het frame al herhaald heeft, krijgt een * (zoals WIDE1-1*)."""
+    addrs = []
+    i = 0
+    while i + 7 <= len(frame):
+        addrs.append(frame[i:i + 7])
+        i += 7
+        if frame[i - 1] & 0x01:
+            break
+    else:
+        return None
+    if len(addrs) < 2 or i + 2 > len(frame):
+        return None
+    if frame[i] & 0xEF != 0x03 or frame[i + 1] != 0xF0:
+        return None
+    pad = [_decode_addr(a) + ("*" if a[6] & 0x80 else "") for a in addrs[2:]]
+    return _decode_addr(addrs[1]), _decode_addr(addrs[0]), pad, frame[i + 2:]
+
+
 # ---------------------------------------------------------------------------
 # Verbinding met Direwolf (KISS over TCP)
 # ---------------------------------------------------------------------------
@@ -144,10 +164,11 @@ class KissLink:
     verbinding als die wegvalt.
 
     on_frame(bron, bestemming, info_bytes) wordt aangeroepen voor elk
-    ontvangen UI-frame.
+    ontvangen UI-frame; met met_pad=True: on_frame(bron, bestemming, pad, info_bytes).
     """
 
-    def __init__(self, host, port, mycall, on_frame, log=print):
+    def __init__(self, host, port, mycall, on_frame, log=print, met_pad=False):
+        self.met_pad = met_pad
         self.host, self.port = host, port
         self.mycall = mycall
         self.on_frame = on_frame
@@ -175,7 +196,7 @@ class KissLink:
                     if not data:
                         raise ConnectionError("verbinding gesloten door Direwolf")
                     for frame in dec.feed(data):
-                        parsed = ax25_parse(frame)
+                        parsed = ax25_parse_pad(frame) if self.met_pad else ax25_parse(frame)
                         if parsed:
                             try:
                                 self.on_frame(*parsed)

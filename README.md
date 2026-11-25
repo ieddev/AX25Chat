@@ -13,9 +13,23 @@ Onderweg met een Baofeng UV-5R, een DigiRig, een Pi Zero 2W en je telefoon, of i
 IC-9700, IC-7300 of FT-818. Eén set tegelijk, één gebruiker per Pi. Op de amateurband gaat niets
 versleuteld: berichten gaan als gewone, leesbare tekst.
 
-**Stand van zaken:** stap 1 (de Pi en de set: hotspot, Direwolf, CAT, Zoek mijn set) is klaar om te
-testen. Stap 2 (chat: APRS-berichten met bevestiging, CQ roepen) en stap 3 (webapp, later ook een
-Android-app) volgen. Connected mode (BBS en nodes) komt in fase 2.
+**Stand van zaken:** stap 1 (de Pi en de set: hotspot, Direwolf, CAT, Zoek mijn set) en stap 2 (chatten:
+berichten met bevestiging, CQ roepen, monitor) zijn klaar om te testen. Stap 3 (webapp voor telefoon en
+laptop, later ook een Android-app) volgt. Connected mode (BBS en nodes) komt in fase 2.
+
+## Hoe het chatten werkt
+
+Berichten gaan als **APRS-bericht** de lucht in, als gewone tekst. Zo kunnen ook APRSdroid, Kenwood- en
+Yaesu-sets en andere APRS-stations ze lezen en beantwoorden:
+
+```
+PD3PAM-7>APZAXC::PA1ABC-9 :Hoi, hoor je me?{12      bericht aan PA1ABC-9 (nummer 12)
+PA1ABC-9>APZAXC::PD3PAM-7 :ack12                     bevestiging terug
+PD3PAM-7>APZAXC::CQ       :CQ CQ de PD3PAM           aan iedereen, zonder bevestiging
+```
+
+Een bericht aan een station wordt herhaald tot de bevestiging binnen is (hoogstens 5 keer, in ongeveer
+6 minuten). Langer dan 67 tekens wordt opgesplitst. Alles wat de Pi verder hoort, staat in de **Monitor**.
 
 ## Installeren
 
@@ -49,7 +63,7 @@ De code zelf testen, zonder hardware: `python3 -m unittest discover -s tests`.
 |---|---|
 | `installeer.sh` | Installeert en werkt bij |
 | `gemeenschappelijk/` | Set en modem: Zoek mijn set, CAT (rigctld), Direwolf, USB-herkenning, AX.25/KISS, hotspot, diensten |
-| `chat/` | Webserver (tabbladen Chat, Radio en Status); straks ook de chat-brug |
+| `chat/` | De chat (APRS-berichten, bevestigen, herhalen, monitor), de chatpagina en de webserver (tabbladen Chat, Radio en Status) |
 | `docs/` | Procedure en testplan |
 | `tests/` | Tests zonder hardware (nagebootste USB-sets) |
 
