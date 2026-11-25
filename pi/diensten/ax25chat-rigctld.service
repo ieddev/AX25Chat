@@ -1,0 +1,18 @@
+[Unit]
+Description=AX25Chat: CAT-besturing van de set (rigctld)
+After=network.target
+Before=ax25chat-direwolf.service
+
+[Service]
+Type=simple
+User=@GEBRUIKER@
+WorkingDirectory=@MAP@
+ExecStart=/bin/bash @MAP@/start_rigctld.sh
+Restart=always
+RestartSec=5
+# rigctld stopt niet altijd netjes zolang Direwolf verbonden is: na 5 s hard stoppen
+TimeoutStopSec=5
+KillMode=mixed
+
+[Install]
+WantedBy=multi-user.target
