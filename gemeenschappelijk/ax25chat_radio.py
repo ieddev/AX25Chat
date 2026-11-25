@@ -563,7 +563,7 @@ def verwerk_station(f):
         hz = int(f.get("frequentie") or 0)
     except ValueError:
         hz = -1
-    if hz and hz not in rig.FREQ_2M:
+    if hz and hz not in rig.frequentie_keuzes():
         fouten.append("Kies een frequentie uit de lijst.")
     if fouten:
         return fouten, s
@@ -593,7 +593,7 @@ Met CAT zet de Pi de set zelf op deze frequentie; zonder CAT zet je de set (het 
 <form method="post" action="/station">{verborgen}
 <div class="rij"><div><label>Roepnaam</label><input type="text" name="roepnaam" value="{e(rn)}" placeholder="PD3PAM-7"
 autocapitalize="characters" required></div>
-<div><label>Frequentie <small>2 m, 12,5 kHz-raster</small></label>{rig.html_frequentie_keuze(s.get('frequentie'))}</div></div>
+<div><label>Frequentie <small>2 m: APRS of 144,850 - 144,950 MHz</small></label>{rig.html_frequentie_keuze(s.get('frequentie'))}</div></div>
 <div class="balk"><button type="submit">Opslaan</button></div></form></section>"""
 
 
