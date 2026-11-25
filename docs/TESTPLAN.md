@@ -41,6 +41,8 @@ en een tweede ontvanger op dezelfde frequentie.
 | C1 | Frequentie zetten | Station: 144,875 MHz, opslaan (IC-9700) | Set springt naar 144,875 in datamode | ☐ |
 | C2 | Bewaker | Draai aan de VFO van de IC-9700 | Binnen een minuut terug op de ingestelde frequentie | ☐ |
 | C3 | IC-7300 op 2 m | Frequentie 144,900 met de IC-7300 | Melding dat de IC-7300 dat niet kan | ☐ |
+| C1b | Mode | IC-9700 met de hand op USB-D zetten (Mode: Automatisch, 144,925) | Binnen een minuut terug op FM-D; tabblad Radio toont FM-D ✓ | ☐ |
+| C1c | Mode zelf kiezen | Station: Mode USB-D, opslaan | Set gaat naar USB-D en blijft daar | ☐ |
 | C4 | Zelf instellen | Station: *Zelf instellen op de set* | Pi laat de frequentie met rust | ☐ |
 
 ## D. Luistertest en testuitzending

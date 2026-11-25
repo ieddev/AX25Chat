@@ -201,6 +201,23 @@ class TestRadio(unittest.TestCase):
         fouten, _ = radio.verwerk_station({"roepnaam": "N0CALL", "frequentie": "0"})
         self.assertTrue(fouten)
 
+    def test_mode(self):
+        ic9700 = {"cat_model": 3081, "cat_mode": "PKTFM"}
+        radio.verwerk_station({"roepnaam": "PD3PAM-7", "frequentie": "144925000", "mode": ""})
+        self.assertEqual(rig.doelmode(ic9700), "PKTFM")                       # automatisch: 2 m = FM-D
+        self.assertTrue(rig.mode_goed(ic9700, "PKTFM"))
+        self.assertFalse(rig.mode_goed(ic9700, "PKTUSB"))                     # USB-D: bewaker zet terug
+        fouten, _ = radio.verwerk_station({"roepnaam": "PD3PAM-7", "frequentie": "144925000", "mode": "pktusb"})
+        self.assertEqual(fouten, [])
+        self.assertEqual(rig.doelmode(ic9700), "PKTUSB")
+        self.assertTrue(rig.mode_goed(ic9700, "PKTUSB"))
+        self.assertFalse(rig.mode_goed(ic9700, "PKTFM"))
+        fouten, _ = radio.verwerk_station({"roepnaam": "PD3PAM-7", "frequentie": "144925000", "mode": "AM"})
+        self.assertTrue(fouten)
+        self.assertIn('name="mode"', radio.html_station(""))
+        radio.verwerk_station({"roepnaam": "PD3PAM-7", "frequentie": "0"})       # zelf instellen: mode uit de set
+        self.assertEqual(rig.doelmode({"cat_mode": "PKTUSB"}), "PKTUSB")
+
     def test_meet_geluid(self):
         stil = array.array("h", [0] * 4800).tobytes()
         self.assertEqual(radio.advies_luister(*radio.meet_geluid(stil))[0], "fout")

@@ -34,6 +34,13 @@ FREQ_2M = list(range(144850000, 144950001, 12500))
 APRS_FREQ = 144800000                     # APRS: om te luisteren en APRS-berichten (bijv. met APRSdroid)
 STANDAARD_FREQ = 144900000
 PAKKET_MODES = {"PKTFM", "FM-D", "FMD", "DATA-FM", "FM-DATA", "PKTUSB", "PKTLSB", "USB-D", "LSB-D"}
+# Keuze bij Station (naast de frequentie). "" = automatisch: FM-D op 2 m en 70 cm, USB-D op HF.
+MODES = [("", "Automatisch (FM-D, op HF USB-D)"), ("PKTFM", "FM-D (FM-packet, bijv. 1200 baud)"),
+         ("PKTUSB", "USB-D (SSB-packet)"), ("PKTLSB", "LSB-D"), ("FM", "FM (set zonder datamode)")]
+_FAMILIE = {"PKTFM": "PKTFM", "FM-D": "PKTFM", "FMD": "PKTFM", "DATA-FM": "PKTFM", "FM-DATA": "PKTFM",
+            "PKTUSB": "PKTUSB", "USB-D": "PKTUSB", "PKTLSB": "PKTLSB", "LSB-D": "PKTLSB", "FM": "FM"}
+MODE_NAAM = {"PKTFM": "FM-D", "PKTUSB": "USB-D", "PKTLSB": "LSB-D", "FM": "FM"}
+_GEEN_DATAMODE = set()                    # sets (hamlib-model) die PKTFM weigerden; daar is FM goed
 HF_GRENS = 30000000                       # onder 30 MHz: HF, modem 300 baud, mode PKTUSB
 
 # (hamlib-nummer, merk, model, snelheden om te proberen). Gecontroleerd met Hamlib 4.5 (rigctl -l).
@@ -119,10 +126,24 @@ def is_hf(hz):
     return bool(hz) and hz < HF_GRENS
 
 
+def doelmode(r):
+    """De mode waarin de set moet staan: de keuze bij Station, of automatisch op basis van de frequentie."""
+    d = _lees(STATION_FILE)
+    gekozen = d.get("mode") if isinstance(d, dict) else ""
+    if gekozen in MODE_NAAM:
+        return gekozen
+    doel = doelfrequentie()
+    if doel:
+        return "PKTUSB" if is_hf(doel) else "PKTFM"
+    return r.get("cat_mode") or "PKTFM"
+
+
 def mode_goed(r, mode):
-    """Staat de set in de juiste mode? Datamode, of FM als dat zo is ingesteld (set zonder datamode)."""
-    mode = (mode or "").upper()
-    return mode in PAKKET_MODES or (r.get("cat_mode") == "FM" and mode == "FM")
+    """Staat de set in de gekozen mode? (FM-D en USB-D zijn niet hetzelfde: de bewaker zet het terug.)"""
+    nu, doel = _FAMILIE.get((mode or "").upper()), doelmode(r)
+    if nu == doel:
+        return True
+    return doel == "PKTFM" and nu == "FM" and int(r.get("cat_model") or 0) in _GEEN_DATAMODE
 
 
 def cat_actief(r):
@@ -239,11 +260,12 @@ def zet_set(r, freq=None):
         ok, uit = opdracht(f"F {freq}")
         if not ok:
             return ["Frequentie zetten lukte niet: " + " ".join(uit)]
-    mode = r.get("cat_mode") or "PKTFM"
+    mode = doelmode(r)
     ok, uit = opdracht(f"M {mode} 0")
     if not ok and mode == "PKTFM":
         ok, uit = opdracht("M FM 0")
         if ok:
+            _GEEN_DATAMODE.add(int(r.get("cat_model") or 0))
             meld.append("Deze set kent geen datamode via CAT; FM gekozen. Controleer of het geluid van USB komt.")
     if not ok:
         meld.append("Mode zetten lukte niet: " + " ".join(uit))
