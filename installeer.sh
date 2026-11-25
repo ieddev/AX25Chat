@@ -130,10 +130,23 @@ plaats() { sed -e "s#@GEBRUIKER@#$GEBRUIKER#g" -e "s#@MAP@#$DOEL#g" "$1" \
              | sudo tee "/etc/systemd/system/$(basename "$1")" >/dev/null; }
 for f in "$BRON"/gemeenschappelijk/diensten/*.service "$BRON"/gemeenschappelijk/diensten/*.timer "$BRON"/chat/diensten/*.service; do plaats "$f"; done
 
-# De webpagina mag deze diensten herstarten (en Direwolf even stoppen voor de luistertest), en de Pi uitzetten
+# Bijwerken en wifi wisselen vanaf de webpagina: deze scripts draaien als root, dus van root en niet te wijzigen.
+# (via een tijdelijke naam + mv: dit script kan zelf het bijwerken uitvoeren dat nu loopt)
+sudo install -d -m 0755 /usr/local/lib/ax25chat
+for s in ax25chat-bijwerken.sh ax25chat-wifi.sh; do
+  sudo install -m 0755 -o root -g root "$BRON/gemeenschappelijk/diensten/$s" "/usr/local/lib/ax25chat/.$s.nieuw"
+  sudo mv -f "/usr/local/lib/ax25chat/.$s.nieuw" "/usr/local/lib/ax25chat/$s"
+done
+# tijdelijke sudo-regel van het bijwerken (stroom eraf tijdens bijwerken) wordt bij het opstarten opgeruimd
+echo "r /etc/sudoers.d/ax25chat-bijwerken-tijdelijk" | sudo tee /etc/tmpfiles.d/ax25chat-bijwerken.conf >/dev/null
+
+# De webpagina mag deze diensten herstarten (en Direwolf even stoppen voor de luistertest), de Pi uitzetten,
+# bijwerken starten en de hotspot tijdelijk uit- en weer aanzetten
 SC="$(command -v systemctl)"
 REGEL="$GEBRUIKER ALL=(root) NOPASSWD: $SC restart ax25chat-rigctld, $SC restart ax25chat-direwolf"
 REGEL="$REGEL, $SC stop ax25chat-direwolf, $SC start ax25chat-direwolf, $SC poweroff, $SC reboot"
+REGEL="$REGEL, $SC start --no-block ax25chat-bijwerken"
+REGEL="$REGEL, $SC start --no-block ax25chat-wifi@thuiswifi, $SC start --no-block ax25chat-wifi@hotspot"
 TMP=$(mktemp); echo "$REGEL" > "$TMP"
 sudo visudo -cf "$TMP" >/dev/null && sudo install -m 0440 "$TMP" /etc/sudoers.d/ax25chat; rm -f "$TMP"
 
@@ -175,8 +188,8 @@ if [ "$NIEUW" = "1" ]; then
    - open  http://10.42.0.1
    - tabblad Radio (gebruiker: beheer): Zoek mijn set, dan luistertest en testuitzending
    - ssh werkt via de hotspot:  ssh $GEBRUIKER@10.42.0.1
-   Internet (voor bijwerken) daarna via een netwerkkabel, of tijdelijk:  ~/ax25chat/hotspot.sh thuiswifi
-   Bijwerken:  ax25chat-bijwerken
+   Bijwerken: tabblad Status, knop Hotspot tijdelijk uitschakelen (de Pi gaat dan via je thuis-wifi),
+   of via ssh:  ax25chat-bijwerken
 TXT
 else
   stap "Bijwerken: diensten herstarten"
