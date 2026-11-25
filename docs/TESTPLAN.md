@@ -43,6 +43,8 @@ en een tweede ontvanger op dezelfde frequentie.
 | C3 | IC-7300 op 2 m | Frequentie 144,900 met de IC-7300 | Melding dat de IC-7300 dat niet kan | ☐ |
 | C1b | Mode | IC-9700 met de hand op USB-D zetten (Mode: Automatisch, 144,925) | Binnen een minuut terug op FM-D; tabblad Radio toont FM-D ✓ | ☐ |
 | C1c | Mode zelf kiezen | Station: Mode USB-D, opslaan | Set gaat naar USB-D en blijft daar | ☐ |
+| C5 | Mijn frequenties | Radio → Mijn frequenties: 144,775 USB-D toevoegen, bij Station kiezen, opslaan (IC-9700) | Set naar 144,775 in USB-D | ☐ |
+| C6 | 9600 baud | 438,175 FM-D 9600 toevoegen en kiezen | Direwolf herstart met MODEM 9600 (Status-log) | ☐ |
 | C4 | Zelf instellen | Station: *Zelf instellen op de set* | Pi laat de frequentie met rust | ☐ |
 
 ## D. Luistertest en testuitzending

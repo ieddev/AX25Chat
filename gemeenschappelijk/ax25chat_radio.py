@@ -117,10 +117,14 @@ def dienst_status(naam):
 # ---------------------------------------------------------------------------
 
 def modem(r, doel=None):
-    """1200 of 300 baud: zoals gekozen, of automatisch op basis van de frequentie (HF = 300)."""
-    if str(r.get("modem")) in ("1200", "300"):
+    """1200, 300 of 9600 baud: zoals gekozen bij de set, anders die van de eigen frequentie, anders op basis
+    van de frequentie (HF = 300)."""
+    if str(r.get("modem")) in ("1200", "300", "9600"):
         return int(r["modem"])
     doel = rig.doelfrequentie() if doel is None else doel
+    x = rig.eigen(doel) if doel else None
+    if x and x["baud"] != "auto":
+        return int(x["baud"])
     return 300 if rig.is_hf(doel) or int(r.get("cat_model") or 0) in rig.ALLEEN_HF else 1200
 
 
@@ -495,7 +499,7 @@ def kies_voorstel(f):
         return ["Ongeldige keuze; zoek opnieuw."], []
     if r["ptt_methode"] not in dict(METHODES):
         return ["Ongeldige keuze; zoek opnieuw."], []
-    if r["modem"] not in ("auto", "1200", "300"):
+    if r["modem"] not in ("auto", "1200", "300", "9600"):
         r["modem"] = "auto"
     poorten = usb.seriele_poorten()
     if r["ptt_methode"] == "CAT" and r["cat_poort"] not in poorten or \
@@ -523,7 +527,7 @@ def verwerk_handmatig(f):
     r["geluidskaart"] = (f.get("geluidskaart") or "").strip()
     r["ptt_methode"] = f.get("ptt_methode") if f.get("ptt_methode") in dict(METHODES) else "VOX"
     r["ptt_poort"] = (f.get("ptt_poort") or "").strip() if r["ptt_methode"] in ("RTS", "DTR") else ""
-    r["modem"] = f.get("modem") if f.get("modem") in ("auto", "1200", "300") else "auto"
+    r["modem"] = f.get("modem") if f.get("modem") in ("auto", "1200", "300", "9600") else "auto"
     try:
         r["txdelay_ms"] = max(50, min(1000, int(f.get("txdelay_ms") or 300)))
     except ValueError:
@@ -591,6 +595,63 @@ def _opties(lijst, gekozen, leeg=None):
     return uit
 
 
+MAX_EIGEN = 20
+
+
+def verwerk_eigen(f):
+    """Mijn frequenties: toevoegen of weghalen. Geeft (fouten, melding)."""
+    s = station()
+    lijst = rig.eigen_frequenties()
+    if f.get("actie") == "weg":
+        try:
+            hz = int(f.get("hz") or 0)
+        except ValueError:
+            hz = 0
+        s["eigen"] = [x for x in lijst if x["hz"] != hz]
+        schrijf(STATION_FILE, s)
+        return [], "Frequentie weggehaald."
+    hz = rig.lees_mhz(f.get("mhz"))
+    if not hz:
+        return ["Frequentie: vul MHz in, bijv. 144,775 of 7,0449."], None
+    if not rig.in_band(hz):
+        return [f"{rig.mhz(hz)} ligt niet in een amateurband (160 m t/m 70 cm)."], None
+    mode = (f.get("mode") or "").upper()
+    baud = f.get("baud") or "auto"
+    if mode not in dict(rig.MODES) or baud not in dict(rig.SNELHEDEN):
+        return ["Kies een mode en snelheid uit de lijst."], None
+    naam = re.sub(r"[^\w \-./]", "", (f.get("naam") or "").strip())[:30]
+    lijst = [x for x in lijst if x["hz"] != hz]
+    if len(lijst) >= MAX_EIGEN:
+        return [f"Hoogstens {MAX_EIGEN} eigen frequenties; haal er eerst een weg."], None
+    lijst.append({"hz": hz, "mode": mode, "baud": baud, "naam": naam})
+    s["eigen"] = sorted(lijst, key=lambda x: x["hz"])
+    schrijf(STATION_FILE, s)
+    return [], f"{rig.mhz(hz)} toegevoegd. Kies hem bij Station en sla op."
+
+
+def html_eigen(verborgen):
+    lijst = rig.eigen_frequenties()
+    rijen = "".join(
+        f"<tr><td style='white-space:nowrap'>{e(rig.mhz(x['hz']).replace(' MHz', ''))}</td>"
+        f"<td style='white-space:nowrap'>{e(rig.MODE_NAAM.get(x['mode'], 'auto'))}</td>"
+        f"<td>{e(x['baud'])}</td><td>{e(x['naam'])}</td>"
+        f"<td style='text-align:right'><form method='post' action='/frequentie' style='margin:0'>{verborgen}"
+        f"<input type='hidden' name='actie' value='weg'><input type='hidden' name='hz' value='{x['hz']}'>"
+        f"<button class='licht' type='submit'>Weg</button></form></td></tr>" for x in lijst)
+    tabel = (f"<table><tr><th>MHz</th><th>Mode</th><th>Baud</th><th>Naam</th><th></th></tr>{rijen}</table>"
+             if lijst else "")
+    return f"""<section><h2>Mijn frequenties</h2><p class="uitleg">Frequenties van stations, bakens en BBS'en bij jou
+in de buurt, elk met de mode en snelheid die daar gebruikt worden. Ze komen in de lijst bij Station.</p>{tabel}
+<details{'' if lijst else ' open'}><summary>Frequentie toevoegen</summary>
+<form method="post" action="/frequentie">{verborgen}<input type="hidden" name="actie" value="toe">
+<div class="rij"><div><label>Frequentie <small>MHz, bijv. 144,775</small></label>
+<input type="text" name="mhz" inputmode="decimal" placeholder="144,775" required></div>
+<div><label>Naam <small>optioneel</small></label><input type="text" name="naam" maxlength="30" placeholder="bijv. PD4R BBS"></div></div>
+<div class="rij"><div><label>Mode</label><select name="mode">{_opties(rig.MODES, '')}</select></div>
+<div><label>Snelheid</label><select name="baud">{_opties(rig.SNELHEDEN, 'auto')}</select></div></div>
+<div class="balk"><button type="submit">Toevoegen</button></div></form></details></section>"""
+
+
 def html_station(verborgen, s=None):
     s = s or station()
     rn = "" if str(s.get("roepnaam", "")).startswith("N0CALL") else s.get("roepnaam", "")
@@ -599,8 +660,8 @@ Met CAT zet de Pi de set zelf op deze frequentie; zonder CAT zet je de set (het 
 <form method="post" action="/station">{verborgen}
 <div class="rij"><div><label>Roepnaam</label><input type="text" name="roepnaam" value="{e(rn)}" placeholder="PD3PAM-7"
 autocapitalize="characters" required></div>
-<div><label>Frequentie <small>2 m: APRS of 144,850 - 144,950 MHz</small></label>{rig.html_frequentie_keuze(s.get('frequentie'))}</div></div>
-<label>Mode <small>alleen met CAT; FM-packet (1200 baud) is FM-D</small></label>
+<div><label>Frequentie <small>2 m, of uit Mijn frequenties</small></label>{rig.html_frequentie_keuze(s.get('frequentie'))}</div></div>
+<label>Mode <small>alleen met CAT; automatisch = die van Mijn frequenties, anders FM-D (HF: USB-D)</small></label>
 <select name="mode">{_opties(rig.MODES, s.get('mode') or '')}</select>
 <label>Digipeaterpad <small>leeg = alleen rechtstreeks; bijv. WIDE1-1 om via een digipeater verder te komen</small></label>
 <input type="text" name="pad" value="{e(s.get('pad') or '')}" placeholder="leeg" autocapitalize="characters">
@@ -686,7 +747,7 @@ en rigctld opnieuw gestart.</p>
 <input type="text" name="cat_watt" value="{e(verm)}" inputmode="decimal" placeholder="leeg = zoals de set staat"></div>
 <div id="rts_deel"><label>PTT-poort</label><select name="ptt_poort">{_opties(poorten, r.get('ptt_poort') or '', '- kies -')}</select>
 <p class="uitleg" style="margin-top:8px">DigiRig: de CP2102N-poort met RTS. FT-818 met SCU-17: poort B met RTS.</p></div>
-<div class="rij"><div><label>Modem</label><select name="modem">{_opties([("auto", "Automatisch (HF 300, anders 1200)"), ("1200", "1200 baud (VHF/UHF)"), ("300", "300 baud (HF)")], r.get('modem') or 'auto')}</select></div>
+<div class="rij"><div><label>Modem</label><select name="modem">{_opties([("auto", "Automatisch (zoals bij de frequentie; HF 300, anders 1200)"), ("1200", "1200 baud (VHF/UHF)"), ("300", "300 baud (HF)"), ("9600", "9600 baud (alleen sets met een 9k6-aansluiting)")], r.get('modem') or 'auto')}</select></div>
 <div><label>TXDELAY <small>ms; Baofeng: 300-400</small></label><input type="number" name="txdelay_ms" min="50" max="1000" step="10" value="{e(str(r.get('txdelay_ms') or 300))}"></div></div>
 <div class="balk"><button type="submit">Opslaan en herstarten</button></div></section></form></details>
 <script>function toonCat(){{var m=document.getElementById('ptt_methode').value;
@@ -773,7 +834,7 @@ def html_radio(verborgen, bovenaan="", luister=None):
     if luister:                                   # uitslag van de luistertest bovenaan, waar je hem ziet
         return (bovenaan + html_luister(verborgen, luister) + html_station(verborgen) + html_set(verborgen, r) +
                 html_zoek(verborgen) + html_profielen(verborgen, r) + html_test(verborgen, r) + html_handmatig(verborgen, r))
-    return (bovenaan + html_station(verborgen) + html_set(verborgen, r) + html_zoek(verborgen) +
+    return (bovenaan + html_station(verborgen) + html_eigen(verborgen) + html_set(verborgen, r) + html_zoek(verborgen) +
             html_profielen(verborgen, r) + html_luister(verborgen) + html_test(verborgen, r) + html_handmatig(verborgen, r))
 
 

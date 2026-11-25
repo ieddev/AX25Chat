@@ -103,22 +103,82 @@ def mhz(hz):
     return t.replace(".", ",") + " MHz"
 
 
+# Amateurbanden (Hz) waarin je zelf frequenties mag toevoegen (Mijn frequenties)
+BANDEN = [(1810000, 2000000), (3500000, 3800000), (7000000, 7200000), (10100000, 10150000), (14000000, 14350000),
+          (18068000, 18168000), (21000000, 21450000), (24890000, 24990000), (28000000, 29700000),
+          (50000000, 52000000), (144000000, 146000000), (430000000, 440000000)]
+SNELHEDEN = [("auto", "Automatisch (HF 300, anders 1200)"), ("1200", "1200 baud"), ("300", "300 baud"),
+             ("9600", "9600 baud")]
+
+
+def eigen_frequenties():
+    """Zelf toegevoegde frequenties: [{'hz', 'mode', 'baud', 'naam'}], gesorteerd op frequentie."""
+    d = _lees(STATION_FILE)
+    lijst = d.get("eigen") if isinstance(d, dict) else None
+    uit = []
+    for x in lijst or []:
+        try:
+            uit.append({"hz": int(x["hz"]), "mode": x.get("mode") if x.get("mode") in MODE_NAAM else "",
+                        "baud": x.get("baud") if x.get("baud") in dict(SNELHEDEN) else "auto",
+                        "naam": str(x.get("naam") or "")[:30]})
+        except (TypeError, ValueError, KeyError, AttributeError):
+            continue
+    return sorted(uit, key=lambda x: x["hz"])
+
+
+def eigen(hz):
+    """De eigen frequentie met deze waarde, of None."""
+    return next((x for x in eigen_frequenties() if x["hz"] == hz), None)
+
+
+def lees_mhz(tekst):
+    """'144,775' of '7.0449' -> Hz (hoogstens 4 cijfers achter de komma), of None."""
+    t = (tekst or "").strip().lower().replace("mhz", "").strip().replace(",", ".")
+    if not re.fullmatch(r"\d{1,3}(\.\d{1,4})?", t):
+        return None
+    heel, _, deel = t.partition(".")
+    return int(heel) * 1000000 + int((deel + "0000")[:4]) * 100
+
+
+def in_band(hz):
+    return any(a <= hz <= b for a, b in BANDEN)
+
+
 def frequentie_keuzes():
-    return [APRS_FREQ] + list(FREQ_2M)
+    return [APRS_FREQ] + list(FREQ_2M) + [x["hz"] for x in eigen_frequenties()]
+
+
+def eigen_tekst(x):
+    """'144,775 MHz · USB-D · PD4R'"""
+    delen = [mhz(x["hz"])]
+    if x["mode"]:
+        delen.append(MODE_NAAM[x["mode"]])
+    if x["baud"] != "auto":
+        delen.append(x["baud"] + " baud")
+    if x["naam"]:
+        delen.append(x["naam"])
+    return " · ".join(delen)
 
 
 def html_frequentie_keuze(huidig, naam="frequentie"):
     """Keuzelijst: de vaste 2 m-kanalen, of 'zelf instellen' (sets zonder CAT, of een andere band)."""
     opties = (f'<option value="0"{" selected" if not huidig else ""}>Zelf instellen op de set '
               f'(geen CAT, of een andere band)</option>')
-    for k in frequentie_keuzes():
+    opties += '<optgroup label="2 m">'
+    for k in [APRS_FREQ] + list(FREQ_2M):
         opties += (f'<option value="{k}"{" selected" if k == huidig else ""}>'
                    f'{_html.escape(mhz(k))}{" (standaard)" if k == STANDAARD_FREQ else " (APRS)" if k == APRS_FREQ else ""}</option>')
+    opties += '</optgroup>'
+    mijn = [x for x in eigen_frequenties() if x["hz"] not in FREQ_2M and x["hz"] != APRS_FREQ]
+    if mijn:
+        opties += '<optgroup label="Mijn frequenties">' + "".join(
+            f'<option value="{x["hz"]}"{" selected" if x["hz"] == huidig else ""}>{_html.escape(eigen_tekst(x))}</option>'
+            for x in mijn) + '</optgroup>'
     let = ""
     if huidig and huidig not in frequentie_keuzes():
         opties += f'<option value="{int(huidig)}" selected>{_html.escape(mhz(huidig))} (eerder ingesteld)</option>'
-        let = ('<p class="melding let" style="margin:6px 0">De ingestelde frequentie staat niet in de lijst '
-               '(144,800 APRS of 144,850 - 144,950 MHz, 12,5 kHz-raster). Kies er een en sla op.</p>')
+        let = ('<p class="melding let" style="margin:6px 0">De ingestelde frequentie staat niet (meer) in de lijst. '
+               'Kies er een en sla op, of voeg hem toe bij Mijn frequenties.</p>')
     return f'{let}<select name="{naam}">{opties}</select>'
 
 
@@ -133,6 +193,9 @@ def doelmode(r):
     if gekozen in MODE_NAAM:
         return gekozen
     doel = doelfrequentie()
+    x = eigen(doel) if doel else None
+    if x and x["mode"]:
+        return x["mode"]
     if doel:
         return "PKTUSB" if is_hf(doel) else "PKTFM"
     return r.get("cat_mode") or "PKTFM"
