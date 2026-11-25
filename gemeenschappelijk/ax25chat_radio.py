@@ -570,7 +570,8 @@ def verwerk_station(f):
         hz = -1
     if hz and hz not in rig.frequentie_keuzes():
         fouten.append("Kies een frequentie uit de lijst.")
-    mode = (f.get("mode") or "").strip().upper()
+    # Uitgeschakelde keuzelijst (eigen frequentie met een mode) wordt niet meegestuurd: vorige keuze bewaren
+    mode = (f.get("mode") if "mode" in f else s.get("mode") or "").strip().upper()
     if mode not in dict(rig.MODES):
         fouten.append("Kies een mode uit de lijst.")
     pad = [x for x in re.split(r"[ ,]+", (f.get("pad") or "").strip().upper()) if x]
@@ -662,8 +663,21 @@ Met CAT zet de Pi de set zelf op deze frequentie; zonder CAT zet je de set (het 
 <div class="rij"><div><label>Roepnaam</label><input type="text" name="roepnaam" value="{e(rn)}" placeholder="PD3PAM-7"
 autocapitalize="characters" required></div>
 <div><label>Frequentie <small>2 m, of uit Mijn frequenties</small></label>{rig.html_frequentie_keuze(s.get('frequentie'))}</div></div>
-<label>Mode <small>alleen met CAT; automatisch = die van Mijn frequenties, anders FM-D (HF: USB-D)</small></label>
-<select name="mode">{_opties(rig.MODES, s.get('mode') or '')}</select>
+<label>Mode <small>alleen met CAT; bij Mijn frequenties geldt hun eigen mode</small></label>
+<select name="mode" id="st_mode">{_opties(rig.MODES, s.get('mode') or '')}</select>
+<p class="uitleg" id="st_mode_uitleg" style="margin:4px 0 0"></p>
+<script>
+(function () {{                     // eigen frequentie met een mode: die mode geldt, de keuzelijst doet dan niet mee
+  var f = document.querySelector('select[name=frequentie]'), m = document.getElementById('st_mode'),
+      u = document.getElementById('st_mode_uitleg');
+  function kijk() {{
+    var o = f.options[f.selectedIndex], v = o && o.getAttribute('data-mode');
+    m.disabled = !!v;
+    u.textContent = v ? 'Mode komt van Mijn frequenties: ' + v + '.' : '';
+  }}
+  f.addEventListener('change', kijk); kijk();
+}})();
+</script>
 <label>Digipeaterpad <small>leeg = alleen rechtstreeks; bijv. WIDE1-1 om via een digipeater verder te komen</small></label>
 <input type="text" name="pad" value="{e(s.get('pad') or '')}" placeholder="leeg" autocapitalize="characters">
 <div class="balk"><button type="submit">Opslaan</button></div></form></section>"""
