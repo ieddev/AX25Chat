@@ -10,7 +10,7 @@ Wat je nodig hebt:
 - een set met USB-aansluiting: IC-9700, IC-7300, FT-818 met SCU-17, of een set met een DigiRig
   (bijv. GM-340 of UV-5R)
 - voor de eerste installatie: internet via wifi of netwerkkabel
-- bij een Pi Zero 2W met meer dan één USB-apparaat: een klein USB-hubje
+- de juiste **USB-kabel** tussen set (of DigiRig/SignaLink) en Pi: zie [Kabels](#kabels)
 
 ## Stap 1 - SD-kaart maken
 
@@ -25,7 +25,7 @@ Wat je nodig hebt:
 
 ## Stap 2 - Aansluiten en opstarten
 
-1. Sluit de set aan via USB (bij een DigiRig: de DigiRig aan de Pi en de kabel naar de set).
+1. Sluit de set aan via USB, met de kabel uit [Kabels](#kabels) (bij een DigiRig: de DigiRig aan de Pi en de kabel van de DigiRig naar de set).
 2. Zet de set aan en start de Pi. De eerste start duurt een paar minuten.
 3. Log in vanaf je pc: `ssh ax25chat@<naam>.local` (of zoek het adres op in je router).
 
@@ -59,6 +59,33 @@ de Pi zit dan niet meer op je thuis-wifi.
    Het advies zegt of het ontvangstniveau goed is.
 6. **Testuitzending**: tik op *Opslaan + testuitzending*. De set moet kort gaan zenden. Luister op een
    tweede ontvanger: schoon packet-geluid, niet vervormd. Pas het zendniveau aan en test opnieuw.
+
+## Kabels
+
+De aansluiting op de set verschilt per set, en de Pi Zero 2W heeft een andere aansluiting dan de
+Pi 3, 4 en 5. Gebruik altijd een **datakabel**: een kabel die alleen kan laden werkt niet (de Pi ziet
+de set dan niet).
+
+| Set of interface | Aansluiting | Pi 3 / 4 / 5 (USB-A) | Pi Zero 2W (micro-USB) |
+|---|---|---|---|
+| Icom IC-9700, IC-7300, IC-7100 | USB-B | USB-A naar USB-B ("printerkabel") | micro-USB naar USB-B |
+| Icom IC-705 | micro-USB | USB-A naar micro-USB | micro-USB naar micro-USB (OTG-kabel) |
+| Yaesu SCU-17 (FT-817/818) | USB-B | USB-A naar USB-B | micro-USB naar USB-B |
+| DigiRig Mobile | USB-C | USB-A naar USB-C | micro-USB naar USB-C (OTG-kabel) |
+| SignaLink USB | USB-B | USB-A naar USB-B | micro-USB naar USB-B |
+
+**Pi Zero 2W:**
+
+- De Zero heeft twee micro-USB-poorten. De buitenste (**PWR IN**, bij de hoek) is alleen voor de voeding.
+  De set gaat op de binnenste (**USB**).
+- Geen kabel met micro-USB aan één kant? Een **OTG-verloopje** (micro-USB stekker naar USB-A bus) met de
+  gewone kabel van de Pi 4-kolom werkt ook.
+- Meer dan één apparaat tegelijk (bijv. een set en een USB-stick) kan alleen via een klein **USB-hubje**
+  op de USB-poort; liefst een hubje met eigen voeding.
+
+**Storing (RF in de USB-kabel):** houd de kabel kort en klik er aan beide kanten een **ferrietkern**
+omheen, zeker bij HF of bij een portofoon dicht bij de antenne. Valt de verbinding weg tijdens het zenden,
+dan is dat bijna altijd RF in de kabel of de voeding.
 
 ## Sets
 
