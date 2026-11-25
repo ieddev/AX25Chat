@@ -50,7 +50,7 @@ function info(s) {    // regeleinden (CR, zoals in BBS-banners) als echte regels
   return '<span class="i' + (s.indexOf('\n') >= 0 ? ' blok' : '') + '">' + txt(s) + '</span>';
 }
 var STAND = {wacht: 'wacht op zenden', verzonden: 'verzonden, wacht op bevestiging', bevestigd: 'bevestigd ✓✓',
-  mislukt: 'niet bevestigd', geweigerd: 'geweigerd', cq: 'verzonden', ontvangen: ''};
+  mislukt: 'niet bevestigd', gestopt: 'gestopt, niet bevestigd', geweigerd: 'geweigerd', cq: 'verzonden', ontvangen: ''};
 function gesprekken() {
   var g = {CQ: 0};
   Object.keys(berichten).forEach(function (id) { var b = berichten[id], k = tegen(b); g[k] = Math.max(g[k] || 0, b.tijd); });
@@ -78,10 +78,12 @@ function teken() {
     Object.keys(berichten).map(function (id) { return berichten[id]; }).filter(function (x) { return tegen(x) === actief; })
       .sort(function (a, b) { return a.id - b.id; }).forEach(function (x) {
         var st = STAND.hasOwnProperty(x.status) ? STAND[x.status] : x.status;
-        b += '<div class="bel ' + x.richting + (x.status === 'mislukt' ? ' mislukt' : '') + '">' +
+        b += '<div class="bel ' + x.richting + (x.status === 'mislukt' || x.status === 'gestopt' ? ' mislukt' : '') + '">' +
           (x.richting === 'in' && actief === 'CQ' ? '<div class="van">' + txt(x.van) + '</div>' : '') + txt(x.tekst) +
           '<div class="meta">' + tijd(x.tijd) + (st ? ' · ' + st : '') +
-          (x.status === 'mislukt' ? '<button type="button" class="licht" data-opnieuw="' + x.id + '">Opnieuw</button>' : '') + '</div></div>';
+          (x.status === 'mislukt' || x.status === 'gestopt' ? '<button type="button" class="licht" data-opnieuw="' + x.id + '">Opnieuw</button>' : '') +
+          (x.richting === 'uit' && x.nummer != null && (x.status === 'wacht' || x.status === 'verzonden') ?
+            '<button type="button" class="licht" data-stop="' + x.id + '">Stop</button>' : '') + '</div></div>';
       });
     var aan = $('.typen input[name=aan]');
     if (document.activeElement !== aan) { aan.value = actief; }
@@ -106,12 +108,13 @@ function live() {
 }
 live();
 document.addEventListener('click', function (e) {
-  var g = e.target.closest('[data-g]'), o = e.target.closest('[data-opnieuw]');
+  var g = e.target.closest('[data-g]'), o = e.target.closest('[data-opnieuw]'), s = e.target.closest('[data-stop]');
   if (g) {
     if (g.dataset.g === '+') { var c = prompt('Roepnaam van het tegenstation (bijv. PA1ABC-9):'); if (!c) return; actief = c.trim().toUpperCase(); }
     else { actief = g.dataset.g; }
     teken(); $('.lijst').scrollTop = 1e9;
   }
+  if (s) { fetch('/api/stop', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({id: +s.dataset.stop})}); }
   if (o) { fetch('/api/opnieuw', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({id: +o.dataset.opnieuw})}); }
 });
 var tekst = $('.typen input[name=tekst]');

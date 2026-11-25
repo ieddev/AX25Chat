@@ -253,10 +253,18 @@ class Chat:
 
     def opnieuw(self, bid):
         b = self.opslag.bericht(bid)
-        if not b or b["richting"] != "uit" or b["status"] != "mislukt":
+        if not b or b["richting"] != "uit" or b["status"] not in ("mislukt", "gestopt"):
             return False
         self._meld("bericht", self.opslag.werk_bij(bid, status="wacht", pogingen=0, volgende=0))
         self.wek.set()
+        return True
+
+    def stop(self, bid):
+        """Stop met herhalen (bijv. het tegenstation is niet in de lucht). Een late bevestiging telt nog."""
+        b = self.opslag.bericht(bid)
+        if not b or b["richting"] != "uit" or b["status"] not in ("wacht", "verzonden"):
+            return False
+        self._meld("bericht", self.opslag.werk_bij(bid, status="gestopt"))
         return True
 
     def _herhaler(self):
@@ -271,6 +279,9 @@ class Chat:
     def verwerk_wachtrij(self, nu=None):
         nu = nu or time.time()
         for b in self.opslag.te_versturen(nu):
+            nu_b = self.opslag.bericht(b["id"])
+            if not nu_b or nu_b["status"] not in ("wacht", "verzonden"):   # net gestopt of bevestigd
+                continue
             if b["nummer"] is None:                       # CQ: één keer, geen bevestiging
                 ok = self._zend(maak_bericht(b["aan"], b["tekst"]))
                 self._meld("bericht", self.opslag.werk_bij(b["id"], status="cq" if ok else "wacht",
@@ -301,7 +312,7 @@ class Chat:
         if b["soort"] in ("ack", "rej"):
             if zelfde_call(b["aan"], mij):
                 eigen = self.opslag.zoek_uit(van, b["nummer"])
-                if eigen and eigen["status"] in ("wacht", "verzonden"):
+                if eigen and eigen["status"] in ("wacht", "verzonden", "gestopt", "mislukt"):
                     self._meld("bericht", self.opslag.werk_bij(
                         eigen["id"], status="bevestigd" if b["soort"] == "ack" else "geweigerd"))
             return
