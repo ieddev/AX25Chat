@@ -105,6 +105,8 @@ Open **http://10.42.0.1** (tabblad **Chat**, zonder inloggen).
 - **+ Nieuw gesprek**: vul de roepnaam van het tegenstation in (met SSID als die er een heeft, bijv. PA1ABC-9).
   Je bericht wordt herhaald tot het tegenstation het bevestigt: eerst *verzonden*, dan *bevestigd ✓✓*.
   Komt er na 5 keer geen bevestiging, dan staat er *niet bevestigd* met een knop **Opnieuw**.
+  Antwoordt het tegenstation niet, dan kun je het herhalen eerder afbreken met **Stop**. Komt er daarna toch nog
+  een bevestiging binnen, dan staat het bericht alsnog op *bevestigd*.
 - **Monitor**: alles wat de Pi hoort, ook APRS-posities en berichten tussen anderen.
 
 Het tegenstation kan AX25Chat gebruiken, maar ook APRSdroid, een Kenwood TH-D74/TM-D710, een Yaesu met

@@ -88,6 +88,28 @@ class TestChat(unittest.TestCase):
         self.chat.verwerk_wachtrij(nu=nu + 1)
         self.assertEqual(len(self.link.verzonden), 6)
 
+    def test_stoppen(self):
+        _, [b] = self.chat.verstuur("PD3F", "Test, hoor je me?")
+        self.chat.verwerk_wachtrij(nu=1000)
+        self.assertTrue(self.chat.stop(b["id"]))
+        self.assertEqual(self.opslag.bericht(b["id"])["status"], "gestopt")
+        self.chat.verwerk_wachtrij(nu=5000)
+        self.assertEqual(len(self.link.verzonden), 1)             # niet meer herhaald
+        self.assertFalse(self.chat.stop(b["id"]))                 # al gestopt
+        self.chat.ontvangen("PD3F", "APDR16", [], f":PD3PAM-7 :ack{b['nummer']}".encode())
+        self.assertEqual(self.opslag.bericht(b["id"])["status"], "bevestigd")   # late bevestiging telt
+        self.assertFalse(self.chat.stop(b["id"]))
+
+    def test_stoppen_en_opnieuw(self):
+        _, [b] = self.chat.verstuur("PD3F", "Nog een keer")
+        self.chat.stop(b["id"])
+        self.chat.verwerk_wachtrij(nu=1000)
+        self.assertEqual(self.link.verzonden, [])                 # gestopt voor de eerste uitzending
+        self.assertTrue(self.chat.opnieuw(b["id"]))
+        self.chat.verwerk_wachtrij(nu=1001)
+        self.assertEqual(len(self.link.verzonden), 1)
+        self.assertFalse(self.chat.stop(9999))
+
     def test_direwolf_weg(self):
         self.link.aan = False
         _, [b] = self.chat.verstuur("PA1ABC", "Test")

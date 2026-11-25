@@ -74,6 +74,7 @@ TNC of via geluid), of een set met APRS-berichten. Spreek een frequentie af.
 | F3 | Bericht met bevestiging | + Nieuw gesprek, roepnaam tegenstation, bericht sturen | Eerst *verzonden*, na de ack *bevestigd ✓✓* | ☐ |
 | F4 | Bericht ontvangen | Tegenstation stuurt een bericht aan mijn roepnaam (met SSID) | Verschijnt in het gesprek; tegenstation krijgt een bevestiging | ☐ |
 | F5 | Geen antwoord | Bericht aan een roepnaam die niet in de lucht is | 5 keer herhaald, daarna *niet bevestigd* en knop Opnieuw | ☐ |
+| F5b | Herhalen stoppen | Bericht aan een roepnaam die niet antwoordt, dan **Stop** | Niet meer herhaald; *gestopt, niet bevestigd* en knop Opnieuw | ☐ |
 | F6 | Lang bericht | Bericht van meer dan 67 tekens | Opgesplitst in delen, elk bevestigd | ☐ |
 | F7 | APRSdroid | Bericht van en naar APRSdroid | Beide kanten zien het bericht en de bevestiging | ☐ |
 | F8 | Monitor | Op 144,800 luisteren | APRS-verkeer verschijnt in de Monitor | ☐ |

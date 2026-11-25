@@ -336,9 +336,9 @@ class Handler(BaseHTTPRequestHandler):
         if pad == "berichten":
             fouten, uit = CHAT.verstuur(str(d.get("aan", "")), str(d.get("tekst", "")))
             return self._json({"fouten": fouten, "berichten": uit}, 400 if fouten else 200)
-        if pad == "opnieuw":
+        if pad in ("opnieuw", "stop"):
             try:
-                return self._json({"ok": CHAT.opnieuw(int(d.get("id")))})
+                return self._json({"ok": (CHAT.opnieuw if pad == "opnieuw" else CHAT.stop)(int(d.get("id")))})
             except (TypeError, ValueError):
                 return self._json({"fout": "ongeldig id"}, 400)
         return self._json({"fout": "onbekend"}, 404)
