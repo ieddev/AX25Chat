@@ -155,8 +155,17 @@ DWAIT 0
 SLOTTIME 10
 PERSIST 63
 KISSPORT 8001
-AGWPORT 0
+AGWPORT 8000
 """
+
+
+def direwolf_met_agw():
+    """Staat de AGW-poort (voor BBS'en, connected mode) aan in direwolf.conf?"""
+    try:
+        with open(DIREWOLF_CONF, encoding="utf-8") as f:
+            return "\nAGWPORT 8000" in f.read()
+    except OSError:
+        return True                    # nog geen direwolf.conf: die wordt straks met AGW gemaakt
 
 
 def maak_direwolf(roepnaam, r):

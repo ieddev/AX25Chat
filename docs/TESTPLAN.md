@@ -85,3 +85,16 @@ TNC of via geluid), of een set met APRS-berichten. Spreek een frequentie af.
 | F9 | Telefoon en laptop tegelijk | Beide de chatpagina open | Een bericht verschijnt op beide meteen | ☐ |
 | F10 | Na herstart | Pi herstarten, chatpagina openen | Eerdere berichten staan er nog | ☐ |
 | F11 | Digipeater | Station: pad `WIDE1-1`, bericht op 144,800 | In de Monitor komt het bericht terug met `WIDE1-1*` (niet als nieuw bericht) | ☐ |
+
+## G. BBS (connected mode)
+
+| # | Wat | Hoe | Verwacht | OK |
+|---|-----|-----|----------|----|
+| G1 | BBS toevoegen | Radio: Mijn frequenties 144,925 FM-D 1200. BBS: PD4R-1 met die frequentie | PD4R-1 staat in de lijst met *144,925 MHz · FM-D · 1200 baud* | ☐ |
+| G2 | Verbinden | Op 144,900: bij PD4R-1 op Verbinden | Set gaat naar 144,925; *Verbonden met PD4R-1*; welkomsttekst van de BBS | ☐ |
+| G3 | Lijst en lezen | L, daarna R en een nummer | Lijst met berichten, daarna het bericht | ☐ |
+| G4 | Afmelden | B | BBS zegt gedag en verbreekt; *Niet verbonden* | ☐ |
+| G5 | Verbreken | Opnieuw verbinden, dan de rode knop Verbreken | Na een paar seconden *Niet verbonden* | ☐ |
+| G6 | Geen antwoord | Verbinden met een roepnaam die er niet is | Na ongeveer een halve minuut *Geen antwoord van…* | ☐ |
+| G7 | Andere snelheid | BBS op 438,175 (9600, Mijn frequenties) | Direwolf herstart, daarna wordt er verbonden | ☐ |
+| G8 | Oude Pi | Pi van voor deze versie: Bijwerken | Direwolf herstart één keer; BBS-verbinding werkt | ☐ |

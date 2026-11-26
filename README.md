@@ -15,7 +15,8 @@ versleuteld: berichten gaan als gewone, leesbare tekst.
 
 **Stand van zaken:** stap 1 (de Pi en de set: hotspot, Direwolf, CAT, Zoek mijn set) en stap 2 (chatten:
 berichten met bevestiging, CQ roepen, monitor) zijn klaar om te testen. Stap 3 (webapp voor telefoon en
-laptop, later ook een Android-app) volgt. Connected mode (BBS en nodes) komt in fase 2.
+laptop, later ook een Android-app) volgt. Connected mode is begonnen: op het tabblad BBS verbind je met een
+bestaande BBS (AX25Chat is zelf geen BBS).
 
 ## Hoe het chatten werkt
 

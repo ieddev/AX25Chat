@@ -31,6 +31,8 @@ from urllib.parse import parse_qs, quote, urlparse
 
 import queue
 
+import ax25chat_bbs as bbs
+import ax25chat_bbspagina as bbspagina
 import ax25chat_bijwerken as bijwerken
 import ax25chat_chatpagina as chatpagina
 import ax25chat_radio as radio
@@ -42,6 +44,7 @@ WW_FILE = os.path.join(MAP, "web_wachtwoord.json")
 CSRF = secrets.token_urlsafe(24)
 ZOEK_LOCK = threading.Lock()
 CHAT = None                                # ax25chat_chat.Chat, gestart in main()
+BBS = None                                 # ax25chat_bbs.Sessie (connected mode), gestart in main()
 
 CSS = """
 :root{--bg:#f6f7f9;--kaart:#fff;--tekst:#1b1f24;--zacht:#5b6470;--lijn:#dde1e6;--rood:#b3261e;--rood-z:#fbe9e7;
@@ -71,7 +74,7 @@ pre{background:var(--bg);border:1px solid var(--lijn);border-radius:8px;padding:
 details summary{cursor:pointer;color:var(--blauw);font-weight:600;margin:8px 0}
 """
 
-PAGINAS = [("chat", "Chat"), ("radio", "Radio"), ("status", "Status")]
+PAGINAS = [("chat", "Chat"), ("bbs", "BBS"), ("radio", "Radio"), ("status", "Status")]
 
 
 # ---------------------------------------------------------------------------
@@ -249,6 +252,8 @@ class Handler(BaseHTTPRequestHandler):
             meld = meldingen(ok=m[3:])
         if pad in ("", "chat"):
             return self._stuur(pagina("chat", html_chat(), meld))
+        if pad == "bbs":
+            return self._stuur(pagina("bbs", bbspagina.html(meld)))
         if pad.startswith("api/"):
             return self._api_get(pad[4:], parse_qs(url.query))
         if pad == "status.json":                      # voor de webapp (stap 3)
@@ -290,6 +295,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(CHAT.opslag.monitor(200))
         if pad == "live":
             return self._live()
+        if pad == "bbs" and BBS:
+            return self._json(BBS.overzicht())
         return self._json({"fout": "onbekend"}, 404)
 
     def _live(self):
@@ -336,12 +343,42 @@ class Handler(BaseHTTPRequestHandler):
         if pad == "berichten":
             fouten, uit = CHAT.verstuur(str(d.get("aan", "")), str(d.get("tekst", "")))
             return self._json({"fouten": fouten, "berichten": uit}, 400 if fouten else 200)
+        if pad == "bbs" and BBS:
+            return self._api_bbs(d)
         if pad in ("opnieuw", "stop"):
             try:
                 return self._json({"ok": (CHAT.opnieuw if pad == "opnieuw" else CHAT.stop)(int(d.get("id")))})
             except (TypeError, ValueError):
                 return self._json({"fout": "ongeldig id"}, 400)
         return self._json({"fout": "onbekend"}, 404)
+
+    def _api_bbs(self, d):
+        actie = d.get("actie")
+        if actie in ("toevoegen", "weg"):
+            if actie == "weg":
+                bbs.haal_weg(str(d.get("call", "")))
+                fouten = []
+            else:
+                fouten, _ = bbs.voeg_toe(d.get("call"), d.get("hz"), d.get("naam"))
+            if fouten:
+                return self._json({"fout": "; ".join(fouten)})
+            CHAT._meld("bbslijst", bbs.lijst())
+            return self._json({"ok": True})
+        if actie == "verbind":
+            try:
+                hz = int(d.get("hz") or 0)
+            except (TypeError, ValueError):
+                hz = 0
+            fout = BBS.verbind(d.get("call"), hz)
+        elif actie == "stuur":
+            fout = BBS.stuur(d.get("tekst"))
+        elif actie == "verbreek":
+            fout = BBS.verbreek()
+        elif actie == "wis":
+            fout = BBS.wis() or ""
+        else:
+            return self._json({"fout": "onbekende actie"}, 400)
+        return self._json({"fout": fout} if fout else {"ok": True})
 
     def do_POST(self):
         pad = urlparse(self.path).path.strip("/")
@@ -436,6 +473,12 @@ def main():
     global CHAT
     import ax25chat_chat
     CHAT = ax25chat_chat.open_chat(MAP, radio.station, log=lambda t: print(t, flush=True))
+    r = radio.instellingen()
+    if r.get("geluidskaart") and not radio.direwolf_met_agw():     # Pi van voor de BBS-functie: AGW-poort aanzetten
+        print("direwolf.conf bijwerken (AGW-poort 8000 voor BBS'en)", flush=True)
+        radio.pas_toe(r, met_rig=False)
+    global BBS
+    BBS = bbs.Sessie(radio.station, CHAT._meld, log=lambda t: print(t, flush=True))
     server = ThreadingHTTPServer(("0.0.0.0", args.poort), Handler)
     print(f"AX25Chat op http://0.0.0.0:{args.poort}", flush=True)
     try:

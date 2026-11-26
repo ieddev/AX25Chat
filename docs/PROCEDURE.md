@@ -124,6 +124,31 @@ frequentie af (bijv. 144,800 of een van de kanalen 144,850 - 144,950).
 **Digipeaterpad** (tabblad Radio, Station): leeg = alleen rechtstreeks. Vul `WIDE1-1` in om via een
 digipeater verder te komen. Op 144,800 doen de APRS-digipeaters dat; op de andere kanalen meestal niet.
 
+## BBS (connected mode)
+
+Op het tabblad **BBS** maak je verbinding met een bestaande BBS of een ander packetstation, bijvoorbeeld
+PD4R-1. AX25Chat is zelf geen BBS: het is je terminal. Er is steeds één verbinding tegelijk.
+
+1. **BBS toevoegen**: roepnaam (met SSID), een naam en de frequentie. Kies de frequentie uit de lijst; mode
+   en snelheid komen van **Mijn frequenties** (tabblad Radio). Zet de frequentie van de BBS daar dus eerst
+   neer, bijv. 144,925 FM-D 1200 baud. *Frequentie niet wisselen* = op de frequentie blijven die nu ingesteld is.
+2. **Verbinden**: de set gaat naar de frequentie van de BBS en de Pi maakt verbinding. Bovenaan zie je
+   *Verbinden met…*, *Verbonden met…* of *Niet verbonden*. Moet Direwolf voor een andere snelheid opnieuw
+   starten, dan duurt het een paar seconden langer.
+3. **Terminal**: wat de BBS stuurt verschijnt in het tekstvak; wat jij stuurt staat er blauw tussen.
+   Snelknoppen: **L** (lijst) en **B** (afmelden) gaan meteen; **R** (lezen), **K** (wissen) en **S** (sturen)
+   zetten het commando in de invoerregel, zodat je het nummer of de roepnaam erachter typt. Een lege regel
+   versturen (alleen Zenden) stuurt een Enter. **Leeg** maakt alleen het vak leeg.
+4. **Verbreken** (rood): verbreekt de verbinding netjes. Met **B** meld je je bij de BBS zelf af; die
+   verbreekt dan zelf.
+
+Antwoordt de BBS niet, dan staat er na ongeveer een halve minuut *Geen antwoord van…*. Controleer dan de
+frequentie, de mode en de snelheid. Je kunt ook een roepnaam invullen die niet in je lijst staat
+(**Andere roepnaam**); dan blijft de set op de huidige frequentie.
+
+Voor de BBS-verbinding gebruikt de Pi de AGW-poort 8000 van Direwolf. Een Pi van voor deze versie zet die
+poort bij de eerste start na **Bijwerken** zelf aan (Direwolf herstart dan één keer).
+
 ## Wisselen van set
 
 Sluit de andere set aan en kies op het tabblad Radio bij **Mijn sets** het profiel en *Gebruiken*.
