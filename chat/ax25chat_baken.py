@@ -33,7 +33,12 @@ INTERVALLEN = [10, 15, 20, 30]                  # minuten
 SYMBOLEN = [(">", "Auto"), ("v", "Bus/camper"), ("j", "Jeep"), ("k", "Vrachtwagen"), ("<", "Motor"), ("b", "Fiets"),
             ("[", "Lopend"), ("-", "Huis"), (";", "Portabel (tent)"), ("s", "Boot")]
 STANDAARD = {"aan": False, "bron": "gps", "gps_poort": "", "lat": None, "lon": None, "interval": 20, "slim": True,
-             "symbool": ">", "commentaar": "AX25Chat", "pad": "WIDE1-1,WIDE2-1", "stilstaand": False}
+             "symbool": ">", "commentaar": "AX25Chat", "pad": "WIDE1-1,WIDE2-1", "stilstaand": False, "ssid": ""}
+# APRS-SSID: '' = dezelfde roepnaam als voor BBS en chat. Anders een eigen SSID voor baken en APRS-berichten.
+SSIDS = [("", "zelfde als roepnaam"), ("1", "-1 vast station"), ("2", "-2"), ("3", "-3"), ("4", "-4"),
+         ("5", "-5 smartphone"), ("6", "-6"), ("7", "-7 portofoon"), ("8", "-8 boot/camper"), ("9", "-9 auto"),
+         ("10", "-10"), ("11", "-11"), ("12", "-12 tracker"), ("13", "-13 weerstation"), ("14", "-14 vrachtwagen"),
+         ("15", "-15")]
 
 # SmartBeaconing (waarden zoals in de meeste trackers)
 TRAAG_KMH, SNEL_KMH = 5, 90                      # onder 5 km/h: stilstaan; vanaf 90 km/h: het snelst
@@ -338,7 +343,7 @@ class Baken:
                             pos.get("koers"), pos.get("kmh"))
         pad = [p for p in re.split(r"[ ,]+", (b.get("pad") or "").upper()) if p]
         link = self.chat.link
-        link.mycall = self.chat.mijn_call()
+        link.mycall = self.chat.aprs_call()
 
         def zend():
             return link.send_info(info, dest=ax25.TOCALL, via=pad)
@@ -459,6 +464,7 @@ def verwerk(f):
     b["slim"] = f.get("slim") == "1"
     b["stilstaand"] = f.get("stilstaand") == "1"
     b["symbool"] = f.get("symbool") if f.get("symbool") in dict(SYMBOLEN) else ">"
+    b["ssid"] = f.get("ssid") if f.get("ssid") in dict(SSIDS) else ""
     b["commentaar"] = re.sub(r"[^\w \-./:()@#,+]", "", (f.get("commentaar") or "").strip())[:40]
     pad = [x for x in re.split(r"[ ,]+", (f.get("pad") or "").strip().upper()) if x]
     if len(pad) > 2 or not all(radio.ROEPNAAM_RE.match(x) for x in pad):
@@ -481,6 +487,7 @@ def html(verborgen, baken=None):
     if b["gps_poort"] and b["gps_poort"] not in poorten:
         opties += f'<option value="{e(b["gps_poort"])}" selected>{e(usb.korte_naam(b["gps_poort"]))} (niet aangesloten)</option>'
     sym = "".join(f'<option value="{e(k)}"{" selected" if k == b["symbool"] else ""}>{e(n)}</option>' for k, n in SYMBOLEN)
+    ssid = "".join(f'<option value="{k}"{" selected" if k == str(b.get("ssid") or "") else ""}>{e(n)}</option>' for k, n in SSIDS)
     iv = "".join(f'<option value="{m}"{" selected" if m == b["interval"] else ""}>elke {m} minuten</option>' for m in INTERVALLEN)
     stand, laatst = "", ""
     if baken:
@@ -514,6 +521,8 @@ de set op een andere frequentie, dan gaat hij even naar {rig.mhz(rig.APRS_FREQ)}
 <small>(tot elke 3 minuten bij 90 km/h, en na een bocht)</small></label>
 <label><input type="checkbox" name="stilstaand" value="1"{' checked' if b['stilstaand'] else ''} style="width:auto"> Ook stilstaand eens per uur
 <small>(anders alleen als je positie verandert)</small></label>
+<div class="rij"><div><label>APRS-SSID <small>voor baken en APRS-berichten</small></label><select name="ssid">{ssid}</select></div>
+<div></div></div>
 <div class="rij"><div><label>Commentaar <small>max. 40 tekens</small></label><input type="text" name="commentaar" maxlength="40" value="{e(b['commentaar'])}"></div>
 <div><label>Pad <small>digipeaters</small></label><input type="text" name="pad" value="{e(b['pad'])}" placeholder="WIDE1-1,WIDE2-1"></div></div>
 <div class="balk"><button type="submit" name="actie" value="opslaan">Opslaan</button>

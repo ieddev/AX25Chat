@@ -269,8 +269,13 @@ Het is een gedeeld kanaal: zend niet vaker dan nodig.
 In Nederland is het netwerk van digipeaters en iGates dicht, dus onderweg kom je vrijwel altijd op aprs.fi. In
 een dal of tussen hoge gebouwen kan een baken een keer gemist worden; het volgende komt dan meestal wel door.
 
-**Tips voor mobiel**: zet je roepnaam (Station) met **-9** erachter, bijv. PD3PAM-9; kies het symbool **Auto**;
-en zet **Vaker tijdens het rijden** aan, dan wordt je spoor op de kaart mooi gelijkmatig.
+**APRS-SSID**: hiermee krijgen het baken en je APRS-berichten een eigen SSID, terwijl BBS, node en chat je
+gewone roepnaam houden. Bijvoorbeeld roepnaam (Station) **PD3PAM** en APRS-SSID **-9 auto**: op aprs.fi sta je als
+PD3PAM-9, en bij PD4R-12 meld je je als PD3PAM. Berichten aan PD3PAM-9 en aan PD3PAM komen allebei binnen; de
+bevestiging (ack) gaat terug van de roepnaam waaraan het bericht was. *Zelfde als roepnaam* = geen eigen SSID.
+
+**Tips voor mobiel**: zet de APRS-SSID op **-9 auto**, kies het symbool **Auto** en zet **Vaker tijdens het
+rijden** aan, dan wordt je spoor op de kaart mooi gelijkmatig.
 
 ### Wat zet je in het commentaar?
 
