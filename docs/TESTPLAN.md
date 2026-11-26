@@ -92,7 +92,7 @@ TNC of via geluid), of een set met APRS-berichten. Spreek een frequentie af.
 | # | Wat | Hoe | Verwacht | OK |
 |---|-----|-----|----------|----|
 | G1 | BBS toevoegen | Radio: Mijn frequenties 144,925 FM-D 1200. BBS: PD4R-1 met die frequentie | PD4R-1 staat in de lijst met *144,925 MHz · FM-D · 1200 baud* | ☐ |
-| G2 | Verbinden | Op 144,900: bij PD4R-1 op Verbinden | Set gaat naar 144,925; *Verbonden met PD4R-1*; welkomsttekst van de BBS | ☐ |
+| G2 | Verbinden | Op 144,900: PD4R-1 kiezen in de keuzelijst, Verbinden | Set gaat naar 144,925; *Verbonden met PD4R-1*; welkomsttekst van de BBS | ☐ |
 | G3 | Lijst en lezen | L, daarna R en een nummer | Lijst met berichten, daarna het bericht | ☐ |
 | G4 | Afmelden | B | BBS zegt gedag en verbreekt; *Niet verbonden* | ☐ |
 | G5 | Verbreken | Opnieuw verbinden, dan de rode knop Verbreken | Na een paar seconden *Niet verbonden* | ☐ |
@@ -102,3 +102,4 @@ TNC of via geluid), of een set met APRS-berichten. Spreek een frequentie af.
 | G9 | Node | Verbinden met PD4R-12 | Knoppen *Node*: CONNECT, BYE, INFO, NODES, … zoals in de prompt | ☐ |
 | G10 | Node → BBS → node | BBS, daarna B | Knoppen wisselen naar L, R, S, K, B en daarna terug naar de node-knoppen | ☐ |
 | G11 | Chat | CHAT, daarna /B | Knoppen /U, /H, /B; na /B weer de node-knoppen | ☐ |
+| G12 | Nieuwe roepnaam | Keuzelijst: *Andere roepnaam…*, PD4R-12 invullen, Verbinden | Na het verbinden staat PD4R-12 in de keuzelijst; na herladen van de pagina staat de laatst gekozen BBS al gekozen | ☐ |
