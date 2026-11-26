@@ -343,6 +343,8 @@ class Handler(BaseHTTPRequestHandler):
         if pad == "berichten":
             fouten, uit = CHAT.verstuur(str(d.get("aan", "")), str(d.get("tekst", "")))
             return self._json({"fouten": fouten, "berichten": uit}, 400 if fouten else 200)
+        if pad == "wis":
+            return self._json({"ok": CHAT.wis(d.get("gesprek"))})
         if pad == "bbs" and BBS:
             return self._api_bbs(d)
         if pad in ("opnieuw", "stop"):

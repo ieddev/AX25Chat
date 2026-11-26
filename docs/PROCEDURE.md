@@ -116,6 +116,8 @@ Open **http://10.42.0.1** (tabblad **Chat**, zonder inloggen).
   Antwoordt het tegenstation niet, dan kun je het herhalen eerder afbreken met **Stop**. Komt er daarna toch nog
   een bevestiging binnen, dan staat het bericht alsnog op *bevestigd*.
 - **Monitor**: alles wat de Pi hoort, ook APRS-posities en berichten tussen anderen.
+- **Wissen** (rechtsboven in elk scherm): maakt dat scherm leeg. Alleen de berichten gaan weg; je instellingen,
+  Station en Mijn frequenties blijven staan. Een bericht dat nog verzonden of herhaald wordt, blijft staan.
 
 Het tegenstation kan AX25Chat gebruiken, maar ook APRSdroid, een Kenwood TH-D74/TM-D710, een Yaesu met
 APRS of een ander APRS-programma: die zien je bericht als gewoon APRS-bericht. Spreek dan wel dezelfde

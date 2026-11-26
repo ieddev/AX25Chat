@@ -19,6 +19,7 @@ CSS = """
 @media(max-width:640px){.venster{height:calc(100vh - 210px);min-height:380px}}
 .kop{padding:10px 14px;border-bottom:1px solid var(--lijn);font-weight:600;display:flex;gap:8px;align-items:center}
 .kop small{font-weight:400;color:var(--zacht)}
+.kop .wis{margin-left:auto;padding:4px 10px;font-size:13px}
 .lijst{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px}
 .bel{max-width:80%;padding:8px 12px;border-radius:12px;background:var(--bg);border:1px solid var(--lijn);word-wrap:break-word}
 .bel.uit{align-self:flex-end;background:var(--blauw-z);border-color:transparent}
@@ -49,6 +50,7 @@ function info(s) {    // regeleinden (CR, zoals in BBS-banners) als echte regels
   s = String(s == null ? '' : s).replace(/\r\n?/g, '\n').replace(/^\n+|\n+$/g, '');
   return '<span class="i' + (s.indexOf('\n') >= 0 ? ' blok' : '') + '">' + txt(s) + '</span>';
 }
+var WIS = '<button type="button" class="licht wis" data-wis="1" title="Scherm leegmaken">Wissen</button>';
 var STAND = {wacht: 'wacht op zenden', verzonden: 'verzonden, wacht op bevestiging', bevestigd: 'bevestigd ✓✓',
   mislukt: 'niet bevestigd', gestopt: 'gestopt, niet bevestigd', geweigerd: 'geweigerd', cq: 'verzonden', ontvangen: ''};
 function gesprekken() {
@@ -68,12 +70,12 @@ function teken() {
   $('.gesprekken').innerHTML = h;
   var l = $('.lijst'), onder = l.scrollHeight - l.scrollTop - l.clientHeight < 40, b = '';
   if (actief === 'MONITOR') {
-    $('.kop').innerHTML = 'Monitor <small>alles wat de Pi hoort</small>';
+    $('.kop').innerHTML = 'Monitor <small>alles wat de Pi hoort</small>' + WIS;
     monitor.forEach(function (m) { b += '<div class="mon"><span class="t">' + tijd(m.tijd) + '</span> ' + txt(m.van) + '&gt;' + txt(m.aan) +
       (m.pad ? ',' + txt(m.pad) : '') + ':' + info(m.info) + '</div>'; });
     $('.typen').style.display = 'none';
   } else {
-    $('.kop').innerHTML = actief === 'CQ' ? 'CQ <small>aan iedereen, zonder bevestiging</small>' : txt(actief) + ' <small>bericht met bevestiging</small>';
+    $('.kop').innerHTML = (actief === 'CQ' ? 'CQ <small>aan iedereen, zonder bevestiging</small>' : txt(actief) + ' <small>bericht met bevestiging</small>') + WIS;
     $('.typen').style.display = '';
     Object.keys(berichten).map(function (id) { return berichten[id]; }).filter(function (x) { return tegen(x) === actief; })
       .sort(function (a, b) { return a.id - b.id; }).forEach(function (x) {
@@ -102,6 +104,11 @@ haal();
 function live() {
   var bron = new EventSource('/api/live');
   bron.addEventListener('bericht', function (e) { var b = JSON.parse(e.data); berichten[b.id] = b; teken(); });
+  bron.addEventListener('gewist', function (e) {
+    var d = JSON.parse(e.data);
+    if (d.gesprek === 'MONITOR') { monitor = []; } else { d.ids.forEach(function (id) { delete berichten[id]; }); }
+    teken();
+  });
   bron.addEventListener('monitor', function (e) { monitor.push(JSON.parse(e.data)); if (monitor.length > 300) monitor.shift(); if (actief === 'MONITOR') teken(); });
   bron.onerror = function () { $('.verbinding').textContent = 'geen verbinding met de Pi, opnieuw proberen...'; };
   bron.onopen = function () { $('.verbinding').textContent = ''; haal(); };
@@ -115,6 +122,12 @@ document.addEventListener('click', function (e) {
     teken(); $('.lijst').scrollTop = 1e9;
   }
   if (s) { fetch('/api/stop', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({id: +s.dataset.stop})}); }
+  if (e.target.closest('[data-wis]')) {
+    var naam = actief === 'MONITOR' ? 'de Monitor' : actief === 'CQ' ? 'CQ (iedereen)' : 'het gesprek met ' + actief;
+    if (confirm('Alle berichten in ' + naam + ' wissen? Je instellingen en frequenties blijven bewaard.')) {
+      fetch('/api/wis', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({gesprek: actief})});
+    }
+  }
   if (o) { fetch('/api/opnieuw', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({id: +o.dataset.opnieuw})}); }
 });
 var tekst = $('.typen input[name=tekst]');

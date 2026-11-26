@@ -85,6 +85,7 @@ TNC of via geluid), of een set met APRS-berichten. Spreek een frequentie af.
 | F9 | Telefoon en laptop tegelijk | Beide de chatpagina open | Een bericht verschijnt op beide meteen | ☐ |
 | F10 | Na herstart | Pi herstarten, chatpagina openen | Eerdere berichten staan er nog | ☐ |
 | F11 | Digipeater | Station: pad `WIDE1-1`, bericht op 144,800 | In de Monitor komt het bericht terug met `WIDE1-1*` (niet als nieuw bericht) | ☐ |
+| F12 | Wissen | In een gesprek, CQ en de Monitor op **Wissen** drukken en bevestigen | Dat scherm is leeg (ook op een tweede telefoon); de andere schermen, Station en Mijn frequenties zijn onveranderd | ☐ |
 
 ## G. BBS (connected mode)
 
