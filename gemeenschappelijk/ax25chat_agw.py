@@ -24,10 +24,17 @@ DIREWOLF_AGW = ("127.0.0.1", 8000)
 KOP = struct.Struct("<B3xBxBx10s10sII")      # poort, soort, pid, van, aan, lengte, gereserveerd
 
 
+def schoon_call(call):
+    """Roepnaam zoals AX.25 hem op de lucht zet: hoofdletters, zonder spaties en zonder '-0'. Direwolf vergelijkt
+    roepnamen letterlijk: verbind je als PD3PAM-0, dan herkent hij de UA van 'PD3PAM' niet als antwoord."""
+    call = str(call or "").strip().upper().replace(" ", "")
+    return call[:-2] if call.endswith("-0") else call
+
+
 def pakket(soort, van="", aan="", data=b"", pid=0, poort=0):
     if isinstance(data, str):
         data = data.encode("utf-8")
-    return KOP.pack(poort, ord(soort), pid, van.upper().encode("ascii"), aan.upper().encode("ascii"),
+    return KOP.pack(poort, ord(soort), pid, schoon_call(van).encode("ascii"), schoon_call(aan).encode("ascii"),
                     len(data), 0) + data
 
 
