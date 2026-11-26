@@ -50,6 +50,19 @@ class NepAgw:
         return self._s("d", mijn, naar)
 
 
+
+class TestSsidNul(unittest.TestCase):
+    """PD3PAM-0 is op de lucht 'PD3PAM': met -0 herkende Direwolf de UA van de node niet (steeds opnieuw SABM)."""
+
+    def test_schoon_call(self):
+        for invoer, uit in (("pd3pam-0", "PD3PAM"), (" PD3PAM-7 ", "PD3PAM-7"), ("PD4R-10", "PD4R-10"), ("", "")):
+            self.assertEqual(agw.schoon_call(invoer), uit)
+
+    def test_agw_pakket_zonder_nul(self):
+        p = agw.pakket("C", "PD3PAM-0", "PD4R-12")
+        self.assertEqual(agw._call(p[8:18]), "PD3PAM")
+        self.assertEqual(agw._call(p[18:28]), "PD4R-12")
+
 class Basis(unittest.TestCase):
     def setUp(self):
         self.map = tempfile.mkdtemp()

@@ -69,7 +69,7 @@ def lijst():
 
 def voeg_toe(call, hz, naam):
     """Geeft (fouten, melding)."""
-    call = str(call or "").strip().upper().replace(" ", "")
+    call = agw.schoon_call(call)
     if not CALL_RE.match(call):
         return ["Roepnaam van de BBS: bijv. PD4R-1."], None
     try:
@@ -144,7 +144,7 @@ class Sessie:
     # -- intern --
 
     def mijn(self):
-        return str(self.lees_station().get("roepnaam") or "").upper()
+        return agw.schoon_call(self.lees_station().get("roepnaam"))
 
     def _regel(self, soort, tekst):
         with self.lock:
@@ -242,7 +242,7 @@ class Sessie:
 
     def verbind(self, call, hz=0, via=()):
         """Geeft een foutmelding, of '' als het verbinden begonnen is."""
-        call = str(call or "").strip().upper().replace(" ", "")
+        call = agw.schoon_call(call)
         if not CALL_RE.match(call):
             return "Vul een roepnaam in, bijv. PD4R-1."
         mijn = self.mijn()

@@ -80,7 +80,14 @@ def instellingen():
 def station():
     s = {"roepnaam": "N0CALL", "frequentie": rig.STANDAARD_FREQ, "pad": ""}
     s.update(lees(STATION_FILE, {}) or {})
+    s["roepnaam"] = schoon_call(s.get("roepnaam")) or "N0CALL"       # oude instelling 'PD3PAM-0' wordt 'PD3PAM'
     return s
+
+
+def schoon_call(call):
+    """Hoofdletters, zonder spaties en zonder '-0' (SSID 0 is hetzelfde als geen SSID, zie ax25chat_agw)."""
+    call = str(call or "").strip().upper().replace(" ", "")
+    return call[:-2] if call.endswith("-0") else call
 
 
 def reservekopie(pad):
@@ -146,7 +153,7 @@ def direwolf_tekst(roepnaam, r):
 ADEVICE plughw:CARD={kaart},DEV=0
 ACHANNELS 1
 CHANNEL 0
-MYCALL {roepnaam or 'N0CALL'}
+MYCALL {schoon_call(roepnaam) or 'N0CALL'}
 MODEM {modem(r)}
 {ptt}
 TXDELAY {txdelay}
@@ -167,7 +174,7 @@ def direwolf_met_agw():
     try:
         with open(DIREWOLF_CONF, encoding="utf-8") as f:
             t = f.read()
-        return "\nAGWPORT 8000" in t and "\nMAXV22 0" in t
+        return "\nAGWPORT 8000" in t and "\nMAXV22 0" in t and not re.search(r"\nMYCALL \S+-0\n", t)
     except OSError:
         return True                    # nog geen direwolf.conf: die wordt straks met AGW gemaakt
 
@@ -574,7 +581,7 @@ def verwerk_station(f):
     """Roepnaam en frequentie. Geeft (fouten, station)."""
     s = station()
     fouten = []
-    rn = (f.get("roepnaam") or "").strip().upper().replace(" ", "")
+    rn = schoon_call(f.get("roepnaam"))
     if not ROEPNAAM_RE.match(rn) or rn.startswith("N0CALL"):
         fouten.append("Roepnaam: gebruik je eigen roepnaam, eventueel met SSID (bijv. PD3PAM-7).")
     try:

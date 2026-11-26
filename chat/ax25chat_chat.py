@@ -257,7 +257,8 @@ class Chat:
     # -- station --
 
     def mijn_call(self):
-        return (self.lees_station().get("roepnaam") or "N0CALL").upper()
+        call = str(self.lees_station().get("roepnaam") or "N0CALL").strip().upper()
+        return call[:-2] if call.endswith("-0") else call             # PD3PAM-0 is op de lucht gewoon PD3PAM
 
     def _pad(self):
         return [p for p in re.split(r"[ ,]+", (self.lees_station().get("pad") or "").upper()) if p]

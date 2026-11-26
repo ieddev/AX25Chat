@@ -313,6 +313,11 @@ Voor packet, BBS'en en nodes kiest de beheerder de nummers zelf (bijv. PD4R-1 vo
 node); daar zegt de SSID niets over het soort station. Gebruik je AX25Chat zowel thuis als in de auto, dan kun
 je thuis zonder SSID werken en in de auto met -9.
 
+**-0 is hetzelfde als geen SSID.** Op de lucht bestaat "PD3PAM-0" niet: dat is gewoon PD3PAM. Vul je toch -0 in,
+dan haalt AX25Chat het weg (ook bij een BBS-roepnaam). Dat is nodig, want Direwolf vergelijkt roepnamen
+letterlijk: verbond je als PD3PAM-0, dan herkende hij de UA van de node (gericht aan PD3PAM) niet als antwoord
+en bleef hij SABM sturen tot *Failed to connect after 10 tries*.
+
 ## Kaart (gehoorde stations)
 
 Op het tabblad **Kaart** zie je de stations die je Pi hoort met een APRS-positie: mobiele stations, digipeaters,
