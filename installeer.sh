@@ -168,6 +168,13 @@ exec bash <(curl -sL $RAW/installeer.sh) "\$@"
 EOB
 sudo chmod +x /usr/local/bin/ax25chat-bijwerken
 
+# Opdracht om de offline kaart via ssh te downloaden (zie docs/PROCEDURE.md, Kaart)
+sudo tee /usr/local/bin/ax25chat-kaart >/dev/null <<EOB
+#!/bin/bash
+cd "$DOEL" && exec python3 "$DOEL/ax25chat_kaart.py" "\$@"
+EOB
+sudo chmod +x /usr/local/bin/ax25chat-kaart
+
 # ---------------------------------------------------------------------------
 # 5. Hotspot (als laatste; actief na herstart)
 # ---------------------------------------------------------------------------

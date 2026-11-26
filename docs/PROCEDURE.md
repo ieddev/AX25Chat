@@ -320,8 +320,42 @@ kaart werkt **zonder internet**: de kaarttegels en het kaartprogramma (Leaflet) 
 | **Detail** | *Wegen en straatnamen* (aanbevolen) of minder detail voor een kleinere download. Rond het midden (10 km) komt altijd meer detail, zodat je in je eigen buurt de straten ziet. Daaromheen ligt een grof overzicht tot zo'n 150 km. |
 
 Met de standaardkeuze zijn het ongeveer 7.000 tegels, zo'n 100 MB, een paar minuten downloaden. De vorige kaart
-blijft werken tot de nieuwe binnen is. Is er geen internet, dan stopt de download na een halve minuut met een
-melding. De kaart is de BRT-Achtergrondkaart van het Kadaster via PDOK (open data, CC BY 4.0), dezelfde als in
+blijft werken tot de nieuwe binnen is. Een afgebroken download gaat de volgende keer verder waar hij was.
+
+**Pi Zero: hotspot óf internet.** De wifi van een Pi Zero is óf de hotspot óf verbonden met je thuis-wifi, niet
+allebei. Heeft de Pi bij het downloaden geen internet, dan doet hij hetzelfde als bij het bijwerken: hotspot even
+uit, verbinden met je bekende thuis-wifi, kaart downloaden, hotspot weer aan. Je telefoon of laptop raakt de
+verbinding dan een paar minuten kwijt (bij 50 km ongeveer 5 tot 10 minuten); verbind daarna opnieuw met de
+hotspot. Lukt de thuis-wifi niet, dan komt de hotspot meteen terug, en na 60 minuten in elk geval. Een Pi 4 met
+netwerkkabel heeft internet en downloadt gewoon.
+
+**Via ssh** kan het ook, met de opdracht `ax25chat-kaart` (als je gewone gebruiker, zonder sudo):
+
+| Opdracht | Wat |
+|---|---|
+| `ax25chat-kaart Deventer` | Kaart rond Deventer, 50 km, aanbevolen detail |
+| `ax25chat-kaart` | Rond de vaste positie die je bij het APRS-baken invulde |
+| `ax25chat-kaart Deventer --straal 25 --zoom 13` | Kleiner gebied, minder detail (straal 25, 50, 75 of 100; zoom 12, 13 of 14) |
+| `ax25chat-kaart --midden 52.255,6.163` | Rond een positie (breedte, lengte) |
+| `ax25chat-kaart Deventer --schat` | Alleen laten zien hoeveel tegels en MB het wordt |
+| `ax25chat-kaart --status` | Hoe staat het ervoor: huidige kaart, voortgang, of waarom het mislukte |
+| `ax25chat-kaart --help` | Alle opties |
+
+Heeft de Pi internet (netwerkkabel, of je bent via ssh op de thuis-wifi), dan zie je de voortgang in je scherm.
+Zonder internet gaat hij zelf naar de thuis-wifi, zoals hierboven. Dat loopt op de achtergrond, want je
+ssh-verbinding via de hotspot valt dan weg: verbind na een paar minuten opnieuw en kijk met
+`ax25chat-kaart --status`. Wil je dat niet, gebruik dan `--niet-wisselen`.
+
+**Op een pc downloaden en kopiëren** kan ook (handig met een trage of geen thuis-wifi bij de Pi). Het script is gewoon
+Python zonder extra's. Op een pc met Python 3 en internet:
+
+```bash
+git clone https://github.com/ieddev/AX25Chat && cd AX25Chat/gemeenschappelijk
+python3 ax25chat_kaart.py Deventer --niet-wisselen
+scp -r kaart <gebruiker>@<pi>:ax25chat/
+```
+
+De map `kaart` (met `tegels` en `kaart.json`) komt zo in `~/ax25chat/` op de Pi. Laad daarna het tabblad Kaart opnieuw. De kaart is de BRT-Achtergrondkaart van het Kadaster via PDOK (open data, CC BY 4.0), dezelfde als in
 Noodnet. Die dekt **alleen Nederland**: stations over de grens staan er wel op, maar zonder ondergrond.
 
 **Op de kaart:**
