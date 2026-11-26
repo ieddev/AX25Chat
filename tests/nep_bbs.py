@@ -1,8 +1,10 @@
 """
 Een nagebootste BBS voor tests: meldt een roepnaam aan op de AGW-poort van een Direwolf en beantwoordt
-de standaardcommando's (L, R n, S, K n, B) zoals een eenvoudige BBS dat doet.
+de standaardcommando's (L, R n, S, K n, B) zoals een eenvoudige BBS dat doet. Met --node gedraagt hij
+zich eerst als een BPQ-node (prompt met commando's achter een }), met BBS en CHAT daarachter.
 
     python3 nep_bbs.py 18010 PD4R-1
+    python3 nep_bbs.py 18010 PD4R-12 --node
 """
 
 import os
@@ -14,9 +16,11 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."
 import ax25chat_agw as agw  # noqa: E402
 
 PROMPT = "PD4R BBS (L R S K B) >\r"
+NODE = "PD4R-12 } CONNECT BYE INFO NODES ROUTES PORTS USERS MHEARD DX CHAT CONV BBS MAIL EMAIL\r"
 
 
-def main(poort, call):
+def main(poort, call, als_node=False):
+    waar = {}                                        # tegenstation -> 'node', 'bbs' of 'chat' 
     post = {1: ("PD3PAM", "Welkom", "Hallo Gert,\rWelkom op de BBS.\r/EX\r")}
     schrijven = {}                                   # tegenstation -> [stap, onderwerp, regels]
 
@@ -24,7 +28,10 @@ def main(poort, call):
         link.tekst(call, naar, tekst)
 
     def pakket(soort, van, aan, data):
-        if soort == "C":
+        if soort == "C" and als_node:
+            waar[van] = "node"
+            zeg(van, "Welkom op de node van PD4R\r" + NODE)
+        elif soort == "C":
             zeg(van, f"[PD4R-BBS-1.0]\rHallo {van}, welkom op de BBS van PD4R.\r{PROMPT}")
         elif soort == "D":
             for regel in data.decode("utf-8", "replace").replace("\n", "\r").split("\r"):
@@ -33,6 +40,28 @@ def main(poort, call):
                     verwerk(van, regel)
 
     def verwerk(van, regel):
+        if waar.get(van) == "node":
+            c = regel.upper()
+            if c in ("BBS", "MAIL"):
+                waar[van] = "bbs"
+                zeg(van, f"[BPQ-6.0.24.1]\rHallo {van}\r{PROMPT}")
+            elif c == "CHAT":
+                waar[van] = "chat"
+                zeg(van, "PD4R Chat Server.\rType /h for command summary.\r")
+            elif c in ("BYE", "B"):
+                link.verbreek(call, van)
+            elif c == "MHEARD":
+                zeg(van, "PD4R-12} Heard List for Port 1\rPD3PAM-7  00:00:01\rPD4R      00:03:12\r" + NODE)
+            else:
+                zeg(van, f"PD4R-12}} {c}: ok\r" + NODE)
+            return
+        if waar.get(van) == "chat":
+            if regel.upper().startswith("/B"):
+                waar[van] = "node"
+                zeg(van, "Returned to Node PD4R-12\r" + NODE)
+            else:
+                zeg(van, f"{van}: {regel}\r")
+            return
         if van in schrijven:
             s = schrijven[van]
             if s[0] == "onderwerp":
@@ -59,6 +88,9 @@ def main(poort, call):
         elif cmd == "S":
             schrijven[van] = ["onderwerp", "", []]
             zeg(van, "Onderwerp:\r")
+        elif cmd == "B" and van in waar:              # terug naar de node
+            waar[van] = "node"
+            zeg(van, "Returned to Node PD4R-12\r" + NODE)
         elif cmd == "B":
             zeg(van, "73, tot ziens.\r")
             time.sleep(1)
@@ -73,4 +105,4 @@ def main(poort, call):
 
 
 if __name__ == "__main__":
-    main(int(sys.argv[1]), sys.argv[2].upper())
+    main(int(sys.argv[1]), sys.argv[2].upper(), "--node" in sys.argv)

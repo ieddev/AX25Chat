@@ -99,3 +99,6 @@ TNC of via geluid), of een set met APRS-berichten. Spreek een frequentie af.
 | G6 | Geen antwoord | Verbinden met een roepnaam die er niet is | Na ongeveer een halve minuut *Geen antwoord van…* | ☐ |
 | G7 | Andere snelheid | BBS op 438,175 (9600, Mijn frequenties) | Direwolf herstart, daarna wordt er verbonden | ☐ |
 | G8 | Oude Pi | Pi van voor deze versie: Bijwerken | Direwolf herstart één keer; BBS-verbinding werkt | ☐ |
+| G9 | Node | Verbinden met PD4R-12 | Knoppen *Node*: CONNECT, BYE, INFO, NODES, … zoals in de prompt | ☐ |
+| G10 | Node → BBS → node | BBS, daarna B | Knoppen wisselen naar L, R, S, K, B en daarna terug naar de node-knoppen | ☐ |
+| G11 | Chat | CHAT, daarna /B | Knoppen /U, /H, /B; na /B weer de node-knoppen | ☐ |
