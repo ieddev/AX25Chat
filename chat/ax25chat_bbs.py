@@ -61,6 +61,7 @@ def lijst():
         if CALL_RE.match(call):
             uit.append({"call": call, "hz": hz, "naam": str(x.get("naam") or "")[:30]})
     for x in uit:
+        x["id"] = f'{x["call"]}@{x["hz"]}'           # dezelfde roepnaam kan op meer frequenties staan (node op 2 m en 70 cm)
         e = rig.eigen(x["hz"]) if x["hz"] else None
         x["tekst"] = (rig.eigen_tekst(dict(e, naam="")) if e else rig.mhz(x["hz"])) if x["hz"] else "huidige frequentie"
     return uit
@@ -78,7 +79,7 @@ def voeg_toe(call, hz, naam):
     if hz and hz not in rig.frequentie_keuzes():
         return ["Kies een frequentie uit de lijst."], None
     naam = re.sub(r"[^\w \-./]", "", str(naam or "").strip())[:30]
-    oud = [x for x in lijst() if x["call"] != call]
+    oud = [x for x in lijst() if (x["call"], x["hz"]) != (call, hz)]      # zelfde roepnaam én frequentie: vervangen
     if len(oud) >= MAX_BBS:
         return [f"Hoogstens {MAX_BBS} BBS'en; haal er eerst een weg."], None
     s = radio.station()
@@ -87,9 +88,12 @@ def voeg_toe(call, hz, naam):
     return [], f"{call} toegevoegd."
 
 
-def haal_weg(call):
+def haal_weg(call, hz=None):
+    """Haalt deze BBS weg; zonder hz alle regels met deze roepnaam."""
+    call = str(call).upper()
     s = radio.station()
-    s["bbs"] = [{"call": x["call"], "hz": x["hz"], "naam": x["naam"]} for x in lijst() if x["call"] != str(call).upper()]
+    s["bbs"] = [{"call": x["call"], "hz": x["hz"], "naam": x["naam"]} for x in lijst()
+                if not (x["call"] == call and (hz is None or x["hz"] == hz))]
     radio.schrijf(radio.STATION_FILE, s)
 
 
