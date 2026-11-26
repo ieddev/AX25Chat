@@ -122,13 +122,17 @@ TNC of via geluid), of een set met APRS-berichten. Spreek een frequentie af.
 | # | Wat | Hoe | Verwacht | OK |
 |---|-----|-----|----------|----|
 | I1 | Kaart downloaden | Pi met internet (thuis-wifi), Radio → Offline kaart: je woonplaats, 50 km, aanbevolen; Kaart downloaden | Voortgang telt op; na een paar minuten *Kaart gedownload* met ongeveer 7.000 tegels | ☐ |
-| I2 | Zonder internet | Hotspot aan, geen internet, Kaart downloaden | Na ongeveer een halve minuut: *Geen verbinding met de kaartserver*; vorige kaart blijft | ☐ |
+| I2 | Zonder internet | Geen internet en geen thuis-wifi bekend (of `ax25chat-kaart --niet-wisselen`) | Meteen een melding *Geen internet…*; vorige kaart blijft | ☐ |
 | I3 | Gehoorde stations | Station op 144,800, een kwartier luisteren, tabblad Kaart | Stations met symbool en roepnaam; blauw direct, oranje via digipeater; tik geeft tijd en *Bericht sturen* | ☐ |
 | I4 | Live | Kaart open laten, APRSdroid of een tweede set een positie laten zenden | Station verschijnt of verplaatst zonder herladen | ☐ |
 | I5 | Mic-E | Een Kenwood/Yaesu-set of tracker met Mic-E in de buurt | Staat op de goede plek (vergelijk met aprs.fi) | ☐ |
 | I6 | Zelf | Vaste positie of GPS bij het baken | Jij met groene rand | ☐ |
 | I7 | Bericht sturen | Tik op een station, Bericht sturen | Chat opent met de roepnaam al ingevuld | ☐ |
 | I8 | Zonder internet kijken | Telefoon alleen op de hotspot (mobiele data uit), tabblad Kaart | Kaart met ondergrond, inzoomen rond het midden geeft straten | ☐ |
+| I9 | Pi Zero, alleen hotspot | Radio → Kaart downloaden terwijl je op de hotspot zit | Hotspot verdwijnt een paar minuten; daarna terug en *Kaart gedownload* | ☐ |
+| I10 | Via ssh | Via de hotspot: `ax25chat-kaart Deventer` | Uitleg op het scherm, ssh valt weg; na een paar minuten `ax25chat-kaart --status` geeft de nieuwe kaart | ☐ |
+| I11 | Via ssh met internet | Via de thuis-wifi of kabel: `ax25chat-kaart --straal 25` | Voortgang telt op in het scherm; *Klaar* | ☐ |
+| I12 | Verder na onderbreking | Download halverwege afbreken (Ctrl+C), opnieuw starten | Gaat snel door tot waar hij was | ☐ |
 
 ## J. Android-app
 

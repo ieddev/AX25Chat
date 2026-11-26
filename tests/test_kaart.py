@@ -135,3 +135,47 @@ class TestTegels(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestViaSsh(unittest.TestCase):
+    """ax25chat-kaart via ssh: zonder internet even naar de thuis-wifi, en verder na een onderbreking."""
+
+    def setUp(self):
+        self.oud = (kaart.KAART_DIR, kaart.TEGELS, kaart.NIEUW, kaart.INFO_FILE, kaart.VOORTGANG_FILE,
+                    kaart.internet, kaart.thuiswifi, kaart.start_met_thuiswifi, sys.argv)
+        d = tempfile.mkdtemp()
+        kaart.KAART_DIR, kaart.TEGELS, kaart.NIEUW = d, os.path.join(d, "tegels"), os.path.join(d, "tegels.nieuw")
+        kaart.INFO_FILE, kaart.VOORTGANG_FILE = os.path.join(d, "kaart.json"), os.path.join(d, "voortgang.json")
+        kaart.internet = lambda timeout=8: False
+        self.gestart = []
+        kaart.start_met_thuiswifi = lambda naam: self.gestart.append(naam) or 0
+
+    def tearDown(self):
+        (kaart.KAART_DIR, kaart.TEGELS, kaart.NIEUW, kaart.INFO_FILE, kaart.VOORTGANG_FILE,
+         kaart.internet, kaart.thuiswifi, kaart.start_met_thuiswifi, sys.argv) = self.oud
+
+    def test_geen_internet_wel_thuiswifi(self):
+        kaart.thuiswifi = lambda: ("Thuis", True)
+        sys.argv = ["ax25chat-kaart", "--midden", "52.25,6.16"]
+        self.assertEqual(kaart.main(), 0)
+        self.assertEqual(self.gestart, ["Thuis"])
+
+    def test_geen_internet_geen_thuiswifi(self):
+        kaart.thuiswifi = lambda: (None, True)
+        sys.argv = ["ax25chat-kaart", "--midden", "52.25,6.16"]
+        self.assertEqual(kaart.main(), 1)
+        self.assertEqual(self.gestart, [])
+        self.assertIn("Geen internet", kaart.voortgang()["fout"])
+
+    def test_niet_wisselen(self):
+        kaart.thuiswifi = lambda: ("Thuis", True)
+        sys.argv = ["ax25chat-kaart", "Deventer", "--niet-wisselen"]
+        self.assertEqual(kaart.main(), 1)
+        self.assertEqual(self.gestart, [])
+
+    def test_verder_na_onderbreking(self):
+        pad = os.path.join(kaart.NIEUW, "14", "8472", "5390.png")
+        os.makedirs(os.path.dirname(pad))
+        with open(pad, "wb") as f:
+            f.write(b"png")
+        self.assertTrue(kaart._haal((14, 8472, 5390), kaart.NIEUW, kaart.TEGELS))      # niet opnieuw gehaald

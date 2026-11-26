@@ -12,6 +12,11 @@ gemeente, dus een groot gebied (standaard 50 km) met minder detail, en meer deta
     python3 ax25chat_kaart.py --plaats Deventer --straal 50 --zoom 14
     python3 ax25chat_kaart.py --midden 52.255,6.163 --straal 50
     python3 ax25chat_kaart.py --status
+
+Via ssh is er de opdracht  ax25chat-kaart  (dezelfde opties, zonder plaats: de vaste positie van het baken).
+Heeft de Pi geen internet (Pi Zero op zijn eigen hotspot), dan gaat hij zelf even naar de bekende thuis-wifi,
+downloadt de kaart en zet daarna de hotspot weer aan, net als bij het bijwerken. Dat gebeurt op de achtergrond,
+want de ssh-verbinding via de hotspot valt dan weg. Een afgebroken download gaat de volgende keer verder.
 """
 
 import argparse
@@ -166,6 +171,8 @@ def _haal(t, doel, oud):
     pad = os.path.join(doel, str(z), str(x), f"{y}.png")
     # Tegel die we al hebben (van de vorige kaart) niet opnieuw downloaden
     bestaand = os.path.join(oud, str(z), str(x), f"{y}.png")
+    if os.path.exists(pad) and os.path.getsize(pad) > 0:
+        return True                            # al binnen bij een eerdere, afgebroken poging
     if os.path.exists(bestaand) and os.path.getsize(bestaand) > 0:
         os.makedirs(os.path.dirname(pad), exist_ok=True)
         shutil.copyfile(bestaand, pad)
@@ -198,8 +205,8 @@ def download(plaats, lat, lon, straal_km, max_zoom):
     staat = {"bezig": True, "plaats": plaats, "klaar": 0, "mislukt": 0, "totaal": totaal,
              "start": time.time(), "bijgewerkt": time.time(), "fout": ""}
     _schrijf(VOORTGANG_FILE, staat)
-    shutil.rmtree(NIEUW, ignore_errors=True)
-    os.makedirs(NIEUW, exist_ok=True)
+    os.makedirs(NIEUW, exist_ok=True)          # wat er al in staat (afgebroken download) wordt niet opnieuw gehaald
+    scherm = sys.stdout.isatty()
     lock = threading.Lock()
     gestopt = threading.Event()
 
@@ -216,6 +223,9 @@ def download(plaats, lat, lon, straal_km, max_zoom):
             if (staat["klaar"] + staat["mislukt"]) % 50 == 0:
                 staat["bijgewerkt"] = time.time()
                 _schrijf(VOORTGANG_FILE, staat)
+                if scherm:
+                    gedaan = staat["klaar"] + staat["mislukt"]
+                    print(f"\r   {gedaan} van {totaal} tegels ({100 * gedaan // totaal}%)", end="", flush=True)
         return ok
 
     with ThreadPoolExecutor(PARALLEL) as pool:
@@ -230,8 +240,7 @@ def download(plaats, lat, lon, straal_km, max_zoom):
                          f"{staat['mislukt']} van {totaal} tegels konden niet gedownload worden. "
                          "Is er internet? De vorige kaart blijft staan.")
         _schrijf(VOORTGANG_FILE, staat)
-        shutil.rmtree(NIEUW, ignore_errors=True)
-        return False
+        return False                           # tegels.nieuw blijft staan: de volgende keer gaat hij verder
     oud = os.path.join(KAART_DIR, "tegels.oud")
     shutil.rmtree(oud, ignore_errors=True)
     if os.path.isdir(TEGELS):
@@ -320,7 +329,8 @@ def stand_json():
     """Voortgang voor de pagina (ververst zichzelf tijdens het downloaden)."""
     v = voortgang() or {}
     return {"bezig": bool(v.get("bezig")), "klaar": (v.get("klaar") or 0) + (v.get("mislukt") or 0),
-            "totaal": v.get("totaal") or 0, "fout": v.get("fout") or "", "plaats": v.get("plaats", "")}
+            "totaal": v.get("totaal") or 0, "fout": v.get("fout") or "", "plaats": v.get("plaats", ""),
+            "stap": v.get("stap", "")}
 
 
 def html_beheer(verborgen, positie=None):
@@ -337,7 +347,8 @@ def html_beheer(verborgen, positie=None):
     melding = ""
     if v and (bezig or v.get("fout") or time.time() - v.get("bijgewerkt", 0) < 600):
         if bezig:
-            melding = "<div class='melding let' id='kaart_stand'>Bezig met downloaden...</div>"
+            melding = ("<div class='melding let' id='kaart_stand'>" + _e(v.get("stap") or "Bezig met downloaden...") +
+                       "</div>")
         elif v.get("fout"):
             melding = f"<div class='melding fout'>{_e(v['fout'])}</div>"
         else:
@@ -358,7 +369,7 @@ def html_beheer(verborgen, positie=None):
     ververs = """<script>(function(){var el=document.getElementById('kaart_stand');if(!el)return;
 function kijk(){fetch('/api/kaart').then(function(r){return r.json()}).then(function(d){var s=d.download||{};
 if(!s.bezig){location.reload();return}
-el.textContent='Bezig met downloaden voor '+s.plaats+': '+s.klaar+' van '+(s.totaal||'?')+' tegels'+
+el.textContent=(!s.totaal&&s.stap)?s.stap:'Bezig met downloaden voor '+s.plaats+': '+s.klaar+' van '+(s.totaal||'?')+' tegels'+
 (s.totaal?' ('+Math.floor(100*s.klaar/s.totaal)+'%)':'')+'.';setTimeout(kijk,3000)}).catch(function(){setTimeout(kijk,5000)})}
 kijk()})()</script>""" if bezig else ""
     return f"""<section><h2>Offline kaart</h2>
@@ -375,32 +386,104 @@ paar minuten downloaden. Rond het midden komt meer detail (straten, {DETAIL_KM} 
 <div class="rij"><div><label>Straal rondom het midden</label><select name="straal">{o_straal}</select></div>
 <div><label>Detail</label><select name="zoom">{o_zoom}</select></div></div>
 <div class="balk" style="margin-top:10px">{knop}</div></form>
-<p class="uitleg">De vorige kaart blijft werken tot de nieuwe helemaal binnen is.</p>{ververs}</section>"""
+<p class="uitleg">De vorige kaart blijft werken tot de nieuwe helemaal binnen is. Heeft de Pi geen internet (een Pi
+Zero op zijn eigen hotspot), dan gaat hij zelf even naar je bekende thuis-wifi en zet daarna de hotspot weer aan, net
+als bij het bijwerken. Deze pagina is dan een paar minuten weg; verbind daarna opnieuw met de hotspot. Via ssh kan
+het ook: <span class="mono">ax25chat-kaart</span> (zie de procedure).</p>{ververs}</section>"""
+
+
+# ---------------------------------------------------------------------------
+# Zonder internet: even naar de thuis-wifi (Pi Zero: wifi is óf hotspot óf thuis-wifi)
+# ---------------------------------------------------------------------------
+
+def internet(timeout=8):
+    try:
+        req = urllib.request.Request(TEGEL_URL.format(z=7, x=66, y=42), headers={"User-Agent": AGENT})
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            r.read(1)
+        return True
+    except urllib.error.HTTPError:
+        return True                             # PDOK antwoordt: er is internet
+    except Exception:
+        return False
+
+
+def _wifi(actie):
+    """Hotspot uit en thuis-wifi aan ('thuiswifi'), of terug ('hotspot'). Zelfde dienst als het bijwerken."""
+    import subprocess
+    r = subprocess.run(["sudo", "-n", "systemctl", "start", "--no-block", f"ax25chat-wifi@{actie}"],
+                       capture_output=True, text=True, timeout=20)
+    return r.returncode == 0
+
+
+def thuiswifi():
+    """(naam van de bekende thuis-wifi of None, staat de hotspot nu aan?)"""
+    try:
+        import ax25chat_bijwerken as bw
+        return bw.thuiswifi_naam(), not bw.thuiswifi_actief()
+    except Exception:
+        return None, False
+
+
+def vaste_positie():
+    """Vaste positie van het APRS-baken (tabblad Radio), of None."""
+    b = (_lees(os.path.join(MAP, "station.json"), {}) or {}).get("baken") or {}
+    if b.get("lat") is None or b.get("lon") is None:
+        return None
+    return float(b["lat"]), float(b["lon"])
 
 
 def main():
-    ap = argparse.ArgumentParser(description="Offline kaart (PDOK) voor AX25Chat downloaden")
-    ap.add_argument("--plaats", help="gemeente of woonplaats, bijv. Deventer")
-    ap.add_argument("--midden", help="lat,lon in plaats van --plaats")
-    ap.add_argument("--straal", type=int, default=STANDAARD_STRAAL, help=f"km rond het midden (standaard {STANDAARD_STRAAL})")
+    ap = argparse.ArgumentParser(
+        prog="ax25chat-kaart",
+        description="Offline kaart (PDOK) voor AX25Chat downloaden. Zonder plaats: rond de vaste positie van het baken.")
+    ap.add_argument("plaats_los", nargs="?", metavar="PLAATS", help="gemeente of woonplaats, bijv. Deventer")
+    ap.add_argument("--plaats", help=argparse.SUPPRESS)
+    ap.add_argument("--midden", help="lat,lon in plaats van een plaats, bijv. 52.255,6.163")
+    ap.add_argument("--straal", type=int, default=STANDAARD_STRAAL,
+                    help=f"km rond het midden: {', '.join(map(str, STRALEN))} (standaard {STANDAARD_STRAAL})")
     ap.add_argument("--zoom", type=int, default=STANDAARD_ZOOM, choices=sorted(ZOOMS),
-                    help=f"detail in het hele gebied (standaard {STANDAARD_ZOOM})")
+                    help=f"detail: 12 plaatsen en hoofdwegen, 13 wegen, 14 straatnamen (standaard {STANDAARD_ZOOM})")
     ap.add_argument("--schat", action="store_true", help="alleen het aantal tegels en de grootte tonen")
-    ap.add_argument("--status", action="store_true")
+    ap.add_argument("--status", action="store_true", help="hoe staat de download ervoor (ook als hij op de achtergrond loopt)")
+    ap.add_argument("--niet-wisselen", action="store_true",
+                    help="zonder internet niet zelf naar de thuis-wifi gaan")
+    ap.add_argument("--wissel", action="store_true", help=argparse.SUPPRESS)   # intern: draait al op de achtergrond
     a = ap.parse_args()
+    a.plaats = a.plaats or a.plaats_los
     if a.status:
-        print(json.dumps({"kaart": info(), "voortgang": voortgang()}, indent=1, ensure_ascii=False))
-        return 0
+        return toon_status()
     if not (1 <= a.straal <= max(STRALEN)):
         print(f"Straal moet tussen 1 en {max(STRALEN)} km zijn."); return 1
+    if not a.plaats and not a.midden:
+        pos = vaste_positie()
+        if not pos:
+            print("Geef een plaats (bijv.  ax25chat-kaart Deventer ) of vul bij het APRS-baken een vaste positie in."); return 1
+        a.midden = f"{pos[0]:.5f},{pos[1]:.5f}"
+    v = voortgang()
+    if v and v.get("bezig") and sys.stdin.isatty() and time.time() - v.get("bijgewerkt", 0) < 120:
+        print("Er loopt al een download. Volg hem met:  ax25chat-kaart --status"); return 1
+
+    if a.wissel:
+        return met_thuiswifi(a)
+    if not a.schat and not internet():
+        naam, hotspot = thuiswifi()
+        if a.niet_wisselen or not naam or not hotspot:
+            fout = ("Geen internet. " + ("Er is geen thuis-wifi bekend op deze Pi (Raspberry Pi Imager of nmtui). " if not naam
+                    else "") + "Sluit een netwerkkabel aan, of zet op het tabblad Status de thuis-wifi aan.")
+            _schrijf(VOORTGANG_FILE, {"bezig": False, "fout": fout, "bijgewerkt": time.time()})
+            print(fout); return 1
+        return start_met_thuiswifi(naam)
+    return downloaden(a)
+
+
+def downloaden(a):
     try:
         if a.midden:
             lat, lon = (float(v) for v in a.midden.split(","))
             plaats = a.plaats or f"{lat:.4f}, {lon:.4f}"
-        elif a.plaats:
-            plaats, lat, lon = zoek_plaats(a.plaats)
         else:
-            print("Geef --plaats of --midden."); return 1
+            plaats, lat, lon = zoek_plaats(a.plaats)
     except ValueError as ex:
         fout = str(ex)
     except OSError:
@@ -420,8 +503,80 @@ def main():
         print(fout); return 1
     ok = download(plaats, lat, lon, a.straal, a.zoom)
     v = voortgang() or {}
-    print("Klaar." if ok else v.get("fout", "Mislukt."), f"({v.get('klaar', 0)} gelukt, {v.get('mislukt', 0)} mislukt)")
+    if sys.stdout.isatty():
+        print()
+    print("Klaar: de kaart staat op het tabblad Kaart." if ok else v.get("fout", "Mislukt."),
+          f"({v.get('klaar', 0)} gelukt, {v.get('mislukt', 0)} mislukt)")
     return 0 if ok else 1
+
+
+def start_met_thuiswifi(naam):
+    """Op de achtergrond verder: de ssh-verbinding via de hotspot valt zo weg."""
+    import subprocess
+    os.makedirs(KAART_DIR, exist_ok=True)
+    _schrijf(VOORTGANG_FILE, {"bezig": True, "plaats": "", "klaar": 0, "mislukt": 0, "totaal": 0,
+                              "bijgewerkt": time.time(), "fout": "",
+                              "stap": f"Geen internet: de Pi gaat even naar de thuis-wifi '{naam}'."})
+    with open(os.path.join(KAART_DIR, "download.log"), "w") as logf:
+        subprocess.Popen([sys.executable, os.path.abspath(__file__), *sys.argv[1:], "--wissel"], stdout=logf,
+                         stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, start_new_session=True, cwd=MAP)
+    print(f"""De Pi heeft geen internet. Hij gaat nu even naar je thuis-wifi '{naam}', downloadt de kaart en zet
+daarna de hotspot weer aan (net als bij het bijwerken). Dat gaat op de achtergrond verder.
+
+Ben je via de hotspot verbonden, dan valt deze ssh-verbinding zo weg. Na een paar minuten (bij 50 km
+ongeveer 5 tot 10) is de hotspot terug. Verbind dan opnieuw en kijk met:  ax25chat-kaart --status
+Lukt de thuis-wifi niet, dan komt de hotspot meteen terug; na 60 minuten in elk geval.""")
+    return 0
+
+
+def met_thuiswifi(a):
+    """Draait op de achtergrond: thuis-wifi aan, wachten op internet, downloaden, hotspot weer aan."""
+    print(time.strftime("%H:%M:%S"), "thuis-wifi aan", flush=True)
+    time.sleep(3)                               # ssh-gebruiker kan de uitleg nog lezen
+    if not _wifi("thuiswifi"):
+        fout = "Thuis-wifi aanzetten lukte niet (sudo). Werk de Pi eerst bij: ax25chat-bijwerken."
+        _schrijf(VOORTGANG_FILE, {"bezig": False, "fout": fout, "bijgewerkt": time.time()})
+        print(fout); return 1
+    ok = False
+    try:
+        for _ in range(30):                     # tot 2,5 minuut wachten op internet
+            time.sleep(5)
+            v = voortgang() or {}
+            v.update(bezig=True, bijgewerkt=time.time(), stap="Verbinden met de thuis-wifi…")
+            _schrijf(VOORTGANG_FILE, v)
+            if internet():
+                ok = True
+                break
+        if not ok:
+            fout = "Via de thuis-wifi was er geen internet. Klopt het wachtwoord, en is de thuis-wifi in de buurt?"
+            _schrijf(VOORTGANG_FILE, {"bezig": False, "fout": fout, "bijgewerkt": time.time()})
+            print(fout)
+            return 1
+        print(time.strftime("%H:%M:%S"), "internet, downloaden", flush=True)
+        return downloaden(a)
+    finally:
+        print(time.strftime("%H:%M:%S"), "hotspot weer aan", flush=True)
+        _wifi("hotspot")
+
+
+def toon_status():
+    k, v = info(), voortgang() or {}
+    if k:
+        print(f"Offline kaart: {k.get('plaats')}, straal {k.get('straal_km')} km, {k.get('aantal')} tegels "
+              f"({map_mb()} MB), gedownload {k.get('datum')}.")
+    else:
+        print("Nog geen offline kaart.")
+    if v.get("bezig"):
+        totaal = v.get("totaal") or 0
+        gedaan = (v.get("klaar") or 0) + (v.get("mislukt") or 0)
+        print(f"Bezig: {gedaan} van {totaal or '?'} tegels" + (f" ({100 * gedaan // totaal}%)." if totaal else ".")
+              + (" " + v["stap"] if v.get("stap") and not totaal else ""))
+    elif v.get("fout"):
+        print("Laatste poging mislukt:", v["fout"])
+    log = os.path.join(KAART_DIR, "download.log")
+    if os.path.exists(log):
+        print("Log:", log)
+    return 0
 
 
 if __name__ == "__main__":
