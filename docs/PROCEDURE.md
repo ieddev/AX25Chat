@@ -141,6 +141,15 @@ PD4R-1. AX25Chat is zelf geen BBS: het is je terminal. Er is steeds één verbin
    Snelknoppen: **L** (lijst) en **B** (afmelden) gaan meteen; **R** (lezen), **K** (wissen) en **S** (sturen)
    zetten het commando in de invoerregel, zodat je het nummer of de roepnaam erachter typt. Een lege regel
    versturen (alleen Zenden) stuurt een Enter. **Leeg** maakt alleen het vak leeg.
+   De snelknoppen passen zich aan aan wat er aan de andere kant zit:
+   - **Node** (bijv. PD4R-12, een BPQ-node): de knoppen komen uit het menu van de node zelf, de regel met
+     de commando's achter de `}`. Bijvoorbeeld **BBS** (naar de BBS), **MHEARD** (welke stations de node
+     gehoord heeft), **NODES** (andere nodes), **INFO**, **USERS**, **CHAT** en **BYE** (afmelden).
+     **CONNECT** zet het commando in de invoerregel: typ de roepnaam erachter om verder te verbinden.
+     Houd je vinger op een knop (of ga er met de muis op staan) voor de uitleg.
+   - **BBS** (een prompt die eindigt op `>`): L, R, S, K en B. Kwam je via de node, dan brengt B je
+     meestal terug naar de node.
+   - **Chat** (de chatserver van de node): /U (wie), /H (hulp) en /B (de chat verlaten).
 4. **Verbreken** (rood): verbreekt de verbinding netjes. Met **B** meld je je bij de BBS zelf af; die
    verbreekt dan zelf.
 

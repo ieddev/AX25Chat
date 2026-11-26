@@ -4,6 +4,7 @@ met snelknoppen voor de standaardcommando's. Werkt live via /api/live (event 'bb
 """
 
 import html as _html
+import json
 
 import ax25chat_rig as rig
 
@@ -19,7 +20,7 @@ CSS = """
  border:1px solid var(--lijn);border-radius:8px;padding:10px;height:min(52vh,460px);overflow:auto;white-space:pre-wrap;word-break:break-word}
 .term .uit{color:var(--blauw);font-weight:600}.term .info{color:var(--zacht);font-style:italic}
 .snel{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}.snel button{padding:8px 12px;font-size:15px}
-.snel button b{margin-right:4px}
+.snel button b{margin-right:4px}.snel .soort{align-self:center;font-size:13px;color:var(--zacht);margin-right:2px}
 .invoer{display:flex;gap:8px}.invoer input{flex:1;min-width:0;font-family:ui-monospace,Menlo,Consolas,monospace}
 button:disabled{opacity:.45;cursor:default}
 """
@@ -49,9 +50,37 @@ function tekenLijst() {
   }).join('') : '<p class="uitleg" style="margin:8px 0">Nog geen BBS\'en. Voeg er hieronder een toe, of vul een roepnaam in.</p>';
   tekenStand();
 }
+// Snelknoppen passend bij wat er aan de andere kant zit: een node (BPQ e.d.), een BBS of een chatserver.
+var KNOPPEN = SNEL_KNOPPEN, UITLEG = NODE_UITLEG, modus = 'bbs', nodeCmds = [], staart = '';
+function tekenSnel() {
+  var lijst = modus === 'node' ? nodeCmds.map(function (c) {
+    var u = UITLEG[c] || ['', true];
+    return [c, u[0], u[1], u[0] ? c + ': ' + u[0] : c];
+  }) : KNOPPEN[modus];
+  $('.snel .knoppen').innerHTML = '<span class="soort">' + {node: 'Node', bbs: 'BBS', chat: 'Chat'}[modus] + '</span>' +
+    lijst.map(function (k) {
+      return '<button type="button" class="licht" data-cmd="' + txt(k[0]) + '"' + (k[2] ? ' data-direct="1"' : '') +
+        ' title="' + txt(k[3]) + '"><b>' + txt(k[0]) + '</b>' + (modus === 'node' ? '' : txt(k[1])) + '</button>';
+    }).join('');
+  tekenStand();
+}
+function herken(tekst) {
+  staart = (staart + tekst).slice(-600);
+  var regels = staart.replace(/\r\n?/g, '\n').split('\n').map(function (x) { return x.trim(); }).filter(Boolean);
+  var l = regels[regels.length - 1] || '', m = l.match(/^\S+\s*\}\s*(.+)$/), oud = modus + nodeCmds.join();
+  if (m) {
+    var w = m[1].trim().split(/\s+/);
+    if (w.length >= 3 && w.every(function (x) { return /^[A-Z][A-Z?]*$/.test(x); })) { modus = 'node'; nodeCmds = w; }
+  } else if (/\/h(elp)?\b.*command|type \/h/i.test(staart.slice(-300)) && modus !== 'chat') { modus = 'chat'; }
+  else if (/>\s*$/.test(l) && modus !== 'chat') { modus = 'bbs'; }
+  if (modus + nodeCmds.join() !== oud) tekenSnel();
+}
 function regel(r) {
   if (!r || r.n <= laatste) return;
   laatste = r.n;
+  if (r.soort === 'in') herken(String(r.tekst));
+  if (r.soort === 'uit' && modus === 'chat' && /^\/(b|q)/i.test(r.tekst)) { modus = nodeCmds.length ? 'node' : 'bbs'; staart = ''; tekenSnel(); }
+  if (r.soort === 'info' && /^Verbonden met|heeft verbinding/.test(r.tekst)) { modus = 'bbs'; nodeCmds = []; staart = ''; tekenSnel(); }
   var t = $('.term'), onder = t.scrollHeight - t.scrollTop - t.clientHeight < 40, s = document.createElement('span');
   var tekst = String(r.tekst).replace(/\r\n?/g, '\n');
   if (r.soort === 'uit') { s.className = 'uit'; s.textContent = '> ' + tekst + '\n'; }
@@ -65,6 +94,7 @@ function haal() {
     st = d; lijst = d.lijst; tekenLijst(); d.regels.forEach(regel); $('.term').scrollTop = 1e9;
   }).catch(function () {});
 }
+tekenSnel();
 haal();
 var bron = new EventSource('/api/live');
 bron.addEventListener('bbs', function (e) {
@@ -103,16 +133,28 @@ $('.bbs-nieuw').addEventListener('submit', function (e) {
 })();
 """
 
-SNEL = [("L", "lijst", True, "Lijst van berichten"), ("R", "lezen", False, "Bericht lezen: R en het nummer"),
-        ("S", "sturen", False, "Bericht sturen: S en de roepnaam"), ("K", "wissen", False, "Bericht wissen: K en het nummer"),
-        ("B", "afmelden", True, "Afmelden (Bye)")]
+SNEL = {
+    "bbs": [("L", "lijst", True, "Lijst van berichten"), ("R", "lezen", False, "Bericht lezen: R en het nummer"),
+            ("S", "sturen", False, "Bericht sturen: S en de roepnaam"), ("K", "wissen", False, "Bericht wissen: K en het nummer"),
+            ("B", "afmelden", True, "Afmelden (Bye)")],
+    "chat": [("/U", "wie", True, "Wie er in de chat zitten"), ("/H", "hulp", True, "Alle chatcommando's"),
+             ("/B", "verlaten", True, "De chat verlaten, terug naar de node")],
+}
+# Uitleg bij de commando's van een node (BPQ); de knoppen zelf komen uit de prompt van de node.
+NODE_UITLEG = {
+    "CONNECT": ("verbinden met een ander station: CONNECT en de roepnaam", False), "C": ("verbinden: C en de roepnaam", False),
+    "BYE": ("afmelden", True), "INFO": ("informatie over deze node", True), "NODES": ("andere bereikbare nodes", True),
+    "ROUTES": ("routes naar buurnodes", True), "PORTS": ("poorten (frequenties) van de node", True),
+    "USERS": ("wie er nu verbonden is", True), "MHEARD": ("welke stations de node gehoord heeft (MHEARD en poortnummer)", True),
+    "DX": ("DX-meldingen", True), "CHAT": ("naar de chatserver", True), "CONV": ("conferentie (chat)", True),
+    "BBS": ("naar de BBS", True), "MAIL": ("naar de BBS", True), "EMAIL": ("e-mail via de node", True),
+    "TALK": ("praten met een gebruiker", False), "?": ("hulp", True), "HELP": ("hulp", True),
+}
 
 
 def html(melding_boven=""):
     keuze = rig.html_frequentie_keuze(0, "hz").replace(
         "Zelf instellen op de set (geen CAT, of een andere band)", "Frequentie niet wisselen")
-    snel = "".join(f'<button type="button" class="licht" data-cmd="{c}"{" data-direct=1" if d else ""} title="{_html.escape(t)}">'
-                   f'<b>{c}</b>{w}</button>' for c, w, d, t in SNEL)
     return f"""{melding_boven}<style>{CSS}</style>
 <section><h2>BBS</h2>
 <p class="uitleg">Verbinden met een BBS of ander packetstation (connected mode). Kies een BBS uit je lijst; de set gaat dan
@@ -129,8 +171,8 @@ eerst naar de frequentie die erbij hoort.</p>
 <label>Frequentie <small>mode en snelheid komen van Mijn frequenties (tabblad Radio)</small></label>{keuze}
 <div class="balk"><button type="submit">Toevoegen</button></div></form></details></section>
 <section><div class="term" aria-live="polite"></div>
-<div class="snel">{snel}<button type="button" class="licht" data-leeg style="margin-left:auto" title="Scherm leegmaken">Leeg</button></div>
+<div class="snel"><span class="knoppen" style="display:contents"></span><button type="button" class="licht" data-leeg style="margin-left:auto" title="Scherm leegmaken">Leeg</button></div>
 <form class="invoer" autocomplete="off"><input type="text" maxlength="250" placeholder="Typ een commando of tekst"
  aria-label="Invoer" enterkeyhint="send"><button type="submit">Zenden</button></form>
 <p class="uitleg verbinding" style="margin:8px 0 0"></p></section>
-<script>{JS}</script>"""
+<script>{JS.replace("SNEL_KNOPPEN", json.dumps(SNEL)).replace("NODE_UITLEG", json.dumps(NODE_UITLEG))}</script>"""
