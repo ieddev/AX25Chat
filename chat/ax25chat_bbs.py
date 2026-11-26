@@ -121,7 +121,9 @@ def wissel_frequentie(hz):
 # ---------------------------------------------------------------------------
 
 class Sessie:
-    def __init__(self, lees_station, meld, wissel=wissel_frequentie, adres=agw.DIREWOLF_AGW, log=print, link=None):
+    def __init__(self, lees_station, meld, wissel=wissel_frequentie, adres=agw.DIREWOLF_AGW, log=print, link=None,
+                 bezet=lambda: False):
+        self.bezet = bezet              # True terwijl het APRS-baken de set even op 144,800 heeft
         self.lees_station = lees_station
         self.meld = meld
         self.wissel = wissel
@@ -248,6 +250,8 @@ class Sessie:
             return "Stel eerst je roepnaam in (Radio, Station)."
         if zelfde(call, mijn):
             return "Dat is je eigen roepnaam."
+        if self.bezet():
+            return "Even wachten: het APRS-baken zendt (een paar seconden). Probeer het zo opnieuw."
         with self.lock:
             if self.stand != "verbroken":
                 return f"Er is al een verbinding met {self.tegen}. Verbreek die eerst."

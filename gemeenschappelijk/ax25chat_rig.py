@@ -85,8 +85,13 @@ def _lees(pad):
         return None
 
 
+TIJDELIJK = None        # Hz: de set staat even ergens anders (het APRS-baken op 144,800); de bewaker volgt dat
+
+
 def doelfrequentie():
     """Frequentie in Hz uit station.json, of None als de gebruiker de set zelf instelt."""
+    if TIJDELIJK:
+        return TIJDELIJK
     d = _lees(STATION_FILE)
     if isinstance(d, dict) and "frequentie" in d:
         try:
@@ -196,6 +201,8 @@ def is_hf(hz):
 def doelmode(r):
     """De mode waarin de set moet staan: die van de eigen frequentie (Mijn frequenties), anders de keuze bij
     Station, anders automatisch op basis van de frequentie."""
+    if TIJDELIJK:
+        return "PKTFM"
     doel = doelfrequentie()
     x = eigen(doel) if doel else None
     if x and x["mode"]:

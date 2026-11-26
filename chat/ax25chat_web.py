@@ -508,7 +508,7 @@ def main():
         print("direwolf.conf bijwerken (AGW-poort 8000 voor BBS'en)", flush=True)
         radio.pas_toe(r, met_rig=False)
     global BBS
-    BBS = bbs.Sessie(radio.station, CHAT._meld, log=lambda t: print(t, flush=True))
+    BBS = bbs.Sessie(radio.station, CHAT._meld, log=lambda t: print(t, flush=True), bezet=lambda: bool(BAKEN and BAKEN.weg))
     global BAKEN
     BAKEN = baken.Baken(CHAT, log=lambda t: print(t, flush=True),
                         verbonden=lambda: BBS.tegen if BBS.stand != "verbroken" else "")

@@ -229,8 +229,16 @@ Europa, FM-D 1200 baud), zodat je via digipeaters en iGates op kaarten als aprs.
 - **Alleen als je positie verandert** (meer dan 200 m sinds het vorige baken). Tijdens het rijden elke 10, 15,
   20 of 30 minuten; met **Vaker tijdens het rijden** hoe harder je rijdt hoe vaker (tot elke 3 minuten bij
   90 km/h) en ook na een bocht. Stilstaand zendt hij niets, tenzij je **Ook stilstaand eens per uur** aanzet.
-- **Alleen op 144,800**: zet bij Station de frequentie op 144,800. Staat de set op een andere frequentie, dan
-  wacht het baken (dat staat erbij).
+- **Altijd op 144,800**: staat de set (Station) op een andere frequentie, bijv. 144,925 om te chatten, dan zet
+  de Pi hem voor het baken even op 144,800 FM-D, zendt (Direwolf wacht zelf tot het kanaal vrij is) en zet hem
+  na een paar seconden terug op de frequentie en mode van ervoor. Chatberichten die in die seconden verstuurd
+  moeten worden, wachten even en gaan daarna op je eigen frequentie de lucht in. Dit kan alleen:
+  - met **CAT** (de Pi moet de set kunnen bedienen; met een DigiRig zonder CAT zet je Station of de set zelf op
+    144,800);
+  - met een set die op **2 m** kan (de IC-7300 niet);
+  - als op je eigen frequentie ook **1200 baud** gebruikt wordt. Op 9600 baud (bijv. 438,175) of 300 baud (HF)
+    wacht het baken, want dan zou Direwolf twee keer opnieuw moeten starten.
+  Kan het niet, dan staat in de status waarom het baken wacht.
 - **Niet tijdens een BBS-verbinding**: zolang je op het tabblad BBS verbonden bent, pauzeert het baken. Na het
   verbreken gaat het verder.
 - **Symbool** (auto, camper, fiets, huis …), **commentaar** (max. 40 tekens) en **pad** (standaard
