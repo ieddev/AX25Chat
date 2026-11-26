@@ -13,6 +13,8 @@ Onderweg met een Baofeng UV-5R, een DigiRig, een Pi Zero 2W en je telefoon, of i
 IC-9700, IC-7300 of FT-818. Eén set tegelijk, één gebruiker per Pi. Op de amateurband gaat niets
 versleuteld: berichten gaan als gewone, leesbare tekst.
 
+![Opstelling onderweg: Yaesu FTM-200D met een datakabel aan een DigiRig, de DigiRig met een USB-kabel aan een Raspberry Pi Zero met AX25Chat, en de telefoon via wifi aan de Pi](docs/opstelling-ftm200d.svg)
+
 **Stand van zaken:** stap 1 (de Pi en de set: hotspot, Direwolf, CAT, Zoek mijn set) en stap 2 (chatten:
 berichten met bevestiging, CQ roepen, monitor) zijn klaar om te testen. Stap 3 (webapp voor telefoon en
 laptop, later ook een Android-app) volgt. Connected mode is begonnen: op het tabblad BBS verbind je met een
