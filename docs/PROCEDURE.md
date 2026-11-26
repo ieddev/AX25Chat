@@ -247,6 +247,47 @@ Europa, FM-D 1200 baud), zodat je via digipeaters en iGates op kaarten als aprs.
 
 Het is een gedeeld kanaal: zend niet vaker dan nodig.
 
+### Hoe APRS werkt (voor nieuwe gebruikers)
+
+144,800 MHz is in heel Europa (IARU regio 1) dezelfde APRS-frequentie. Je eigen signaal reikt mobiel zo'n 10 tot
+50 km. Het wordt opgevangen door:
+
+- **Digipeaters**: stations op hoge plekken die je pakket herhalen, zodat het verder komt. Daarvoor dient het
+  pad `WIDE1-1,WIDE2-1`.
+- **iGates**: stations die wat ze horen op internet zetten. Dan sta je op **aprs.fi** en kan iedereen je zien.
+- **Andere APRS-stations** in de buurt, die je positie en berichten direct op hun scherm zien.
+
+In Nederland is het netwerk van digipeaters en iGates dicht, dus onderweg kom je vrijwel altijd op aprs.fi. In
+een dal of tussen hoge gebouwen kan een baken een keer gemist worden; het volgende komt dan meestal wel door.
+
+**Tips voor mobiel**: zet je roepnaam (Station) met **-9** erachter, bijv. PD3PAM-9; kies het symbool **Auto**;
+en zet **Vaker tijdens het rijden** aan, dan wordt je spoor op de kaart mooi gelijkmatig.
+
+### SSID: het nummer achter je roepnaam
+
+Met de SSID (het getal achter het streepje, 0 t/m 15) kun je meer stations met dezelfde roepnaam tegelijk in
+de lucht hebben. Voor APRS zijn dit de gangbare nummers (een afspraak, geen verplichting):
+
+| SSID | Gebruik |
+|---|---|
+| geen of -0 | Vast station thuis |
+| -1 t/m -4 | Digipeaters, iGates en andere vaste stations |
+| -5 | Smartphone-apps |
+| -6 | Satelliet of speciale operaties |
+| -7 | Handportofoon |
+| -8 | Boot, motor of camper |
+| -9 | Auto |
+| -10 | Internet- of Winlink-gateway |
+| -11 | Ballon of vliegtuig |
+| -12 | Tracker of eenrichtingsbaken |
+| -13 | Weerstation |
+| -14 | Vrachtwagen |
+| -15 | Overig |
+
+Voor packet, BBS'en en nodes kiest de beheerder de nummers zelf (bijv. PD4R-1 voor een BBS en PD4R-12 voor een
+node); daar zegt de SSID niets over het soort station. Gebruik je AX25Chat zowel thuis als in de auto, dan kun
+je thuis zonder SSID werken en in de auto met -9.
+
 ## Wisselen van set
 
 Sluit de andere set aan en kies op het tabblad Radio bij **Mijn sets** het profiel en *Gebruiken*.
