@@ -46,9 +46,9 @@ try { gekozen = localStorage.getItem('ax25chat-bbs') || ''; } catch (e) {}
 function tekenLijst() {
   var sel = $('.bbs-kies select');
   if (sel.value) gekozen = sel.value;
-  if (!lijst.some(function (x) { return x.call === gekozen; })) gekozen = lijst.length ? lijst[0].call : '';
+  if (!lijst.some(function (x) { return x.id === gekozen; })) gekozen = lijst.length ? lijst[0].id : '';
   sel.innerHTML = lijst.map(function (x) {
-    return '<option value="' + txt(x.call) + '"' + (x.call === gekozen ? ' selected' : '') + '>' + txt(x.call) +
+    return '<option value="' + txt(x.id) + '"' + (x.id === gekozen ? ' selected' : '') + '>' + txt(x.call) +
       (x.naam ? ' ' + txt(x.naam) : '') + ' · ' + txt(x.tekst) + '</option>';
   }).join('') + '<option value=""' + (gekozen ? '' : ' selected') + '>Andere roepnaam…</option>';
   kijkKeuze();
@@ -118,8 +118,9 @@ bron.onerror = function () { $('.verbinding').textContent = 'geen verbinding met
 bron.onopen = function () { $('.verbinding').textContent = ''; haal(); };
 function zend(t) { post({actie: 'stuur', tekst: t}); }
 document.addEventListener('click', function (e) {
-  var w = e.target.closest('[data-weg]'), k = e.target.closest('[data-cmd]'), c = $('.bbs-kies select').value;
-  if (w && c && confirm(c + ' uit je lijst halen?')) { post({actie: 'weg', call: c}); }
+  var w = e.target.closest('[data-weg]'), k = e.target.closest('[data-cmd]'), c = $('.bbs-kies select').value,
+      x = lijst.filter(function (b) { return b.id === c; })[0];
+  if (w && x && confirm(x.call + ' (' + x.tekst + ') uit je lijst halen?')) { post({actie: 'weg', call: x.call, hz: x.hz}); }
   if (e.target.closest('[data-verbreek]')) { post({actie: 'verbreek'}); }
   if (e.target.closest('[data-leeg]')) { post({actie: 'wis'}); }
   if (k) {
@@ -130,10 +131,10 @@ document.addEventListener('click', function (e) {
 $('.bbs-kies select').addEventListener('change', function () { gekozen = this.value; kijkKeuze(); if (!gekozen) $('.bbs-kies input').focus(); });
 $('.bbs-kies').addEventListener('submit', function (e) {
   e.preventDefault();
-  var c = $('.bbs-kies select').value, x = lijst.filter(function (b) { return b.call === c; })[0];
+  var c = $('.bbs-kies select').value, x = lijst.filter(function (b) { return b.id === c; })[0];
   if (x) { post({actie: 'verbind', call: x.call, hz: x.hz}); return; }
   var n = $('.bbs-kies input').value.trim().toUpperCase();
-  if (n) post({actie: 'verbind', call: n, onthoud: true}).then(function (r) { if (!r.fout) { gekozen = n; $('.bbs-kies input').value = ''; } });
+  if (n) post({actie: 'verbind', call: n, onthoud: true}).then(function (r) { if (!r.fout) { gekozen = n + '@0'; $('.bbs-kies input').value = ''; } });
 });
 $('.invoer').addEventListener('submit', function (e) {
   e.preventDefault(); var inv = $('.invoer input'), t = inv.value;
@@ -142,7 +143,8 @@ $('.invoer').addEventListener('submit', function (e) {
 $('.bbs-nieuw').addEventListener('submit', function (e) {
   e.preventDefault(); var f = e.target;
   post({actie: 'toevoegen', call: f.call.value, hz: +f.hz.value, naam: f.naam.value}).then(function (x) {
-    if (!x.fout) { f.call.value = ''; f.naam.value = ''; f.closest('details').open = false; }
+    if (!x.fout) { gekozen = f.call.value.trim().toUpperCase() + '@' + (+f.hz.value); $('.bbs-kies select').value = ''; lijst = x.lijst || lijst;
+      f.call.value = ''; f.naam.value = ''; f.closest('details').open = false; tekenLijst(); }
   });
 });
 })();

@@ -86,8 +86,12 @@ class TestLijst(Basis):
         self.assertEqual([x["call"] for x in lijst], ["PD4R-1", "PD4R-2"])
         self.assertEqual(lijst[0]["tekst"], "144,775 MHz · USB-D · 1200 baud")        # mode van Mijn frequenties
         self.assertEqual(lijst[1]["tekst"], "huidige frequentie")
-        bbs.voeg_toe("PD4R-1", 144925000, "")                                         # zelfde call: vervangen
+        bbs.voeg_toe("PD4R-1", 144775000, "nieuwe naam")                              # zelfde call en frequentie: vervangen
         self.assertEqual(len(bbs.lijst()), 2)
+        bbs.voeg_toe("PD4R-1", 144925000, "")                         # zelfde call, andere frequentie: erbij (bijv. 2 m en 70 cm)
+        self.assertEqual([x["id"] for x in bbs.lijst()], ["PD4R-2@0", "PD4R-1@144775000", "PD4R-1@144925000"])
+        bbs.haal_weg("PD4R-1", 144775000)
+        self.assertEqual([x["id"] for x in bbs.lijst()], ["PD4R-2@0", "PD4R-1@144925000"])
         bbs.haal_weg("pd4r-2")
         self.assertEqual([x["call"] for x in bbs.lijst()], ["PD4R-1"])
         self.assertEqual(radio.station()["eigen"][0]["hz"], 144775000)                # Mijn frequenties blijft

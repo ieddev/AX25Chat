@@ -358,14 +358,18 @@ class Handler(BaseHTTPRequestHandler):
         actie = d.get("actie")
         if actie in ("toevoegen", "weg"):
             if actie == "weg":
-                bbs.haal_weg(str(d.get("call", "")))
+                try:
+                    hz = int(d["hz"]) if d.get("hz") is not None else None
+                except (TypeError, ValueError):
+                    hz = None
+                bbs.haal_weg(str(d.get("call", "")), hz)
                 fouten = []
             else:
                 fouten, _ = bbs.voeg_toe(d.get("call"), d.get("hz"), d.get("naam"))
             if fouten:
                 return self._json({"fout": "; ".join(fouten)})
             CHAT._meld("bbslijst", bbs.lijst())
-            return self._json({"ok": True})
+            return self._json({"ok": True, "lijst": bbs.lijst()})
         if actie == "verbind":
             try:
                 hz = int(d.get("hz") or 0)
