@@ -304,6 +304,44 @@ Voor packet, BBS'en en nodes kiest de beheerder de nummers zelf (bijv. PD4R-1 vo
 node); daar zegt de SSID niets over het soort station. Gebruik je AX25Chat zowel thuis als in de auto, dan kun
 je thuis zonder SSID werken en in de auto met -9.
 
+## Kaart (gehoorde stations)
+
+Op het tabblad **Kaart** zie je de stations die je Pi hoort met een APRS-positie: mobiele stations, digipeaters,
+nodes, weerstations. Ook jezelf (groene rand), met de positie van je GPS of de vaste positie van het baken. De
+kaart werkt **zonder internet**: de kaarttegels en het kaartprogramma (Leaflet) staan op de Pi.
+
+**Eenmalig de kaart downloaden** (met internet: thuis-wifi of netwerkkabel), op het tabblad **Radio**, onderaan bij
+*Offline kaart*:
+
+| Keuze | Uitleg |
+|---|---|
+| **Midden van de kaart** | Gemeente of woonplaats, bijv. *Deventer*. Laat je hem leeg, dan neemt de Pi de vaste positie die je bij het APRS-baken invulde. |
+| **Straal** | Hoe ver de kaart reikt, in elke richting. Op 2 m hoor je stations tot zo'n 50 km, via digipeaters verder. 50 km is een goede keus; 100 km geeft een veel grotere download. |
+| **Detail** | *Wegen en straatnamen* (aanbevolen) of minder detail voor een kleinere download. Rond het midden (10 km) komt altijd meer detail, zodat je in je eigen buurt de straten ziet. Daaromheen ligt een grof overzicht tot zo'n 150 km. |
+
+Met de standaardkeuze zijn het ongeveer 7.000 tegels, zo'n 100 MB, een paar minuten downloaden. De vorige kaart
+blijft werken tot de nieuwe binnen is. Is er geen internet, dan stopt de download na een halve minuut met een
+melding. De kaart is de BRT-Achtergrondkaart van het Kadaster via PDOK (open data, CC BY 4.0), dezelfde als in
+Noodnet. Die dekt **alleen Nederland**: stations over de grens staan er wel op, maar zonder ondergrond.
+
+**Op de kaart:**
+
+| Teken | Betekenis |
+|---|---|
+| Blauwe rand | Direct gehoord (zonder digipeater) |
+| Oranje rand | Via een digipeater gehoord; in de popup staat via welke |
+| Grijs | Langer dan een uur geleden gehoord |
+| Groene rand | Jij |
+| 🚗 🏠 📡 🚶 🌤 ... | Het APRS-symbool van het station (auto, huis, digipeater, lopend, weer ...) |
+
+Tik op een station voor de tijd, snelheid en koers, het commentaar en de positie, en **Bericht sturen** (dan opent
+de chat met dat station). Met de keuzelijst bovenaan kies je hoe ver terug: het laatste uur tot de laatste week.
+Nieuwe posities komen er vanzelf bij. Een station dat langer dan een week niet gehoord is, verdwijnt.
+
+De kaart leest de drie gangbare APRS-posities: gewone (zoals AX25Chat en APRSdroid ze zenden), gecomprimeerde
+(trackers) en Mic-E (Kenwood, Yaesu en veel trackers). Objecten (zoals een evenement of een repeater die iemand
+anders op de kaart zet) komen er nog niet op.
+
 ## Wisselen van set
 
 Sluit de andere set aan en kies op het tabblad Radio bij **Mijn sets** het profiel en *Gebruiken*.
@@ -354,4 +392,6 @@ en haal dan pas de stroom eraf.
 | Zoek mijn set vindt niets | Set aan? USB-kabel goed? Bij een Icom: *CI-V USB Port* op *Unlink from [REMOTE]* |
 | Set gaat niet zenden | Tabblad Status → log van Direwolf. Kijk bij Handmatig instellen naar de besturing (CAT, RTS, VOX) |
 | Niets ontvangen | Luistertest doen; ontvangstniveau omhoog; staat de set op de goede frequentie? |
+| Kaart blijft grijs | Op het tabblad Radio de offline kaart downloaden (met internet). Stations staan er ook zonder op. |
+| Station niet op de kaart | Staat het in de Monitor? Alleen frames met een APRS-positie komen op de kaart (geen berichten of status). |
 | Log bekijken via ssh | `journalctl -u ax25chat-direwolf -f` |

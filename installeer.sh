@@ -109,6 +109,7 @@ fi
 stap "AX25Chat-programma's naar $DOEL"
 cp "$BRON"/gemeenschappelijk/*.py "$BRON"/gemeenschappelijk/*.sh "$DOEL"/
 cp "$BRON"/chat/*.py "$DOEL"/
+mkdir -p "$DOEL/leaflet" && cp "$BRON"/gemeenschappelijk/leaflet/* "$DOEL/leaflet/"   # kaart (tabblad Kaart)
 chmod +x "$DOEL"/*.sh
 git -C "$BRON" log -1 --format='%h %cd' --date=format:'%Y-%m-%d' > "$DOEL/versie.txt"
 

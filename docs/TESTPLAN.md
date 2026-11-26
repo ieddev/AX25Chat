@@ -116,3 +116,16 @@ TNC of via geluid), of een set met APRS-berichten. Spreek een frequentie af.
 | H5b | Andere snelheid | Station op 438,175 (9600) | Status: *Wacht: op 438,175 MHz wordt 9600 baud gebruikt…*; set blijft staan | ☐ |
 | H5c | Chat tijdens baken | Op 144,925 een bericht versturen terwijl het baken zendt | Bericht gaat pas na terugkeer op 144,925 de lucht in | ☐ |
 | H6 | BBS-verbinding | Verbinden met PD4R-12 (op 144,800 of een andere frequentie) | Status: *Gepauzeerd*; na verbreken weer *Baken staat aan* | ☐ |
+
+## I. Kaart
+
+| # | Wat | Hoe | Verwacht | OK |
+|---|-----|-----|----------|----|
+| I1 | Kaart downloaden | Pi met internet (thuis-wifi), Radio → Offline kaart: je woonplaats, 50 km, aanbevolen; Kaart downloaden | Voortgang telt op; na een paar minuten *Kaart gedownload* met ongeveer 7.000 tegels | ☐ |
+| I2 | Zonder internet | Hotspot aan, geen internet, Kaart downloaden | Na ongeveer een halve minuut: *Geen verbinding met de kaartserver*; vorige kaart blijft | ☐ |
+| I3 | Gehoorde stations | Station op 144,800, een kwartier luisteren, tabblad Kaart | Stations met symbool en roepnaam; blauw direct, oranje via digipeater; tik geeft tijd en *Bericht sturen* | ☐ |
+| I4 | Live | Kaart open laten, APRSdroid of een tweede set een positie laten zenden | Station verschijnt of verplaatst zonder herladen | ☐ |
+| I5 | Mic-E | Een Kenwood/Yaesu-set of tracker met Mic-E in de buurt | Staat op de goede plek (vergelijk met aprs.fi) | ☐ |
+| I6 | Zelf | Vaste positie of GPS bij het baken | Jij met groene rand | ☐ |
+| I7 | Bericht sturen | Tik op een station, Bericht sturen | Chat opent met de roepnaam al ingevuld | ☐ |
+| I8 | Zonder internet kijken | Telefoon alleen op de hotspot (mobiele data uit), tabblad Kaart | Kaart met ondergrond, inzoomen rond het midden geeft straten | ☐ |

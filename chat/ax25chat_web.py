@@ -4,6 +4,7 @@ ax25chat_web.py - webserver van AX25Chat op de Pi.
 
 Open via de wifi-hotspot van de Pi:   http://10.42.0.1
   Chat      (stap 2: berichten lezen en sturen; nu nog een overzicht)
+  Kaart     gehoorde stations met een APRS-positie, op de offline kaart
   Radio     station, Zoek mijn set, mijn sets, luistertest, testuitzending   (inloggen: gebruiker beheer)
   Status    diensten, hotspot, bijwerken, log van Direwolf, Pi uitschakelen    (inloggen: gebruiker beheer)
 
@@ -36,6 +37,8 @@ import ax25chat_bbs as bbs
 import ax25chat_bbspagina as bbspagina
 import ax25chat_bijwerken as bijwerken
 import ax25chat_chatpagina as chatpagina
+import ax25chat_kaart as kaart
+import ax25chat_kaartpagina as kaartpagina
 import ax25chat_radio as radio
 
 rig = radio.rig
@@ -76,7 +79,8 @@ pre{background:var(--bg);border:1px solid var(--lijn);border-radius:8px;padding:
 details summary{cursor:pointer;color:var(--blauw);font-weight:600;margin:8px 0}
 """
 
-PAGINAS = [("chat", "Chat"), ("bbs", "BBS"), ("radio", "Radio"), ("status", "Status")]
+PAGINAS = [("chat", "Chat"), ("bbs", "BBS"), ("kaart", "Kaart"), ("radio", "Radio"), ("status", "Status")]
+STATISCH = {"leaflet/leaflet.js": "application/javascript; charset=utf-8", "leaflet/leaflet.css": "text/css; charset=utf-8"}
 
 
 # ---------------------------------------------------------------------------
@@ -185,6 +189,22 @@ Schakel de Pi hier uit en wacht tot het groene lampje niet meer knippert (± 20 
 <button type="submit" name="actie" value="herstart" class="licht" onclick="return confirm('Pi herstarten? Duurt ongeveer 2 minuten.')">Pi herstarten</button></form></section>"""
 
 
+def eigen_positie():
+    """Mijn positie voor de kaart: van de GPS of de vaste positie van het baken (ook als het baken uit staat)."""
+    b = baken.instellingen()
+    pos = None
+    if BAKEN:
+        try:
+            pos = BAKEN.positie(b)
+        except Exception:
+            pos = None
+    if not pos and b.get("lat") is not None and b.get("lon") is not None:
+        pos = {"lat": b["lat"], "lon": b["lon"]}
+    if not pos:
+        return None
+    return {"lat": round(pos["lat"], 5), "lon": round(pos["lon"], 5), "symbool": "/" + (b.get("symbool") or ">")}
+
+
 def pi_actie(actie):
     if actie not in ("uit", "herstart"):
         return None
@@ -238,6 +258,19 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
+    def _bestand(self, pad, soort, bewaar):
+        try:
+            with open(pad, "rb") as f:
+                data = f.read()
+        except OSError:
+            return self._stuur("Niet gevonden", 404, "text/plain; charset=utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", soort)
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Cache-Control", f"max-age={bewaar}")
+        self.end_headers()
+        self.wfile.write(data)
+
     def _terug(self, waar, melding=""):
         self.send_response(303)
         self.send_header("Location", waar + (("?m=" + quote(melding)) if melding else ""))
@@ -256,6 +289,16 @@ class Handler(BaseHTTPRequestHandler):
             return self._stuur(pagina("chat", html_chat(), meld))
         if pad == "bbs":
             return self._stuur(pagina("bbs", bbspagina.html(meld)))
+        if pad == "kaart":
+            return self._stuur(pagina("kaart", kaartpagina.html_pagina(kaart.voor_kaart()), meld))
+        if pad.startswith("tegels/"):
+            delen = pad.split("/")
+            bestand = kaart.tegel_pad(*delen[1:4]) if len(delen) == 4 else None
+            if not bestand:
+                return self._stuur(b"", 404, "text/plain")
+            return self._bestand(bestand, "image/png", 86400)
+        if pad in STATISCH:
+            return self._bestand(os.path.join(MAP, pad), STATISCH[pad], 86400)
         if pad.startswith("api/"):
             return self._api_get(pad[4:], parse_qs(url.query))
         if pad == "status.json":                      # voor de webapp (stap 3)
@@ -284,6 +327,8 @@ class Handler(BaseHTTPRequestHandler):
         return self._stuur(json.dumps(data, ensure_ascii=False), code, "application/json; charset=utf-8")
 
     def _api_get(self, pad, q):
+        if pad == "kaart":
+            return self._json(dict(kaart.voor_kaart(), download=kaart.stand_json()))
         if CHAT is None:
             return self._json({"fout": "chat niet gestart"}, 503)
         if pad == "berichten":
@@ -295,6 +340,12 @@ class Handler(BaseHTTPRequestHandler):
             return self._json({"nu": nu, "mij": CHAT.mijn_call(), "berichten": CHAT.opslag.lijst(sinds)})
         if pad == "monitor":
             return self._json(CHAT.opslag.monitor(200))
+        if pad == "stations":
+            try:
+                sinds = float(q.get("sinds", ["0"])[0])
+            except ValueError:
+                sinds = 0
+            return self._json({"nu": time.time(), "stations": CHAT.opslag.stations(sinds), "mij": eigen_positie()})
         if pad == "live":
             return self._live()
         if pad == "bbs" and BBS:
@@ -430,6 +481,9 @@ class Handler(BaseHTTPRequestHandler):
                 melding = ("Baken verzonden: " + info) if info else BAKEN.stand
                 return self._terug("/radio", ("ok:" if info else "fout:") + melding)
             return self._terug("/radio", "ok:" + melding)
+        if pad == "kaart":
+            fout = kaart.start_download(f.get("plaats"), f.get("straal"), f.get("zoom"), _vaste_positie())
+            return self._terug("/radio", ("fout:" + fout) if fout else "ok:Download gestart. Dit duurt een paar minuten.")
         if pad == "frequentie":
             fouten, melding = radio.verwerk_eigen(f)
             return self._terug("/radio", ("fout:" + "; ".join(fouten)) if fouten else "ok:" + melding)
@@ -490,6 +544,11 @@ class Handler(BaseHTTPRequestHandler):
         self._stuur("Niet gevonden", 404, "text/plain; charset=utf-8")
 
 
+def _vaste_positie():
+    b = baken.instellingen()
+    return (b["lat"], b["lon"]) if b.get("lat") is not None and b.get("lon") is not None else None
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--poort", type=int, default=80)
@@ -513,6 +572,7 @@ def main():
     BAKEN = baken.Baken(CHAT, log=lambda t: print(t, flush=True),
                         verbonden=lambda: BBS.tegen if BBS.stand != "verbroken" else "")
     radio.NA_EIGEN.append(lambda verborgen: baken.html(verborgen, BAKEN))
+    radio.NA_EIGEN.append(lambda verborgen: kaart.html_beheer(verborgen, _vaste_positie()))
     server = ThreadingHTTPServer(("0.0.0.0", args.poort), Handler)
     print(f"AX25Chat op http://0.0.0.0:{args.poort}", flush=True)
     try:

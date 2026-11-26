@@ -15,6 +15,7 @@ APRS-stations de berichten kunnen lezen en beantwoorden. Andere packetstations z
     het verschijnt maar één keer)
   - langer dan 67 tekens: opgesplitst in meer berichten
   - alles wat Direwolf hoort, komt ook in de monitor (laatste 500 frames)
+  - een gehoorde APRS-positie komt in de lijst met stations, voor de kaart (een week bewaard)
 
 Berichten staan in een SQLite-bestand (berichten.db), zodat ze een herstart overleven.
 Alleen standaard-Python.
@@ -26,11 +27,13 @@ import sqlite3
 import threading
 import time
 
+import ax25chat_aprs as aprs
 import ax25chat_ax25 as ax25
 
 MAX_TEKST = 67
 WACHTTIJDEN = [30, 45, 60, 90, 120]       # seconden na elke poging; na de laatste: niet bevestigd
 MONITOR_MAX = 500
+STATION_DAGEN = 7                          # stations op de kaart: zo lang bewaard na het laatste horen
 CALL_RE = re.compile(r"^[A-Z0-9]{1,6}(-([0-9]|1[0-5]))?$")
 
 
@@ -106,6 +109,8 @@ CREATE TABLE IF NOT EXISTS berichten (
   nummer TEXT, status TEXT, pogingen INTEGER DEFAULT 0, volgende REAL DEFAULT 0, gewijzigd REAL);
 CREATE TABLE IF NOT EXISTS monitor (id INTEGER PRIMARY KEY, tijd REAL, van TEXT, aan TEXT, pad TEXT, info TEXT);
 CREATE TABLE IF NOT EXISTS teller (naam TEXT PRIMARY KEY, waarde INTEGER);
+CREATE TABLE IF NOT EXISTS stations (call TEXT PRIMARY KEY, tijd REAL, lat REAL, lon REAL, symbool TEXT,
+  commentaar TEXT, koers INTEGER, kmh INTEGER, via TEXT, direct INTEGER);
 CREATE INDEX IF NOT EXISTS berichten_gewijzigd ON berichten(gewijzigd);
 """)
 
@@ -188,6 +193,22 @@ CREATE INDEX IF NOT EXISTS berichten_gewijzigd ON berichten(gewijzigd);
             ids = [r[0] for r in self.db.execute(f"SELECT id FROM berichten WHERE {waar}", args)]
             self.db.execute(f"DELETE FROM berichten WHERE {waar}", args)
             return ids
+
+    def station_toe(self, call, pad, pos, nu=None):
+        """Gehoorde positie bewaren. via: de digipeaters die het frame herhaalden (met *); direct: zonder digipeater."""
+        nu = nu or time.time()
+        via = [p.rstrip("*") for p in pad if p.endswith("*")]
+        rij = (call.upper(), nu, pos["lat"], pos["lon"], pos["symbool"], pos["commentaar"], pos.get("koers"),
+               pos.get("kmh"), ",".join(via), 0 if via else 1)
+        with self.lock, self.db:
+            self.db.execute("INSERT OR REPLACE INTO stations (call, tijd, lat, lon, symbool, commentaar, koers, kmh, via, "
+                            "direct) VALUES (?,?,?,?,?,?,?,?,?,?)", rij)
+            self.db.execute("DELETE FROM stations WHERE tijd < ?", (nu - STATION_DAGEN * 86400,))
+            return dict(self.db.execute("SELECT * FROM stations WHERE call=?", (rij[0],)).fetchone())
+
+    def stations(self, sinds=0):
+        with self.lock:
+            return [dict(r) for r in self.db.execute("SELECT * FROM stations WHERE tijd > ? ORDER BY tijd DESC", (sinds,))]
 
     def monitor(self, n=200):
         with self.lock:
@@ -334,6 +355,9 @@ class Chat:
         if zelfde_call(van, mij):
             return                                        # mijn eigen frame, terug via een digipeater
         self._meld("monitor", self.opslag.monitor_toe(van, aan, pad, tekst))
+        pos = aprs.lees_positie(info if isinstance(info, (bytes, bytearray)) else tekst, aan)
+        if pos:
+            self._meld("station", self.opslag.station_toe(van, pad, pos))
         b = lees_bericht(tekst)
         if not b:
             return
