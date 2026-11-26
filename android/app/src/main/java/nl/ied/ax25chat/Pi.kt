@@ -42,6 +42,14 @@ object Pi {
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean("meldingen", aan).apply()
     }
 
+    /** GPS van de telefoon naar de Pi sturen, als positie voor het APRS-baken. */
+    fun gpsAan(ctx: Context): Boolean =
+        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean("gps", false)
+
+    fun zetGps(ctx: Context, aan: Boolean) {
+        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean("gps", aan).apply()
+    }
+
     fun basis(ctx: Context) = "http://" + adres(ctx)
 
     /** Eén keer bij het starten: volg de wifi en bind de app eraan. */

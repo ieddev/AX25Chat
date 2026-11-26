@@ -35,6 +35,8 @@ object Chat {
     @Volatile var verbonden = false
     @Volatile var zichtbaar = false          // MainActivity staat op het scherm: dan geen melding nodig
     var actief = "CQ"
+    @Volatile var frequentie = ""            // bijv. '144,925 MHz', van /api/frequenties
+    @Volatile var gpsStand = ""              // wat de GPS van de telefoon doet (Instellingen)
 
     private val hoofd = Handler(Looper.getMainLooper())
     private val luisteraars = ArrayList<() -> Unit>()
@@ -59,6 +61,12 @@ object Chat {
     }
 
     @Synchronized
+    fun zetFrequentie(tekst: String) {
+        frequentie = tekst
+        meld()
+    }
+
+    @Synchronized
     fun zetVerbonden(v: Boolean) {
         if (verbonden != v) {
             verbonden = v
@@ -78,6 +86,10 @@ object Chat {
                 val b = Bericht.van(lijst.getJSONObject(i))
                 berichten[b.id] = b
             }
+        }
+        try {
+            frequentie = Pi.haal(ctx, "/api/frequenties").optString("tekst")
+        } catch (_: Exception) {
         }
         val m = try { Pi.haalLijst(ctx, "/api/monitor") } catch (_: Exception) { null }
         synchronized(this) {

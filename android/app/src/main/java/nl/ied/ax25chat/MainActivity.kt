@@ -95,7 +95,13 @@ class MainActivity : Activity() {
             text = "AX25Chat"; setTextColor(Color.WHITE); textSize = 19f; typeface = Typeface.DEFAULT_BOLD
         })
         kopStand = TextView(this).apply { setTextColor(0xD9FFFFFF.toInt()); textSize = 14f; setPadding(dp(10), 0, 0, 0) }
-        kop.addView(kopStand)
+        kop.addView(kopStand, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        kop.addView(Button(this).apply {                                       // frequentie wisselen
+            text = "Frequentie"; isAllCaps = false; textSize = 13f; setTextColor(Color.WHITE)
+            background = rond(0x33FFFFFF, 0x66FFFFFF, 8); minHeight = 0; minimumHeight = 0
+            setPadding(dp(10), dp(4), dp(10), dp(4))
+            setOnClickListener { kiesFrequentie() }
+        })
         wortel.addView(kop)
 
         inhoud = FrameLayout(this)
@@ -119,6 +125,18 @@ class MainActivity : Activity() {
         LiveService.start(this)
         openGesprek(intent)
         kiesTab("chat")
+    }
+
+    override fun onRequestPermissionsResult(code: Int, permissions: Array<out String>, uitslag: IntArray) {
+        super.onRequestPermissionsResult(code, permissions, uitslag)
+        if (code == 2) {
+            if (uitslag.isNotEmpty() && uitslag[0] == PackageManager.PERMISSION_GRANTED) LiveService.start(this)
+            else {
+                Pi.zetGps(this, false)
+                Toast.makeText(this, "Zonder toestemming voor de locatie kan de app je positie niet sturen", Toast.LENGTH_LONG).show()
+                if (tab == "instellingen") kiesTab("instellingen")
+            }
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -232,6 +250,25 @@ class MainActivity : Activity() {
         s.addView(uitleg("De app blijft op de achtergrond verbonden met de Pi. Android toont daarvoor een vaste melding " +
             "'AX25Chat luistert'; die kun je bij de meldingsinstellingen van Android verbergen."))
 
+        s.addView(label("GPS van de telefoon"))
+        val gpsStand = uitleg(Chat.gpsStand)
+        s.addView(Switch(this).apply {
+            text = "Mijn positie naar de Pi sturen (voor het APRS-baken en de kaart)"; isChecked = Pi.gpsAan(this@MainActivity)
+            setOnCheckedChangeListener { _, aan ->
+                Pi.zetGps(this@MainActivity, aan)
+                if (aan && checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                    requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.ACCESS_COARSE_LOCATION), 2)
+                } else {
+                    LiveService.start(this@MainActivity)
+                }
+                postDelayed({ gpsStand.text = Chat.gpsStand }, 1500)
+            }
+        })
+        s.addView(gpsStand)
+        s.addView(uitleg("Zet op de Pi bij het APRS-baken (tabblad Radio) 'Positie uit' op 'GPS van de telefoon' en het " +
+            "baken aan. De app stuurt elke 10 seconden je positie, ook met het scherm uit. Dan heb je geen GPS-stickje nodig."))
+
         s.addView(label("Instellen van de Pi"))
         s.addView(uitleg("Set, roepnaam, Mijn frequenties, de BBS-lijst, het baken en de offline kaart stel je eenmalig in op " +
             "de webpagina van de Pi (tabblad Radio, gebruiker beheer)."))
@@ -301,7 +338,8 @@ class MainActivity : Activity() {
 
     private fun tekenChat() {
         if (!::chatScherm.isInitialized) return
-        kopStand.text = (Chat.mij.ifEmpty { "" }) + if (Chat.verbonden) "  ● verbonden" else "  ○ geen verbinding met de Pi"
+        kopStand.text = (Chat.mij.ifEmpty { "" }) + (if (Chat.verbonden && Chat.frequentie.isNotEmpty()) " · " + Chat.frequentie else "") +
+            if (Chat.verbonden) "  ●" else "  ○ geen verbinding met de Pi"
 
         gesprekBalk.removeAllViews()
         for (g in Chat.gesprekken() + "+") {
@@ -377,6 +415,46 @@ class MainActivity : Activity() {
             if (uit) marginStart = dp(48) else marginEnd = dp(48)
         })
         return rij
+    }
+
+    /** Frequentie kiezen uit Mijn frequenties en de 2 m-kanalen (zoals bij Station op de webpagina). */
+    private fun kiesFrequentie() {
+        thread {
+            val d = try { Pi.haal(this, "/api/frequenties") } catch (_: Exception) { null }
+            runOnUiThread {
+                if (d == null) {
+                    Toast.makeText(this, "Geen verbinding met de Pi", Toast.LENGTH_SHORT).show(); return@runOnUiThread
+                }
+                val lijst = d.optJSONArray("keuzes") ?: return@runOnUiThread
+                val huidig = d.optLong("huidig")
+                val teksten = Array(lijst.length()) { i ->
+                    val k = lijst.getJSONObject(i)
+                    (if (k.optBoolean("eigen")) "★ " else "") + k.optString("tekst")
+                }
+                val gekozen = (0 until lijst.length()).firstOrNull { lijst.getJSONObject(it).optLong("hz") == huidig } ?: -1
+                android.app.AlertDialog.Builder(this)
+                    .setTitle(if (d.optBoolean("cat")) "Frequentie (de Pi zet de set erop)" else "Frequentie (zet de set zelf goed: geen CAT)")
+                    .setSingleChoiceItems(teksten, gekozen) { dlg, i ->
+                        dlg.dismiss()
+                        zetFrequentie(lijst.getJSONObject(i).optLong("hz"))
+                    }
+                    .setNegativeButton("Annuleren", null)
+                    .show()
+            }
+        }
+    }
+
+    private fun zetFrequentie(hz: Long) {
+        thread {
+            val melding = try {
+                val a = Pi.stuur(this, "/api/frequentie", JSONObject().put("hz", hz))
+                Chat.zetFrequentie(a.optString("tekst", Chat.frequentie))
+                if (a.has("fout")) a.optString("fout") else "Frequentie: " + a.optString("tekst")
+            } catch (_: Exception) {
+                "Geen verbinding met de Pi"
+            }
+            runOnUiThread { Toast.makeText(this, melding, Toast.LENGTH_LONG).show() }
+        }
     }
 
     private fun nieuwGesprek() {

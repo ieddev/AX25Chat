@@ -116,6 +116,7 @@ TNC of via geluid), of een set met APRS-berichten. Spreek een frequentie af.
 | H5b | Andere snelheid | Station op 438,175 (9600) | Status: *Wacht: op 438,175 MHz wordt 9600 baud gebruikt…*; set blijft staan | ☐ |
 | H5c | Chat tijdens baken | Op 144,925 een bericht versturen terwijl het baken zendt | Bericht gaat pas na terugkeer op 144,925 de lucht in | ☐ |
 | H6 | BBS-verbinding | Verbinden met PD4R-12 (op 144,800 of een andere frequentie) | Status: *Gepauzeerd*; na verbreken weer *Baken staat aan* | ☐ |
+| H7 | Telefoon als bron | Positie uit = GPS van de telefoon, app dicht | Status: *Wacht op de positie van de telefoon*; met de app aan: bakens | ☐ |
 
 ## I. Kaart
 
@@ -146,3 +147,6 @@ TNC of via geluid), of een set met APRS-berichten. Spreek een frequentie af.
 | J6 | Buiten bereik | Weg van de hotspot en terug | *○ geen verbinding*; na terugkomst binnen ~10 s weer verbonden | ☐ |
 | J7 | Kaart en BBS | Tabbladen Kaart en BBS | Pagina's van de Pi zonder hun eigen kop; *Bericht sturen* op de kaart opent de chat | ☐ |
 | J8 | Bijwerken | Nieuwe release over de oude heen installeren | Installeert zonder de oude te verwijderen | ☐ |
+| J9 | GPS van de telefoon | App: Instellingen → positie naar de Pi aan; Pi: baken *Positie uit* = telefoon, aan | App: *Positie naar de Pi gestuurd*; Pi: status baken met de positie; baken in de Monitor en op aprs.fi | ☐ |
+| J10 | GPS op de achtergrond | Scherm uit, een stuk rijden | Bakens tijdens het rijden (vaker bij hogere snelheid); jij beweegt op het tabblad Kaart | ☐ |
+| J11 | Frequentie wisselen | Knop *Frequentie*, kies een eigen frequentie (★) | Set gaat erop (CAT), bovenaan staat de nieuwe frequentie; webpagina Radio → Station toont hem ook | ☐ |

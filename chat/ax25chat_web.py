@@ -189,6 +189,33 @@ Schakel de Pi hier uit en wacht tot het groene lampje niet meer knippert (± 20 
 <button type="submit" name="actie" value="herstart" class="licht" onclick="return confirm('Pi herstarten? Duurt ongeveer 2 minuten.')">Pi herstarten</button></form></section>"""
 
 
+def station_opslaan(f):
+    """Station opslaan (webpagina of app) en de set en Direwolf erop zetten. Geeft (fouten, meldingen)."""
+    fouten, s2 = radio.verwerk_station(f)
+    if fouten:
+        return fouten, []
+    r = radio.instellingen()
+    mis = radio.pas_toe(r, s2["roepnaam"], met_rig=False) if r.get("geluidskaart") else []
+    if rig.cat_actief(r) and rig.doelfrequentie():
+        mis += rig.zet_set(r)
+    return [], mis
+
+
+def frequenties():
+    """Voor de app: de huidige frequentie en de keuzes (2 m-kanalen en Mijn frequenties)."""
+    eigen = {x["hz"]: x for x in rig.eigen_frequenties()}
+    keuzes = [{"hz": 0, "tekst": "Zelf instellen op de set", "eigen": False}]
+    for hz in rig.frequentie_keuzes():
+        if hz in eigen:
+            keuzes.append({"hz": hz, "tekst": rig.eigen_tekst(eigen[hz]), "eigen": True})
+        elif not any(k["hz"] == hz for k in keuzes):
+            keuzes.append({"hz": hz, "tekst": rig.mhz(hz) + (" (APRS)" if hz == rig.APRS_FREQ else ""), "eigen": False})
+    keuzes.sort(key=lambda k: (not k["eigen"], k["hz"]) if k["hz"] else (False, -1))
+    s = radio.station()
+    return {"huidig": s.get("frequentie") or 0, "tekst": rig.mhz(s.get("frequentie")), "keuzes": keuzes,
+            "cat": bool(rig.cat_actief(radio.instellingen()))}
+
+
 def eigen_positie():
     """Mijn positie voor de kaart: van de GPS of de vaste positie van het baken (ook als het baken uit staat)."""
     b = baken.instellingen()
@@ -340,6 +367,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._json({"nu": nu, "mij": CHAT.mijn_call(), "berichten": CHAT.opslag.lijst(sinds)})
         if pad == "monitor":
             return self._json(CHAT.opslag.monitor(200))
+        if pad == "frequenties":
+            return self._json(frequenties())
         if pad == "stations":
             try:
                 sinds = float(q.get("sinds", ["0"])[0])
@@ -398,6 +427,23 @@ class Handler(BaseHTTPRequestHandler):
             return self._json({"fouten": fouten, "berichten": uit}, 400 if fouten else 200)
         if pad == "wis":
             return self._json({"ok": CHAT.wis(d.get("gesprek"))})
+        if pad == "positie":                       # GPS van de telefoon (Android-app), voor het baken en de kaart
+            fout = baken.telefoon_positie(d)
+            return self._json({"fout": fout} if fout else {"ok": True, "bron": baken.instellingen().get("bron")},
+                              400 if fout else 200)
+        if pad == "frequentie":                    # frequentie wisselen uit de app (Mijn frequenties)
+            if BAKEN and BAKEN.weg:
+                return self._json({"fout": "Het baken zendt net op 144,800. Probeer het over een paar seconden opnieuw."})
+            s = radio.station()
+            fouten, mis = station_opslaan({"roepnaam": s.get("roepnaam", ""), "frequentie": str(d.get("hz") or 0),
+                                           "pad": s.get("pad") or ""})
+            if fouten:
+                return self._json({"fout": "; ".join(fouten)})
+            uit = frequenties()
+            if mis:
+                uit["fout"] = "Opgeslagen, maar " + "; ".join(mis)
+            CHAT._meld("frequentie", uit)
+            return self._json(uit)
         if pad == "bbs" and BBS:
             return self._api_bbs(d)
         if pad in ("opnieuw", "stop"):
@@ -455,13 +501,9 @@ class Handler(BaseHTTPRequestHandler):
         pad = urlparse(self.path).path.strip("/")
         s = radio.station()
         if pad == "station":
-            fouten, s2 = radio.verwerk_station(f)
+            fouten, mis = station_opslaan(f)
             if fouten:
                 return self._stuur(pagina("radio", radio.html_radio(verborgen()), meldingen(fouten=fouten)))
-            r = radio.instellingen()
-            mis = radio.pas_toe(r, s2["roepnaam"], met_rig=False) if r.get("geluidskaart") else []
-            if rig.cat_actief(r) and rig.doelfrequentie():
-                mis += rig.zet_set(r)
             return self._terug("/radio", ("fout:" + "; ".join(mis)) if mis else "ok:Station opgeslagen.")
         if pad == "baken":
             if f.get("actie") == "zoek":

@@ -1,8 +1,9 @@
 """
 ax25chat_baken.py - APRS-positiebaken op 144,800 MHz, vooral voor mobiel gebruik.
 
-- Positie uit een GPS-ontvanger via USB (NMEA, bijv. een u-blox-stickje), of een vaste positie die je zelf invult.
-  (De GPS van de telefoon kan niet: de browser geeft de locatie alleen aan https-pagina's, en de Pi is http.)
+- Positie uit een GPS-ontvanger via USB (NMEA, bijv. een u-blox-stickje), de GPS van de telefoon (via de Android-app,
+  die de positie naar /api/positie stuurt), of een vaste positie die je zelf invult.
+  (De GPS van de telefoon kan niet via de browser: die geeft de locatie alleen aan https-pagina's, en de Pi is http.)
 - Alleen als je positie verandert: tijdens het rijden met een vast interval (10-30 min), of met "vaker tijdens het
   rijden" (SmartBeaconing): hoe harder je rijdt, hoe vaker, en ook na een bocht. Stilstaand niets, of als je dat
   aanzet eens per uur, zodat je op de kaart zichtbaar blijft.
@@ -44,6 +45,34 @@ ZEND_SEC = 6                                     # zo lang op 144,800 blijven: D
 GPS_VERS = 30                                    # een GPS-positie ouder dan 30 s telt niet
 VERPLAATST_M = 200                               # pas na 200 m telt het als een andere positie (GPS verspringt wat)
 STIL_SEC = 3600                                  # stilstaand (als aangezet): eens per uur
+TELEFOON_VERS = 60                               # een positie van de telefoon ouder dan 60 s telt niet
+BRONNEN = [("gps", "GPS-ontvanger (USB)"), ("telefoon", "GPS van de telefoon (app AX25Chat)"),
+           ("handmatig", "Vaste positie (hieronder)")]
+TELEFOON = {"pos": None}                         # laatste positie van de app: {'lat', 'lon', 'kmh', 'koers', 'tijd'}
+
+
+def telefoon_positie(d, nu=None):
+    """Positie van de app (/api/positie) bewaren. d: {'lat', 'lon', 'kmh'?, 'koers'?}. Geeft een fout of ''."""
+    try:
+        lat, lon = float(d.get("lat")), float(d.get("lon"))
+    except (TypeError, ValueError):
+        return "lat en lon als getal"
+    if not (-90 <= lat <= 90 and -180 <= lon <= 180) or (lat == 0 and lon == 0):
+        return "positie buiten bereik"
+    def getal(k, hoogst):
+        try:
+            v = float(d.get(k))
+        except (TypeError, ValueError):
+            return None
+        return v if 0 <= v <= hoogst else None
+    TELEFOON["pos"] = {"lat": lat, "lon": lon, "kmh": getal("kmh", 400), "koers": getal("koers", 360),
+                       "tijd": nu or time.time()}
+    return ""
+
+
+def telefoon_vers(nu=None):
+    p = TELEFOON["pos"]
+    return p if p and (nu or time.time()) - p["tijd"] < TELEFOON_VERS else None
 
 
 def instellingen():
@@ -267,6 +296,8 @@ class Baken:
             threading.Thread(target=self._run, daemon=True).start()
 
     def positie(self, b):
+        if b.get("bron") == "telefoon":
+            return telefoon_vers(self.klok())
         if b.get("bron") == "gps":
             return self.gps.positie() if self.gps else None
         if b.get("lat") is None or b.get("lon") is None:
@@ -287,6 +318,8 @@ class Baken:
         pos = self.positie(b)
         if not pos:
             self.stand = ("Wacht op de GPS: " + (self.gps.stand if self.gps else "geen GPS")) if b.get("bron") == "gps" \
+                else ("Wacht op de positie van de telefoon: staat de app aan, met 'GPS van de telefoon' aan en "
+                      "verbonden met de Pi?") if b.get("bron") == "telefoon" \
                 else "Vul je positie in (breedte- en lengtegraad)."
             self.nu_gevraagd = False
             return ""
@@ -401,7 +434,7 @@ def verwerk(f):
     b = instellingen()
     fouten = []
     b["aan"] = f.get("aan") == "1"
-    b["bron"] = "handmatig" if f.get("bron") == "handmatig" else "gps"
+    b["bron"] = f.get("bron") if f.get("bron") in dict(BRONNEN) else "gps"
     poort = f.get("gps_poort") or ""
     if poort and poort not in kandidaat_poorten():
         fouten.append("Kies een GPS-poort uit de lijst.")
@@ -452,12 +485,17 @@ def html(verborgen, baken=None):
     stand, laatst = "", ""
     if baken:
         stand = baken.stand or ""
+        if b.get("bron") == "telefoon":
+            p = telefoon_vers()
+            stand += (f" Telefoon: {p['lat']:.5f}, {p['lon']:.5f}" + (f", {p['kmh']:.0f} km/h" if p["kmh"] is not None else "")
+                      + "." if p else " Nog geen (verse) positie van de telefoon.")
         if baken.gps and b.get("bron") == "gps":
             p = baken.gps.positie()
             stand += f" {baken.gps.stand}" + (f": {p['lat']:.5f}, {p['lon']:.5f}, {p['kmh']:.0f} km/h" if p else ".")
         if baken.laatst:
             laatst = (f"<p class='uitleg mono'>Laatste baken om {time.strftime('%H:%M', time.localtime(baken.laatst))}: "
                       f"{e(baken.laatst_info)}</p>")
+    bronnen = "".join(f'<option value="{k}"{" selected" if k == b["bron"] else ""}>{e(t)}</option>' for k, t in BRONNEN)
     lat = "" if b["lat"] is None else f'{b["lat"]:.5f}'.replace(".", ",")
     lon = "" if b["lon"] is None else f'{b["lon"]:.5f}'.replace(".", ",")
     return f"""<section><h2>APRS-baken</h2><p class="uitleg">Zendt je positie op {rig.mhz(rig.APRS_FREQ)} (FM-D, 1200 baud),
@@ -466,9 +504,7 @@ de set op een andere frequentie, dan gaat hij even naar {rig.mhz(rig.APRS_FREQ)}
 <p class="melding {'ok' if b['aan'] and 'aan' in stand else 'let'}" style="margin:0 0 8px">{e(stand.strip() or ('Baken staat aan.' if b['aan'] else 'Baken staat uit.'))}</p>{laatst}
 <form method="post" action="/baken">{verborgen}
 <label><input type="checkbox" name="aan" value="1"{' checked' if b['aan'] else ''} style="width:auto"> Baken aan</label>
-<div class="rij"><div><label>Positie uit</label><select name="bron">
-<option value="gps"{' selected' if b['bron'] == 'gps' else ''}>GPS-ontvanger (USB)</option>
-<option value="handmatig"{' selected' if b['bron'] == 'handmatig' else ''}>Vaste positie (hieronder)</option></select></div>
+<div class="rij"><div><label>Positie uit</label><select name="bron">{bronnen}</select></div>
 <div><label>GPS-poort <small>of gebruik Zoek GPS</small></label><select name="gps_poort">{opties}</select></div></div>
 <div class="rij"><div><label>Breedtegraad <small>vaste positie, bijv. 52,1234</small></label><input type="text" name="lat" value="{lat}"></div>
 <div><label>Lengtegraad <small>bijv. 6,1234</small></label><input type="text" name="lon" value="{lon}"></div></div>
