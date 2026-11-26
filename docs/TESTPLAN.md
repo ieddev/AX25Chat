@@ -103,3 +103,14 @@ TNC of via geluid), of een set met APRS-berichten. Spreek een frequentie af.
 | G10 | Node → BBS → node | BBS, daarna B | Knoppen wisselen naar L, R, S, K, B en daarna terug naar de node-knoppen | ☐ |
 | G11 | Chat | CHAT, daarna /B | Knoppen /U, /H, /B; na /B weer de node-knoppen | ☐ |
 | G12 | Nieuwe roepnaam | Keuzelijst: *Andere roepnaam…*, PD4R-12 invullen, Verbinden | Na het verbinden staat PD4R-12 in de keuzelijst; na herladen van de pagina staat de laatst gekozen BBS al gekozen | ☐ |
+
+## H. APRS-baken
+
+| # | Wat | Hoe | Verwacht | OK |
+|---|-----|-----|----------|----|
+| H1 | Vaste positie | Radio → APRS-baken: vaste positie, aan, opslaan; Station 144,800; Nu een baken zenden | Baken in de Monitor; na een paar minuten op aprs.fi | ☐ |
+| H2 | GPS | u-blox in de Pi, Zoek GPS | GPS gevonden; na een tijdje buiten *GPS heeft een positie* met coördinaten | ☐ |
+| H3 | Stilstaan | Baken aan, GPS, een uur stilstaan | Eén baken, daarna niets (tenzij *Ook stilstaand eens per uur*) | ☐ |
+| H4 | Rijden | Rijden met *Vaker tijdens het rijden* | Op de snelweg elke ~3 min, in de stad minder vaak; na een bocht een extra baken | ☐ |
+| H5 | Andere frequentie | Station op 144,925 | Status: *Wacht: de set staat op 144,925* en geen baken | ☐ |
+| H6 | BBS-verbinding | Verbinden met PD4R-12 (op 144,800 of een andere frequentie) | Status: *Gepauzeerd*; na verbreken weer *Baken staat aan* | ☐ |
