@@ -75,6 +75,23 @@ class TestChat(unittest.TestCase):
         self.chat.verwerk_wachtrij(nu=5000)
         self.assertEqual(len(self.link.verzonden), 1)             # bevestigd: niet meer herhalen
 
+    def test_aprs_ssid(self):
+        """Baken en APRS-berichten als PD3PAM-9; BBS blijft PD3PAM. Berichten aan beide komen binnen."""
+        self.station = {"roepnaam": "PD3PAM", "pad": "", "baken": {"ssid": "9"}}
+        self.assertEqual((self.chat.mijn_call(), self.chat.aprs_call()), ("PD3PAM", "PD3PAM-9"))
+        _, [b] = self.chat.verstuur("PA1ABC", "Hoi")
+        self.chat.verwerk_wachtrij(nu=1000)
+        self.assertEqual(self.link.verzonden[-1][0], "PD3PAM-9")
+        for aan in ("PD3PAM-9", "PD3PAM"):
+            self.chat.ontvangen("PA1ABC", "APDR16", [], f":{aan:<9}:Hallo{{7{aan[-1]}".encode())
+            self.assertEqual(self.link.verzonden[-1][0], aan)              # ack van de roepnaam waaraan het was
+            self.assertEqual(self.link.verzonden[-1][3], f":PA1ABC   :ack7{aan[-1]}")
+        self.assertEqual(len([x for x in self.gemeld if x[0] == "bericht" and x[1]["richting"] == "in"]), 2)
+        self.chat.ontvangen("PD3PAM-9", "APZAXC", ["WIDE1-1*"], b":PA1ABC   :Hoi{1")   # eigen frame via digi
+        self.assertEqual(len([x for x in self.gemeld if x[0] == "bericht" and x[1]["richting"] == "in"]), 2)
+        self.station["baken"]["ssid"] = ""
+        self.assertEqual(self.chat.aprs_call(), "PD3PAM")
+
     def test_herhalen_en_mislukt(self):
         _, [b] = self.chat.verstuur("PA1ABC", "Iemand thuis?")
         nu = 1000

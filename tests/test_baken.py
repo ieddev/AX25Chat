@@ -51,6 +51,8 @@ class NepChat:
     def mijn_call(self):
         return "PD3PAM-9"
 
+    aprs_call = mijn_call
+
     def _meld(self, soort, data):
         pass
 

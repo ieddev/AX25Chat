@@ -260,11 +260,21 @@ class Chat:
         call = str(self.lees_station().get("roepnaam") or "N0CALL").strip().upper()
         return call[:-2] if call.endswith("-0") else call             # PD3PAM-0 is op de lucht gewoon PD3PAM
 
+    def aprs_call(self):
+        """Roepnaam voor APRS (baken en berichten): met de APRS-SSID van het baken als die is ingesteld,
+        bijv. PD3PAM-9, terwijl BBS en node PD3PAM gebruiken."""
+        mij = self.mijn_call()
+        ssid = str((self.lees_station().get("baken") or {}).get("ssid") or "")
+        return f"{mij.split('-')[0]}-{ssid}" if ssid.isdigit() and 0 < int(ssid) <= 15 else mij
+
+    def is_mij(self, call):
+        return zelfde_call(call, self.mijn_call()) or zelfde_call(call, self.aprs_call())
+
     def _pad(self):
         return [p for p in re.split(r"[ ,]+", (self.lees_station().get("pad") or "").upper()) if p]
 
-    def _zend(self, info):
-        self.link.mycall = self.mijn_call()
+    def _zend(self, info, van=None):
+        self.link.mycall = van or self.aprs_call()
         return self.link.send_info(info, dest=ax25.TOCALL, via=self._pad())
 
     # -- versturen --
@@ -272,7 +282,7 @@ class Chat:
     def verstuur(self, aan, tekst):
         """Nieuw bericht. aan = roepnaam of 'CQ'. Geeft (fouten, [berichten])."""
         aan = (aan or "").strip().upper()
-        mij = self.mijn_call()
+        mij = self.aprs_call()
         if mij.startswith("N0CALL"):
             return ["Stel eerst je roepnaam in (tabblad Radio)."], []
         if not CALL_RE.match(aan):
@@ -352,8 +362,7 @@ class Chat:
     def ontvangen(self, van, aan, pad, info):
         """Door de KISS-verbinding aangeroepen voor elk gehoord UI-frame."""
         tekst = info.decode("utf-8", "replace") if isinstance(info, (bytes, bytearray)) else str(info)
-        mij = self.mijn_call()
-        if zelfde_call(van, mij):
+        if self.is_mij(van):
             return                                        # mijn eigen frame, terug via een digipeater
         self._meld("monitor", self.opslag.monitor_toe(van, aan, pad, tekst))
         pos = aprs.lees_positie(info if isinstance(info, (bytes, bytearray)) else tekst, aan)
@@ -363,21 +372,21 @@ class Chat:
         if not b:
             return
         if b["soort"] in ("ack", "rej"):
-            if zelfde_call(b["aan"], mij):
+            if self.is_mij(b["aan"]):
                 eigen = self.opslag.zoek_uit(van, b["nummer"])
                 if eigen and eigen["status"] in ("wacht", "verzonden", "gestopt", "mislukt"):
                     self._meld("bericht", self.opslag.werk_bij(
                         eigen["id"], status="bevestigd" if b["soort"] == "ack" else "geweigerd"))
             return
-        voor_mij = zelfde_call(b["aan"], mij)
+        voor_mij = self.is_mij(b["aan"])
         cq = b["aan"] in ("CQ", "ALL", "QST") or b["aan"].startswith("BLN")
         if not (voor_mij or cq):
             return                                        # bericht tussen anderen: alleen in de monitor
         if voor_mij and b["nummer"]:
-            self._zend(maak_ack(van, b["nummer"]))
+            self._zend(maak_ack(van, b["nummer"]), van=b["aan"].upper())      # ack van de roepnaam waaraan het was
             if self.opslag.al_ontvangen(van, b["nummer"], b["tekst"]):
                 return                                    # herhaling: wel opnieuw bevestigd, niet dubbel tonen
-        self._meld("bericht", self.opslag.voeg_toe(richting="in", van=van.upper(), aan="CQ" if cq else mij,
+        self._meld("bericht", self.opslag.voeg_toe(richting="in", van=van.upper(), aan="CQ" if cq else b["aan"].upper(),
                                                   tekst=b["tekst"], nummer=b["nummer"], status="ontvangen"))
 
 
