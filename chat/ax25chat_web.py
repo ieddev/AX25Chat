@@ -372,6 +372,10 @@ class Handler(BaseHTTPRequestHandler):
             except (TypeError, ValueError):
                 hz = 0
             fout = BBS.verbind(d.get("call"), hz)
+            call = str(d.get("call") or "").strip().upper()
+            if not fout and d.get("onthoud") and call not in [x["call"] for x in bbs.lijst()]:
+                if not bbs.voeg_toe(call, 0, "")[0]:                  # nieuwe roepnaam: in de keuzelijst bewaren
+                    CHAT._meld("bbslijst", bbs.lijst())
         elif actie == "stuur":
             fout = BBS.stuur(d.get("tekst"))
         elif actie == "verbreek":

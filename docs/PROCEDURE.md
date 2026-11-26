@@ -167,7 +167,7 @@ PD4R-1. AX25Chat is zelf geen BBS: het is je terminal. Er is steeds één verbin
 1. **BBS toevoegen**: roepnaam (met SSID), een naam en de frequentie. Kies de frequentie uit de lijst; mode
    en snelheid komen van **Mijn frequenties** (tabblad Radio). Zet de frequentie van de BBS daar dus eerst
    neer, bijv. 144,925 FM-D 1200 baud. *Frequentie niet wisselen* = op de frequentie blijven die nu ingesteld is.
-2. **Verbinden**: de set gaat naar de frequentie van de BBS en de Pi maakt verbinding. Bovenaan zie je
+2. **Verbinden**: kies de BBS in de keuzelijst (de laatst gekozen staat er al) en druk op Verbinden. De set gaat naar de frequentie van de BBS en de Pi maakt verbinding. Bovenaan zie je
    *Verbinden met…*, *Verbonden met…* of *Niet verbonden*. Moet Direwolf voor een andere snelheid opnieuw
    starten, dan duurt het een paar seconden langer.
 3. **Terminal**: wat de BBS stuurt verschijnt in het tekstvak; wat jij stuurt staat er blauw tussen.
@@ -188,7 +188,9 @@ PD4R-1. AX25Chat is zelf geen BBS: het is je terminal. Er is steeds één verbin
 
 Antwoordt de BBS niet, dan staat er na ongeveer een halve minuut *Geen antwoord van…*. Controleer dan de
 frequentie, de mode en de snelheid. Je kunt ook een roepnaam invullen die niet in je lijst staat
-(**Andere roepnaam**); dan blijft de set op de huidige frequentie.
+(**Andere roepnaam…** onderaan de keuzelijst); dan blijft de set op de huidige frequentie. Die roepnaam wordt
+na het verbinden in de lijst bewaard, zodat je hem de volgende keer kunt kiezen. Met **Weg** haal je de
+gekozen BBS uit de lijst.
 
 Voor de BBS-verbinding gebruikt de Pi de AGW-poort 8000 van Direwolf. Een Pi van voor deze versie zet die
 poort bij de eerste start na **Bijwerken** zelf aan (Direwolf herstart dan één keer).

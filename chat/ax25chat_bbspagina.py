@@ -11,11 +11,9 @@ import ax25chat_rig as rig
 CSS = """
 .bbs-stand{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .bbs-stand b{flex:1;min-width:180px}
-.bbs-lijst{margin-top:8px}
-.bbs-lijst .r{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--lijn)}
-.bbs-lijst .r div{flex:1;min-width:0}.bbs-lijst .r small{display:block;color:var(--zacht)}
-.bbs-lijst button{padding:8px 12px;font-size:15px}
-.bbs-ander{display:flex;gap:8px;margin-top:12px}.bbs-ander input{flex:1;min-width:0;text-transform:uppercase}
+.bbs-kies{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.bbs-kies select,.bbs-kies input{flex:1 1 100%;min-width:0}.bbs-kies input{text-transform:uppercase}
+.bbs-kies .info{flex-basis:100%;margin:0;color:var(--zacht);font-size:14px}
 .term{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;line-height:1.35;background:var(--bg);
  border:1px solid var(--lijn);border-radius:8px;padding:10px;height:min(52vh,460px);overflow:auto;white-space:pre-wrap;word-break:break-word}
 .term .uit{color:var(--blauw);font-weight:600}.term .info{color:var(--zacht);font-style:italic}
@@ -39,15 +37,28 @@ function tekenStand() {
   var s = STAND[st.stand] || STAND.verbroken, bezig = st.stand !== 'verbroken';
   $('.bbs-stand').innerHTML = '<span class="punt ' + s[0] + '"></span><b>' + s[1] + (bezig ? txt(st.tegen) : '') + '</b>' +
     (bezig ? '<button type="button" class="gevaar" data-verbreek>' + (st.stand === 'verbonden' ? 'Verbreken' : 'Afbreken') + '</button>' : '');
-  document.querySelectorAll('[data-verbind],.bbs-ander button').forEach(function (b) { b.disabled = bezig; });
+  document.querySelectorAll('.bbs-kies button[type=submit],.bbs-kies select,.bbs-kies input').forEach(function (b) { b.disabled = bezig; });
   document.querySelectorAll('.snel button[data-cmd],.invoer button,.invoer input').forEach(function (b) { b.disabled = st.stand !== 'verbonden'; });
 }
+// Keuzelijst met je BBS'en; de laatst gekozen blijft staan (per telefoon/laptop).
+var gekozen = '';
+try { gekozen = localStorage.getItem('ax25chat-bbs') || ''; } catch (e) {}
 function tekenLijst() {
-  $('.bbs-lijst').innerHTML = lijst.length ? lijst.map(function (x) {
-    return '<div class="r"><div><b>' + txt(x.call) + '</b>' + (x.naam ? ' ' + txt(x.naam) : '') + '<small>' + txt(x.tekst) + '</small></div>' +
-      '<button type="button" data-verbind="' + txt(x.call) + '" data-hz="' + x.hz + '">Verbinden</button>' +
-      '<button type="button" class="licht" data-weg="' + txt(x.call) + '" title="Uit de lijst halen">Weg</button></div>';
-  }).join('') : '<p class="uitleg" style="margin:8px 0">Nog geen BBS\'en. Voeg er hieronder een toe, of vul een roepnaam in.</p>';
+  var sel = $('.bbs-kies select');
+  if (sel.value) gekozen = sel.value;
+  if (!lijst.some(function (x) { return x.call === gekozen; })) gekozen = lijst.length ? lijst[0].call : '';
+  sel.innerHTML = lijst.map(function (x) {
+    return '<option value="' + txt(x.call) + '"' + (x.call === gekozen ? ' selected' : '') + '>' + txt(x.call) +
+      (x.naam ? ' ' + txt(x.naam) : '') + ' · ' + txt(x.tekst) + '</option>';
+  }).join('') + '<option value=""' + (gekozen ? '' : ' selected') + '>Andere roepnaam…</option>';
+  kijkKeuze();
+}
+function kijkKeuze() {
+  var v = $('.bbs-kies select').value, inp = $('.bbs-kies input');
+  inp.style.display = v ? 'none' : '';
+  $('.bbs-kies [data-weg]').style.display = v ? '' : 'none';
+  $('.bbs-kies .info').textContent = v ? '' : 'Een nieuwe roepnaam wordt na het verbinden in de lijst bewaard (op de huidige frequentie).';
+  try { if (v) localStorage.setItem('ax25chat-bbs', v); } catch (e) {}
   tekenStand();
 }
 // Snelknoppen passend bij wat er aan de andere kant zit: een node (BPQ e.d.), een BBS of een chatserver.
@@ -107,9 +118,8 @@ bron.onerror = function () { $('.verbinding').textContent = 'geen verbinding met
 bron.onopen = function () { $('.verbinding').textContent = ''; haal(); };
 function zend(t) { post({actie: 'stuur', tekst: t}); }
 document.addEventListener('click', function (e) {
-  var v = e.target.closest('[data-verbind]'), w = e.target.closest('[data-weg]'), k = e.target.closest('[data-cmd]');
-  if (v) { post({actie: 'verbind', call: v.dataset.verbind, hz: +v.dataset.hz}); }
-  if (w && confirm(w.dataset.weg + ' uit je lijst halen?')) { post({actie: 'weg', call: w.dataset.weg}); }
+  var w = e.target.closest('[data-weg]'), k = e.target.closest('[data-cmd]'), c = $('.bbs-kies select').value;
+  if (w && c && confirm(c + ' uit je lijst halen?')) { post({actie: 'weg', call: c}); }
   if (e.target.closest('[data-verbreek]')) { post({actie: 'verbreek'}); }
   if (e.target.closest('[data-leeg]')) { post({actie: 'wis'}); }
   if (k) {
@@ -117,8 +127,13 @@ document.addEventListener('click', function (e) {
     if (k.dataset.direct) { zend(c); } else { inv.value = c + ' '; inv.focus(); }
   }
 });
-$('.bbs-ander').addEventListener('submit', function (e) {
-  e.preventDefault(); var c = $('.bbs-ander input').value.trim().toUpperCase(); if (c) post({actie: 'verbind', call: c});
+$('.bbs-kies select').addEventListener('change', function () { gekozen = this.value; kijkKeuze(); if (!gekozen) $('.bbs-kies input').focus(); });
+$('.bbs-kies').addEventListener('submit', function (e) {
+  e.preventDefault();
+  var c = $('.bbs-kies select').value, x = lijst.filter(function (b) { return b.call === c; })[0];
+  if (x) { post({actie: 'verbind', call: x.call, hz: x.hz}); return; }
+  var n = $('.bbs-kies input').value.trim().toUpperCase();
+  if (n) post({actie: 'verbind', call: n, onthoud: true}).then(function (r) { if (!r.fout) { gekozen = n; $('.bbs-kies input').value = ''; } });
 });
 $('.invoer').addEventListener('submit', function (e) {
   e.preventDefault(); var inv = $('.invoer input'), t = inv.value;
@@ -157,12 +172,13 @@ def html(melding_boven=""):
         "Zelf instellen op de set (geen CAT, of een andere band)", "Frequentie niet wisselen")
     return f"""{melding_boven}<style>{CSS}</style>
 <section><h2>BBS</h2>
-<p class="uitleg">Verbinden met een BBS of ander packetstation (connected mode). Kies een BBS uit je lijst; de set gaat dan
+<p class="uitleg">Verbinden met een BBS, node of ander packetstation (connected mode). Kies uit je lijst; de set gaat dan
 eerst naar de frequentie die erbij hoort.</p>
 <div class="bbs-stand"></div>
-<div class="bbs-lijst"></div>
-<form class="bbs-ander" autocomplete="off"><input type="text" placeholder="Andere roepnaam" maxlength="9"
- aria-label="Roepnaam"><button type="submit" class="licht">Verbinden</button></form>
+<form class="bbs-kies" autocomplete="off"><select aria-label="BBS"></select>
+<input type="text" placeholder="Roepnaam, bijv. PD4R-12" maxlength="9" aria-label="Roepnaam">
+<button type="submit">Verbinden</button><button type="button" class="licht" data-weg title="Uit de lijst halen">Weg</button>
+<p class="info"></p></form>
 <details><summary>BBS toevoegen</summary>
 <form class="bbs-nieuw" autocomplete="off">
 <div class="rij"><div><label>Roepnaam <small>met SSID, bijv. PD4R-1</small></label><input type="text" name="call" maxlength="9"
