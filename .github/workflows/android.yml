@@ -1,0 +1,71 @@
+# Bouwt de Android-app (map android/). Bij een tag app-v0.2 (enz.) komt de APK als download bij een GitHub-release.
+# Ondertekenen: secrets AX25CHAT_KEYSTORE_B64 en AX25CHAT_KEYSTORE_WACHTWOORD (zie docs/PROCEDURE.md, Android-app).
+name: Android-app
+
+on:
+  push:
+    branches: [main]
+    paths: ["android/**", ".github/workflows/android.yml"]
+    tags: ["app-v*"]
+  pull_request:
+    paths: ["android/**", ".github/workflows/android.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  bouwen:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+
+      - name: Sleutel klaarzetten
+        env:
+          SLEUTEL: ${{ secrets.AX25CHAT_KEYSTORE_B64 }}
+        run: |
+          if [ -n "$SLEUTEL" ]; then
+            echo "$SLEUTEL" | base64 -d > "$RUNNER_TEMP/ax25chat.jks"
+            echo "AX25CHAT_KEYSTORE=$RUNNER_TEMP/ax25chat.jks" >> "$GITHUB_ENV"
+          else
+            echo "::warning::Geen sleutel in de secrets: de APK is met een tijdelijke sleutel ondertekend (alleen om te testen)."
+          fi
+
+      - name: Versie
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/app-v* ]]; then naam="${GITHUB_REF#refs/tags/app-v}"; else naam="0.0-test.${GITHUB_RUN_NUMBER}"; fi
+          echo "VERSIE_NAAM=$naam" >> "$GITHUB_ENV"
+          echo "VERSIE_CODE=${GITHUB_RUN_NUMBER}" >> "$GITHUB_ENV"
+
+      - name: APK bouwen
+        working-directory: android
+        env:
+          AX25CHAT_KEYSTORE_WACHTWOORD: ${{ secrets.AX25CHAT_KEYSTORE_WACHTWOORD }}
+        run: gradle --no-daemon assembleRelease
+
+      - name: APK hernoemen
+        run: cp android/app/build/outputs/apk/release/app-release.apk "AX25Chat-${VERSIE_NAAM}.apk"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AX25Chat-${{ env.VERSIE_NAAM }}
+          path: AX25Chat-*.apk
+
+      - name: Release maken
+        if: startsWith(github.ref, 'refs/tags/app-v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: AX25Chat-app ${{ env.VERSIE_NAAM }}
+          files: AX25Chat-*.apk
+          body: |
+            Android-app van AX25Chat. Installeren: download het APK-bestand op je telefoon en open het.
+            Uitleg (ook over "onbekende bronnen"): docs/PROCEDURE.md, hoofdstuk Android-app.
