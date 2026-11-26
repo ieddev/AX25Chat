@@ -154,6 +154,7 @@ class TestRadio(unittest.TestCase):
         self.assertIn("TXDELAY 40", t)
         self.assertIn("MODEM 1200", t)
         self.assertIn("KISSPORT 8001", t)
+        self.assertIn("\nMAXV22 0", t)                   # verbinden met AX.25 v2.0 (BPQ geeft FRMR op v2.2)
         cat = radio.direwolf_tekst("PD3PAM", dict(radio.STANDAARD, geluidskaart="CODEC_1", ptt_methode="CAT",
                                                   cat_model=3073, cat_poort="/dev/x", modem="auto"))
         self.assertIn("PTT RIG 2 localhost:4532", cat)

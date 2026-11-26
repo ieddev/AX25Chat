@@ -156,14 +156,18 @@ SLOTTIME 10
 PERSIST 63
 KISSPORT 8001
 AGWPORT 8000
+# Verbinden (BBS, node) met AX.25 v2.0 (SABM). Veel nodes (BPQ) antwoorden op v2.2 (SABME) met FRMR,
+# en sommige versies van Direwolf vallen dan niet goed terug.
+MAXV22 0
 """
 
 
 def direwolf_met_agw():
-    """Staat de AGW-poort (voor BBS'en, connected mode) aan in direwolf.conf?"""
+    """Is direwolf.conf bij de tijd: AGW-poort (voor BBS'en, connected mode) aan en verbinden met AX.25 v2.0?"""
     try:
         with open(DIREWOLF_CONF, encoding="utf-8") as f:
-            return "\nAGWPORT 8000" in f.read()
+            t = f.read()
+        return "\nAGWPORT 8000" in t and "\nMAXV22 0" in t
     except OSError:
         return True                    # nog geen direwolf.conf: die wordt straks met AGW gemaakt
 
