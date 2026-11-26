@@ -132,6 +132,22 @@ class TestBaken(unittest.TestCase):
         self.assertTrue(self.b.nu())                                          # knop Nu: altijd
         self.assertEqual(len(self.chat.link.verzonden), 3)
 
+    def test_telefoon(self):
+        baken.TELEFOON["pos"] = None
+        self.zet(rig.APRS_FREQ, bron="telefoon")
+        self.assertEqual(self.b.stap(), "")
+        self.assertIn("telefoon", self.b.stand)
+        self.assertEqual(baken.telefoon_positie({"lat": "52.25", "lon": 6.16, "kmh": 80, "koers": 90}, nu=self.nu), "")
+        self.assertTrue(self.b.stap().startswith("=5215.00N/00609.60E>090/043"))
+        self.nu += 120                                                       # app stuurt niets meer: te oud
+        self.assertIsNone(self.b.positie(baken.instellingen()))
+        self.assertTrue(baken.telefoon_positie({"lat": "x", "lon": 6}))
+        self.assertTrue(baken.telefoon_positie({"lat": 0, "lon": 0}))
+        f = {"aan": "1", "bron": "telefoon", "interval": "20", "symbool": ">", "pad": "WIDE1-1"}
+        self.assertEqual(baken.verwerk(f)[0], [])                            # geen poort of positie nodig
+        self.assertEqual(baken.instellingen()["bron"], "telefoon")
+        baken.TELEFOON["pos"] = None
+
     def test_wacht_op_frequentie_en_bbs(self):
         self.zet(144925000)                                                   # geen CAT: kan niet even wisselen
         self.assertEqual(self.b.stap(), "")

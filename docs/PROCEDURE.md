@@ -222,10 +222,13 @@ poort bij de eerste start na **Bijwerken** zelf aan (Direwolf herstart dan één
 Op het tabblad **Radio** staat **APRS-baken**. Het baken zendt je positie op 144,800 MHz (de APRS-frequentie in
 Europa, FM-D 1200 baud), zodat je via digipeaters en iGates op kaarten als aprs.fi verschijnt.
 
-- **Positie**: uit een **GPS-ontvanger via USB** (een u-blox-stickje, NMEA, kost een paar tientjes), of een
-  **vaste positie** die je zelf invult (breedte- en lengtegraad, bijv. 52,1234 en 6,1234). Steek de GPS in de Pi
-  en druk op **Zoek GPS**. De GPS van de telefoon kan niet gebruikt worden: de browser geeft de locatie alleen
-  aan beveiligde (https) pagina's.
+- **Positie uit** (drie keuzes):
+  - **GPS-ontvanger (USB)**: een u-blox-stickje (NMEA, een paar tientjes) in de Pi, en druk op **Zoek GPS**.
+  - **GPS van de telefoon (app AX25Chat)**: geen stickje nodig. Zet in de Android-app bij Instellingen *Mijn
+    positie naar de Pi sturen* aan; de app stuurt dan elke 10 seconden je positie, ook met het scherm uit. Een
+    positie ouder dan een minuut telt niet (app dicht of buiten bereik van de hotspot): dan wacht het baken.
+    Via de browser kan dit niet: die geeft de locatie alleen aan beveiligde (https) pagina's.
+  - **Vaste positie**: die je zelf invult (breedte- en lengtegraad, bijv. 52,1234 en 6,1234), bijv. thuis.
 - **Alleen als je positie verandert** (meer dan 200 m sinds het vorige baken). Tijdens het rijden elke 10, 15,
   20 of 30 minuten; met **Vaker tijdens het rijden** hoe harder je rijdt hoe vaker (tot elke 3 minuten bij
   90 km/h) en ook na een bocht. Stilstaand zendt hij niets, tenzij je **Ook stilstaand eens per uur** aanzet.
@@ -406,7 +409,19 @@ frequenties, BBS-lijst, baken, offline kaart) doe je eenmalig op de webpagina va
 | **Chat** | Gesprekken bovenaan (CQ, per station, Monitor), *+ Nieuw* voor een ander station. Stuur, Stop en Opnieuw werken zoals op de webpagina. Bovenaan zie je of de app verbonden is met de Pi. |
 | **Kaart** | De kaart van de Pi (zie Kaart hierboven). *Bericht sturen* bij een station opent de chat in de app. |
 | **BBS** | Het tabblad BBS van de Pi: keuzelijst, terminal en snelknoppen. |
-| **Instellingen** | Adres van de Pi, meldingen aan of uit, de webpagina van de Pi openen, stoppen. |
+| **Frequentie** (knop bovenaan) | Kies een frequentie uit Mijn frequenties (★) of de 2 m-kanalen; de Pi zet de set erop (met CAT) en Direwolf op de goede snelheid, net als bij Station op de webpagina. Zonder CAT zet je de set zelf goed. Bovenaan staat de huidige frequentie. |
+| **Instellingen** | Adres van de Pi, meldingen aan of uit, *GPS van de telefoon*, de webpagina van de Pi openen, stoppen. |
+
+**GPS van de telefoon voor het baken:**
+
+1. In de app: Instellingen → *Mijn positie naar de Pi sturen* aan. Android vraagt toestemming voor je locatie:
+   kies *Tijdens gebruik van de app*. Zet *Locatie* van Android aan.
+2. Op de Pi (webpagina, tabblad Radio, APRS-baken): *Positie uit* → **GPS van de telefoon (app AX25Chat)**,
+   *Baken aan*, opslaan.
+3. Onder de schakelaar in de app staat wat de GPS doet (bijv. *Positie naar de Pi gestuurd*). Op de Pi zie je de
+   positie bij het baken, en op het tabblad Kaart sta jij met een groene rand.
+
+Na een herstart van de telefoon start de GPS pas weer als je de app een keer opent (een regel van Android).
 
 **Meldingen:** de app blijft op de achtergrond verbonden met de Pi en geeft een melding bij een nieuw bericht aan
 jou of aan CQ, ook met het scherm uit. Android vereist daarvoor een vaste melding *AX25Chat luistert*. Die kun je

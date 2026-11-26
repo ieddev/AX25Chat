@@ -10,11 +10,22 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import android.Manifest
+import android.content.pm.PackageManager
+import android.location.Location
+import android.location.LocationListener
+import android.location.LocationManager
+import android.os.Bundle
+import android.os.Looper
+import org.json.JSONObject
 
 /**
  * Houdt de verbinding met de Pi open (/api/live), ook als de app op de achtergrond staat of het scherm uit is.
  * Een nieuw bericht aan jou of aan CQ geeft een melding. Valt de verbinding weg (buiten bereik van de hotspot),
  * dan probeert de service het elke 10 seconden opnieuw.
+ *
+ * Staat 'GPS van de telefoon' aan, dan stuurt de dienst ook elke 10 seconden de positie naar de Pi (/api/positie),
+ * voor het APRS-baken (bron 'GPS van de telefoon' op de Pi) en de kaart.
  *
  * Android eist bij zo'n achtergronddienst een vaste melding ("AX25Chat luistert"); die kun je in de
  * instellingen van Android verbergen.
@@ -23,6 +34,8 @@ class LiveService : Service() {
     @Volatile private var stoppen = false
     private var draad: Thread? = null
     private var volgendeId = 100
+    private var gpsLuisteraar: LocationListener? = null
+    @Volatile private var laatstVerstuurd = 0L
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -35,11 +48,21 @@ class LiveService : Service() {
         }
         kanalen(this)
         val vast = vasteMelding("Verbinden met de Pi…")
+        var gps = gpsMag(this)
         if (Build.VERSION.SDK_INT >= 34) {
-            startForeground(VAST_ID, vast, ServiceInfo.FOREGROUND_SERVICE_TYPE_REMOTE_MESSAGING)
+            try {
+                startForeground(VAST_ID, vast, ServiceInfo.FOREGROUND_SERVICE_TYPE_REMOTE_MESSAGING or
+                    (if (gps) ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION else 0))
+            } catch (e: SecurityException) {
+                // Locatie mag niet vanaf de achtergrond starten (bijv. na een herstart): zonder GPS verder
+                gps = false
+                startForeground(VAST_ID, vast, ServiceInfo.FOREGROUND_SERVICE_TYPE_REMOTE_MESSAGING)
+                Chat.gpsStand = "GPS start weer als je de app opent"
+            }
         } else {
             startForeground(VAST_ID, vast)
         }
+        if (gps) startGps() else stopGps()
         if (draad?.isAlive != true) {
             stoppen = false
             draad = Thread({ lus() }, "ax25chat-live").also { it.start() }
@@ -49,6 +72,7 @@ class LiveService : Service() {
 
     override fun onDestroy() {
         stoppen = true
+        stopGps()
         super.onDestroy()
     }
 
@@ -83,7 +107,58 @@ class LiveService : Service() {
                 }
             }
             "monitor" -> Chat.monitorRegel(data)
+            "frequentie" -> Chat.zetFrequentie(data.optString("tekst"))
         }
+    }
+
+    // ------------------------------------------------------------ GPS van de telefoon
+
+    private fun startGps() {
+        if (gpsLuisteraar != null) return
+        val lm = getSystemService(LocationManager::class.java)
+        val l = object : LocationListener {
+            override fun onLocationChanged(loc: Location) = nieuwePositie(loc)
+            override fun onProviderDisabled(provider: String) { Chat.gpsStand = "Locatie staat uit in Android" }
+            override fun onProviderEnabled(provider: String) { Chat.gpsStand = "Wacht op een GPS-positie…" }
+            @Deprecated("Deprecated in Java")
+            override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
+        }
+        try {
+            lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 5000L, 0f, l, Looper.getMainLooper())
+            gpsLuisteraar = l
+            Chat.gpsStand = if (lm.isProviderEnabled(LocationManager.GPS_PROVIDER)) "Wacht op een GPS-positie…"
+                else "Locatie staat uit in Android"
+        } catch (e: SecurityException) {
+            Chat.gpsStand = "Geen toestemming voor de locatie"
+        } catch (e: IllegalArgumentException) {
+            Chat.gpsStand = "Deze telefoon heeft geen GPS"
+        }
+    }
+
+    private fun stopGps() {
+        val l = gpsLuisteraar ?: return
+        getSystemService(LocationManager::class.java).removeUpdates(l)
+        gpsLuisteraar = null
+        Chat.gpsStand = ""
+    }
+
+    private fun nieuwePositie(loc: Location) {
+        val nu = System.currentTimeMillis()
+        if (nu - laatstVerstuurd < 10000) return
+        laatstVerstuurd = nu
+        val d = JSONObject().put("lat", loc.latitude).put("lon", loc.longitude)
+        if (loc.hasSpeed()) d.put("kmh", loc.speed * 3.6)
+        if (loc.hasBearing()) d.put("koers", loc.bearing.toDouble())
+        Thread {
+            Chat.gpsStand = try {
+                val a = Pi.stuur(this, "/api/positie", d)
+                if (a.has("fout")) "Pi weigert de positie: " + a.optString("fout")
+                else "Positie naar de Pi gestuurd (" + String.format("%.5f, %.5f", loc.latitude, loc.longitude) + ")" +
+                    if (a.optString("bron") != "telefoon") ". Let op: kies op de Pi bij het baken 'GPS van de telefoon'." else ""
+            } catch (_: Exception) {
+                "GPS werkt, maar geen verbinding met de Pi"
+            }
+        }.start()
     }
 
     private fun open(gesprek: String?): PendingIntent {
@@ -132,6 +207,10 @@ class LiveService : Service() {
             nm.createNotificationChannel(NotificationChannel(KANAAL_BERICHT, "Berichten",
                 NotificationManager.IMPORTANCE_HIGH).apply { description = "Nieuwe berichten aan jou en aan CQ" })
         }
+
+        /** GPS aangezet in de app, en Android geeft toestemming? */
+        fun gpsMag(ctx: Context) = Pi.gpsAan(ctx) &&
+            ctx.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
 
         fun start(ctx: Context) {
             ctx.startForegroundService(Intent(ctx, LiveService::class.java))
