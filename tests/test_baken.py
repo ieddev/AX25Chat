@@ -111,7 +111,7 @@ class TestBaken(unittest.TestCase):
         self.nu, self.bezig = 100000.0, ""
         self.chat = NepChat()
         self.b = baken.Baken(self.chat, start=False, klok=lambda: self.nu, verbonden=lambda: self.bezig,
-                                 log=lambda t: None)
+                                 log=lambda t: None, wacht=lambda s: None)
 
     def tearDown(self):
         radio.STATION_FILE, rig.STATION_FILE, radio.RADIO_FILE = self.oud
@@ -133,9 +133,10 @@ class TestBaken(unittest.TestCase):
         self.assertEqual(len(self.chat.link.verzonden), 3)
 
     def test_wacht_op_frequentie_en_bbs(self):
-        self.zet(144925000)
+        self.zet(144925000)                                                   # geen CAT: kan niet even wisselen
         self.assertEqual(self.b.stap(), "")
         self.assertIn("144,925", self.b.stand)
+        self.assertIn("geen CAT", self.b.stand)
         self.zet(rig.APRS_FREQ)
         self.bezig = "PD4R-12"
         self.assertEqual(self.b.stap(), "")
@@ -143,6 +144,41 @@ class TestBaken(unittest.TestCase):
         self.assertEqual(self.b.nu(), "")                                     # ook Nu niet tijdens een BBS-verbinding
         self.bezig = ""
         self.assertTrue(self.b.stap())
+
+    def met_cat(self, modem=1200):
+        """Doe alsof er een IC-9700 met CAT is; onthoud wat er met de set gebeurt."""
+        self.set_log = []
+        oud = (rig.zet_set, rig.cat_actief, radio.modem, radio.instellingen)
+        self.addCleanup(lambda: setattr(rig, "zet_set", oud[0]) or setattr(rig, "cat_actief", oud[1])
+                        or setattr(radio, "modem", oud[2]) or setattr(radio, "instellingen", oud[3]))
+        rig.zet_set = lambda r, freq=None: self.set_log.append(("set", rig.doelfrequentie(), rig.doelmode(r))) or []
+        rig.cat_actief = lambda r: True
+        radio.modem = lambda r, doel=None: modem
+        radio.instellingen = lambda: {"cat_model": 3081}
+        stuur = self.chat.link.send_info
+
+        def send_info(info, dest=None, via=()):
+            self.set_log.append(("zend", rig.doelfrequentie(), self.chat.gepauzeerd))
+            return stuur(info, dest, via)
+        self.chat.link.send_info = send_info
+
+    def test_even_naar_144800(self):
+        self.met_cat()
+        self.zet(144925000)
+        self.assertTrue(self.b.stap())
+        self.assertEqual(self.set_log, [("set", 144800000, "PKTFM"),          # even naar 144,800 FM-D
+                                        ("zend", 144800000, True),            # zenden; chat wacht
+                                        ("set", 144925000, rig.doelmode({}))])  # en terug
+        self.assertIsNone(rig.TIJDELIJK)
+        self.assertFalse(self.chat.gepauzeerd)
+        self.assertFalse(self.b.weg)
+
+    def test_niet_bij_andere_snelheid(self):
+        self.met_cat(modem=9600)
+        self.zet(438175000)
+        self.assertEqual(self.b.stap(), "")
+        self.assertIn("9600 baud", self.b.stand)
+        self.assertEqual(self.set_log, [])
 
     def test_uit(self):
         self.zet(rig.APRS_FREQ, aan=False)

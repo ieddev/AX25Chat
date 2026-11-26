@@ -72,6 +72,31 @@ class TestIc9700(unittest.TestCase):
         self.start(weiger_26=False)
         self.doorloop()
 
+    def test_baken_even_naar_144800(self):
+        # Het APRS-baken zet de set even op 144,800 FM-D en daarna terug naar de eigen frequentie (USB-D).
+        sys.path.insert(0, os.path.join(HIER, "..", "chat"))
+        import ax25chat_baken as baken
+        import ax25chat_radio as radio
+        self.start(weiger_26=False)
+        r = {"ptt_methode": "CAT", "cat_model": 3081, "cat_poort": "/dev/x", "cat_mode": "PKTFM", "geluidskaart": "CODEC"}
+        oud = (radio.STATION_FILE, radio.RADIO_FILE)
+        radio.STATION_FILE, radio.RADIO_FILE = rig.STATION_FILE, os.path.join(os.path.dirname(rig.STATION_FILE), "radio.json")
+        self.addCleanup(lambda: (setattr(radio, "STATION_FILE", oud[0]), setattr(radio, "RADIO_FILE", oud[1])))
+        radio.schrijf(radio.RADIO_FILE, r)
+        self.station(144775000, eigen=[{"hz": 144775000, "mode": "PKTUSB", "baud": "1200", "naam": "PD4R"}])
+        self.assertEqual(rig.zet_set(r), [])
+        tijdens = []
+
+        class Chat:
+            gepauzeerd = False
+
+        b = baken.Baken(Chat(), start=False, log=lambda t: None, wacht=lambda s: tijdens.append(rig.status()))
+        ok, fout = b.via_144800(lambda: True)
+        self.assertEqual((ok, fout), (True, ""))
+        self.assertEqual((tijdens[0]["frequentie"], rig._FAMILIE.get(tijdens[0]["mode"])), (144800000, "PKTFM"))
+        st = rig.status()
+        self.assertEqual((st["frequentie"], st["mode"]), (144775000, "PKTUSB"))
+
     def test_set_weigert_modecommando(self):
         # Hamlib 4.5 zegt dan 'gelukt' maar verandert alleen de datamode; het vangnet (CI-V 0x06) helpt.
         self.start(weiger_26=True)

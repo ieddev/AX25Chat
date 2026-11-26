@@ -112,5 +112,7 @@ TNC of via geluid), of een set met APRS-berichten. Spreek een frequentie af.
 | H2 | GPS | u-blox in de Pi, Zoek GPS | GPS gevonden; na een tijdje buiten *GPS heeft een positie* met coördinaten | ☐ |
 | H3 | Stilstaan | Baken aan, GPS, een uur stilstaan | Eén baken, daarna niets (tenzij *Ook stilstaand eens per uur*) | ☐ |
 | H4 | Rijden | Rijden met *Vaker tijdens het rijden* | Op de snelweg elke ~3 min, in de stad minder vaak; na een bocht een extra baken | ☐ |
-| H5 | Andere frequentie | Station op 144,925 | Status: *Wacht: de set staat op 144,925* en geen baken | ☐ |
+| H5 | Andere frequentie | IC-9700, Station op 144,925, Nu een baken zenden | Set gaat even naar 144,800 FM-D, zendt, en na ~8 s terug naar 144,925; baken op aprs.fi | ☐ |
+| H5b | Andere snelheid | Station op 438,175 (9600) | Status: *Wacht: op 438,175 MHz wordt 9600 baud gebruikt…*; set blijft staan | ☐ |
+| H5c | Chat tijdens baken | Op 144,925 een bericht versturen terwijl het baken zendt | Bericht gaat pas na terugkeer op 144,925 de lucht in | ☐ |
 | H6 | BBS-verbinding | Verbinden met PD4R-12 (op 144,800 of een andere frequentie) | Status: *Gepauzeerd*; na verbreken weer *Baken staat aan* | ☐ |

@@ -208,6 +208,7 @@ class Chat:
         self.link = link or ax25.KissLink(direwolf[0], direwolf[1], self.mijn_call(), self.ontvangen,
                                           log=log, met_pad=True)
         self.wek = threading.Event()
+        self.gepauzeerd = False                           # True: niets versturen (de set is even weg voor het baken)
 
     def start(self):
         threading.Thread(target=self._herhaler, daemon=True, name="herhaler").start()
@@ -302,6 +303,8 @@ class Chat:
             self.wek.clear()
 
     def verwerk_wachtrij(self, nu=None):
+        if self.gepauzeerd:                               # de set staat even op een andere frequentie (APRS-baken)
+            return
         nu = nu or time.time()
         for b in self.opslag.te_versturen(nu):
             nu_b = self.opslag.bericht(b["id"])

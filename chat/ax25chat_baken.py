@@ -7,8 +7,10 @@ ax25chat_baken.py - APRS-positiebaken op 144,800 MHz, vooral voor mobiel gebruik
   rijden" (SmartBeaconing): hoe harder je rijdt, hoe vaker, en ook na een bocht. Stilstaand niets, of als je dat
   aanzet eens per uur, zodat je op de kaart zichtbaar blijft.
 - Tijdens een BBS-, node- of chatverbinding (tabblad BBS) pauzeert het baken; na het verbreken gaat het verder.
-- Alleen als de set op 144,800 staat (Station). Staat hij voor een BBS of chat op een andere frequentie, dan wacht het
-  baken: anders zou het je positie midden in een gesprek of op de verkeerde frequentie uitzenden.
+- Staat de set (Station) op een andere frequentie, dan zet de Pi hem even op 144,800 FM-D, zendt het baken en zet
+  hem daarna terug (frequentie en mode). Dat kan alleen met CAT, met een set die op 2 m kan, en als op de eigen
+  frequentie ook 1200 baud gebruikt wordt (anders zou Direwolf twee keer opnieuw moeten starten).
+  Zolang de set weg is, wachten berichten in de chat even.
 
 Alleen standaard-Python.
 """
@@ -37,6 +39,8 @@ TRAAG_KMH, SNEL_KMH = 5, 90                      # onder 5 km/h: stilstaan; vana
 SNEL_SEC = 180                                   # bij 90 km/h en harder: elke 3 minuten
 BOCHT_MIN_GRADEN, BOCHT_HELLING, BOCHT_MIN_SEC = 28, 255, 30
 MIN_SEC = 60                                     # nooit vaker dan eens per minuut
+OVERSCHAKEL_SEC = 1.5                            # na het wisselen van frequentie even laten stabiliseren
+ZEND_SEC = 6                                     # zo lang op 144,800 blijven: Direwolf wacht op een vrij kanaal en zendt
 GPS_VERS = 30                                    # een GPS-positie ouder dan 30 s telt niet
 VERPLAATST_M = 200                               # pas na 200 m telt het als een andere positie (GPS verspringt wat)
 STIL_SEC = 3600                                  # stilstaand (als aangezet): eens per uur
@@ -244,8 +248,10 @@ def moet_bakenen(nu, laatst, b, pos, vorige_koers, vorige_pos=None):
 
 
 class Baken:
-    def __init__(self, chat, gps=None, log=print, klok=time.time, start=True, verbonden=lambda: ""):
+    def __init__(self, chat, gps=None, log=print, klok=time.time, start=True, verbonden=lambda: "", wacht=time.sleep):
         self.chat = chat
+        self.wacht = wacht
+        self.weg = False                      # True terwijl de set even op 144,800 staat
         self.verbonden = verbonden            # roepnaam van een lopende BBS-/nodeverbinding, of ''
         self.laatst_pos = None
         self.log = log
@@ -273,12 +279,6 @@ class Baken:
         if not b.get("aan") and not self.nu_gevraagd:
             self.stand = "Baken staat uit."
             return ""
-        freq = radio.station().get("frequentie")
-        if freq != rig.APRS_FREQ:
-            self.stand = (f"Wacht: de set staat op {rig.mhz(freq) if freq else 'een zelf ingestelde frequentie'}. "
-                          f"Het baken zendt alleen op {rig.mhz(rig.APRS_FREQ)} (Station).")
-            self.nu_gevraagd = False
-            return ""
         sessie = self.verbonden()
         if sessie:
             self.stand = f"Gepauzeerd: er is een verbinding met {sessie} (tabblad BBS). Na het verbreken gaat het baken verder."
@@ -296,13 +296,22 @@ class Baken:
             stil = self.laatst_pos and afstand(pos, self.laatst_pos) < VERPLAATST_M
             self.stand = "Baken staat aan" + (", wacht tot je positie verandert." if stil else ".")
             return ""
+        freq = radio.station().get("frequentie")
+        waarom = "" if freq == rig.APRS_FREQ else self.kan_niet_wisselen(freq)
+        if waarom:
+            self.stand = f"Wacht: {waarom}"
+            return ""
         info = aprs_positie(pos["lat"], pos["lon"], b.get("symbool") or ">", (b.get("commentaar") or "")[:40],
                             pos.get("koers"), pos.get("kmh"))
         pad = [p for p in re.split(r"[ ,]+", (b.get("pad") or "").upper()) if p]
         link = self.chat.link
         link.mycall = self.chat.mijn_call()
-        if not link.send_info(info, dest=ax25.TOCALL, via=pad):
-            self.stand = "Baken niet verzonden: Direwolf is niet bereikbaar."
+
+        def zend():
+            return link.send_info(info, dest=ax25.TOCALL, via=pad)
+        ok, fout = (zend(), "") if freq == rig.APRS_FREQ else self.via_144800(zend)
+        if not ok:
+            self.stand = "Baken niet verzonden: " + (fout or "Direwolf is niet bereikbaar.")
             return ""
         self.laatst, self.laatst_info, self.vorige_koers, self.laatst_pos = nu, info, pos.get("koers"), dict(pos)
         self.stand = "Baken staat aan."
@@ -312,6 +321,53 @@ class Baken:
             pass
         self.log(f"Baken ({reden}): {info}")
         return info
+
+    def kan_niet_wisselen(self, freq):
+        """Waarom de set niet even naar 144,800 kan ('' = het kan)."""
+        r = radio.instellingen()
+        waar = rig.mhz(freq) if freq else "een zelf ingestelde frequentie"
+        if not rig.cat_actief(r):
+            return (f"de set staat op {waar} en heeft geen CAT, dus de Pi kan hem niet even naar "
+                    f"{rig.mhz(rig.APRS_FREQ)} zetten. Zet Station (of de set) op {rig.mhz(rig.APRS_FREQ)}.")
+        if int(r.get("cat_model") or 0) in rig.ALLEEN_HF:
+            return f"de {rig.MODEL_NAAM.get(int(r['cat_model']), 'set')} kan niet op 2 m."
+        if freq and radio.modem(r) != 1200:
+            return (f"op {waar} wordt {radio.modem(r)} baud gebruikt; voor het baken (1200 baud) zou Direwolf twee keer "
+                    f"opnieuw moeten starten. Het baken zendt weer als Station op 144,800 of een 1200-baudfrequentie staat.")
+        return ""
+
+    def via_144800(self, zend):
+        """Set even naar 144,800 FM-D, zenden, en terug naar waar hij stond. Geeft (ok, fout)."""
+        r = radio.instellingen()
+        terug_hz = radio.station().get("frequentie")
+        voor = rig.status() if not terug_hz else {}
+        self.weg = True
+        self.chat.gepauzeerd = True                   # chatberichten niet op 144,800 uitzenden
+        try:
+            rig.TIJDELIJK = rig.APRS_FREQ
+            meld = rig.zet_set(r)
+            mis = [m for m in meld if m.startswith("Frequentie zetten lukte niet") or "zendt nu" in m or "kan niet" in m]
+            if mis:
+                return False, "; ".join(mis)
+            self.wacht(OVERSCHAKEL_SEC)
+            if not zend():
+                return False, "Direwolf is niet bereikbaar."
+            self.wacht(ZEND_SEC)
+            return True, ""
+        finally:
+            rig.TIJDELIJK = None
+            try:
+                if terug_hz:
+                    rig.zet_set(r)
+                elif voor.get("frequentie"):                     # Station: zelf ingesteld, maar wel CAT
+                    rig.opdracht(f"F {voor['frequentie']}")
+                    if voor.get("mode"):
+                        rig.zet_mode(r, rig._FAMILIE.get(voor["mode"], voor["mode"]))
+            finally:
+                self.chat.gepauzeerd = False
+                self.weg = False
+                if hasattr(self.chat, "wek"):
+                    self.chat.wek.set()                              # wachtende chatberichten nu versturen
 
     def nu(self):
         self.nu_gevraagd = True
@@ -405,8 +461,8 @@ def html(verborgen, baken=None):
     lat = "" if b["lat"] is None else f'{b["lat"]:.5f}'.replace(".", ",")
     lon = "" if b["lon"] is None else f'{b["lon"]:.5f}'.replace(".", ",")
     return f"""<section><h2>APRS-baken</h2><p class="uitleg">Zendt je positie op {rig.mhz(rig.APRS_FREQ)} (FM-D, 1200 baud),
-zodat je op kaarten als aprs.fi verschijnt. Alleen als je positie verandert, alleen als Station op {rig.mhz(rig.APRS_FREQ)}
-staat, en niet tijdens een BBS-verbinding.</p>
+zodat je op kaarten als aprs.fi verschijnt. Alleen als je positie verandert, en niet tijdens een BBS-verbinding. Staat
+de set op een andere frequentie, dan gaat hij even naar {rig.mhz(rig.APRS_FREQ)} en daarna terug (met CAT).</p>
 <p class="melding {'ok' if b['aan'] and 'aan' in stand else 'let'}" style="margin:0 0 8px">{e(stand.strip() or ('Baken staat aan.' if b['aan'] else 'Baken staat uit.'))}</p>{laatst}
 <form method="post" action="/baken">{verborgen}
 <label><input type="checkbox" name="aan" value="1"{' checked' if b['aan'] else ''} style="width:auto"> Baken aan</label>
