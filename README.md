@@ -35,6 +35,10 @@ Een bericht aan een station wordt herhaald tot de bevestiging binnen is (hoogste
 Op het tabblad **Kaart** staan de stations die je hoort met een APRS-positie, op een offline kaart van
 Nederland (PDOK). Die download je eenmalig met internet op het tabblad Radio; daarna werkt hij zonder internet.
 
+**Android-app:** voor dagelijks gebruik (chat met meldingen, kaart, BBS). Download de APK bij
+[Releases](https://github.com/ieddev/AX25Chat/releases); uitleg in [docs/PROCEDURE.md](docs/PROCEDURE.md#android-app).
+De broncode staat in `android/`.
+
 ## Installeren
 
 1. Zet met de **Raspberry Pi Imager** *Raspberry Pi OS Lite (64-bit)* op een SD-kaart.

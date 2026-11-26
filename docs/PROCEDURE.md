@@ -342,6 +342,52 @@ De kaart leest de drie gangbare APRS-posities: gewone (zoals AX25Chat en APRSdro
 (trackers) en Mic-E (Kenwood, Yaesu en veel trackers). Objecten (zoals een evenement of een repeater die iemand
 anders op de kaart zet) komen er nog niet op.
 
+## Android-app
+
+De app is voor dagelijks gebruik: chatten, CQ en berichten, de kaart en de BBS. Instellen (set, roepnaam, Mijn
+frequenties, BBS-lijst, baken, offline kaart) doe je eenmalig op de webpagina van de Pi, zoals hierboven.
+
+**Installeren** (de app staat niet in de Play Store, maar op GitHub):
+
+1. Open op je telefoon **github.com/ieddev/AX25Chat/releases** en tik bij de nieuwste versie op
+   **AX25Chat-….apk**.
+2. Open het gedownloade bestand. Android vraagt of je browser apps mag installeren (*onbekende bronnen* of *Apps
+   van onbekende herkomst installeren*): zet dat aan voor je browser, ga terug en tik **Installeren**. Je kunt het
+   daarna weer uitzetten.
+3. Play Protect kan waarschuwen dat de app onbekend is: kies *Toch installeren*. De broncode staat open op GitHub.
+4. Een nieuwe versie installeer je op dezelfde manier, over de oude heen. Berichten staan op de Pi, dus er gaat
+   niets verloren.
+
+**Verbinden:**
+
+| Waar | Hoe |
+|---|---|
+| Onderweg | Verbind de telefoon met de wifi **AX25Chat-&lt;roepnaam&gt;** van de Pi. Meldt Android *geen internet*, kies dan **Verbonden blijven**. De app praat via de wifi met de Pi; je andere apps houden internet via 4G. Adres in de app: `10.42.0.1` (standaard). |
+| Thuis | Pi en telefoon op je eigen wifi. Vul bij **Instellingen** in de app het adres in dat je router de Pi geeft (bijv. `192.168.1.50`; je ziet het in je router, of op de Pi met `hostname -I`). |
+
+**In de app:**
+
+| Tabblad | Wat |
+|---|---|
+| **Chat** | Gesprekken bovenaan (CQ, per station, Monitor), *+ Nieuw* voor een ander station. Stuur, Stop en Opnieuw werken zoals op de webpagina. Bovenaan zie je of de app verbonden is met de Pi. |
+| **Kaart** | De kaart van de Pi (zie Kaart hierboven). *Bericht sturen* bij een station opent de chat in de app. |
+| **BBS** | Het tabblad BBS van de Pi: keuzelijst, terminal en snelknoppen. |
+| **Instellingen** | Adres van de Pi, meldingen aan of uit, de webpagina van de Pi openen, stoppen. |
+
+**Meldingen:** de app blijft op de achtergrond verbonden met de Pi en geeft een melding bij een nieuw bericht aan
+jou of aan CQ, ook met het scherm uit. Android vereist daarvoor een vaste melding *AX25Chat luistert*. Die kun je
+verbergen: houd hem ingedrukt en zet *Verbinding met de Pi* uit; de meldingen voor berichten blijven werken. Ga je
+buiten bereik van de hotspot, dan probeert de app het elke 10 seconden opnieuw. Wil je helemaal stoppen:
+Instellingen, *Stoppen met luisteren*.
+
+**Voor de beheerder van de repository: een nieuwe versie uitbrengen.** GitHub bouwt de APK zelf (Actions,
+*Android-app*). Eenmalig: zet bij *Settings → Secrets and variables → Actions* twee secrets:
+`AX25CHAT_KEYSTORE_B64` (de inhoud van de sleutel als base64) en `AX25CHAT_KEYSTORE_WACHTWOORD`. Bewaar de sleutel
+ook zelf goed: met een andere sleutel kan niemand de app nog bijwerken zonder hem eerst te verwijderen. Daarna:
+maak een tag `app-v0.2` (enz.) op main, bijv. via *Releases → Draft a new release → Choose a tag*. GitHub maakt
+de release met de APK erbij. Bij elke wijziging in `android/` bouwt GitHub ook een test-APK (onder *Actions*, bij
+de run, *Artifacts*).
+
 ## Wisselen van set
 
 Sluit de andere set aan en kies op het tabblad Radio bij **Mijn sets** het profiel en *Gebruiken*.
@@ -392,6 +438,8 @@ en haal dan pas de stroom eraf.
 | Zoek mijn set vindt niets | Set aan? USB-kabel goed? Bij een Icom: *CI-V USB Port* op *Unlink from [REMOTE]* |
 | Set gaat niet zenden | Tabblad Status → log van Direwolf. Kijk bij Handmatig instellen naar de besturing (CAT, RTS, VOX) |
 | Niets ontvangen | Luistertest doen; ontvangstniveau omhoog; staat de set op de goede frequentie? |
+| App: *geen verbinding met de Pi* | Ben je met de wifi van de Pi verbonden (en *Verbonden blijven* gekozen)? Klopt het adres bij Instellingen? Thuis: het adres van de Pi op je eigen wifi. |
+| App installeert niet over de oude heen | Een test-APK uit Actions heeft een andere sleutel dan een release. Verwijder de app en installeer opnieuw (berichten staan op de Pi). |
 | Kaart blijft grijs | Op het tabblad Radio de offline kaart downloaden (met internet). Stations staan er ook zonder op. |
 | Station niet op de kaart | Staat het in de Monitor? Alleen frames met een APRS-positie komen op de kaart (geen berichten of status). |
 | Log bekijken via ssh | `journalctl -u ax25chat-direwolf -f` |

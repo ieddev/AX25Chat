@@ -129,3 +129,16 @@ TNC of via geluid), of een set met APRS-berichten. Spreek een frequentie af.
 | I6 | Zelf | Vaste positie of GPS bij het baken | Jij met groene rand | ☐ |
 | I7 | Bericht sturen | Tik op een station, Bericht sturen | Chat opent met de roepnaam al ingevuld | ☐ |
 | I8 | Zonder internet kijken | Telefoon alleen op de hotspot (mobiele data uit), tabblad Kaart | Kaart met ondergrond, inzoomen rond het midden geeft straten | ☐ |
+
+## J. Android-app
+
+| # | Wat | Hoe | Verwacht | OK |
+|---|-----|-----|----------|----|
+| J1 | Installeren | APK van de release op de telefoon, onbekende bronnen toestaan | App installeert; vraagt om meldingen toe te staan | ☐ |
+| J2 | Verbinden onderweg | Telefoon op de hotspot van de Pi, *Verbonden blijven*, mobiele data aan | Bovenaan *● verbonden*; berichten van de Pi staan in Chat | ☐ |
+| J3 | Verbinden thuis | Pi en telefoon op de thuis-wifi, adres invullen bij Instellingen | *● verbonden* | ☐ |
+| J4 | CQ en bericht | CQ sturen; bericht aan een station dat terugbevestigt | CQ *verzonden*; bericht wordt *bevestigd ✓✓* | ☐ |
+| J5 | Melding | App naar de achtergrond, scherm uit, iemand stuurt je een bericht | Melding met afzender en tekst; tik opent dat gesprek | ☐ |
+| J6 | Buiten bereik | Weg van de hotspot en terug | *○ geen verbinding*; na terugkomst binnen ~10 s weer verbonden | ☐ |
+| J7 | Kaart en BBS | Tabbladen Kaart en BBS | Pagina's van de Pi zonder hun eigen kop; *Bericht sturen* op de kaart opent de chat | ☐ |
+| J8 | Bijwerken | Nieuwe release over de oude heen installeren | Installeert zonder de oude te verwijderen | ☐ |
