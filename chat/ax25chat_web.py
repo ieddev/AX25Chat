@@ -605,8 +605,8 @@ def main():
     import ax25chat_chat
     CHAT = ax25chat_chat.open_chat(MAP, radio.station, log=lambda t: print(t, flush=True))
     r = radio.instellingen()
-    if r.get("geluidskaart") and not radio.direwolf_met_agw():     # Pi van voor de BBS-functie: AGW-poort aanzetten
-        print("direwolf.conf bijwerken (AGW-poort 8000 voor BBS'en)", flush=True)
+    if r.get("geluidskaart") and not radio.direwolf_met_agw():     # oudere direwolf.conf: AGW-poort en v2.0 erbij
+        print("direwolf.conf bijwerken (AGW-poort 8000 en AX.25 v2.0 voor BBS'en)", flush=True)
         radio.pas_toe(r, met_rig=False)
     global BBS
     BBS = bbs.Sessie(radio.station, CHAT._meld, log=lambda t: print(t, flush=True), bezet=lambda: bool(BAKEN and BAKEN.weg))

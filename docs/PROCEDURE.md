@@ -214,6 +214,12 @@ frequentie, de mode en de snelheid. Je kunt ook een roepnaam invullen die niet i
 na het verbinden in de lijst bewaard, zodat je hem de volgende keer kunt kiezen. Met **Weg** haal je de
 gekozen BBS uit de lijst.
 
+**AX.25 v2.0.** AX25Chat laat Direwolf altijd verbinden met AX.25 versie 2.0 (in direwolf.conf: `MAXV22 0`).
+Versie 2.2 heeft grotere pakketvensters, maar veel nodes en BBS'en (zoals BPQ) antwoorden daar met FRMR op
+(in de monitor: `SABME` en daarna `FRMR`), en de verbinding komt dan niet tot stand. Met v2.0 stuurt Direwolf
+meteen `SABM` en antwoordt de node met `UA`. Een Pi met een oudere direwolf.conf krijgt deze regel vanzelf
+bij de eerste start na het bijwerken.
+
 Voor de BBS-verbinding gebruikt de Pi de AGW-poort 8000 van Direwolf. Een Pi van voor deze versie zet die
 poort bij de eerste start na **Bijwerken** zelf aan (Direwolf herstart dan één keer).
 
