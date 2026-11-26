@@ -37,6 +37,7 @@ object Chat {
     var actief = "CQ"
     @Volatile var frequentie = ""            // bijv. '144,925 MHz', van /api/frequenties
     @Volatile var gpsStand = ""              // wat de GPS van de telefoon doet (Instellingen)
+    @Volatile var verbindingFout = ""        // waarom er geen verbinding is, en wanneer de volgende poging is
 
     private val hoofd = Handler(Looper.getMainLooper())
     private val luisteraars = ArrayList<() -> Unit>()
@@ -64,6 +65,14 @@ object Chat {
     fun zetFrequentie(tekst: String) {
         frequentie = tekst
         meld()
+    }
+
+    @Synchronized
+    fun zetFout(tekst: String) {
+        if (verbindingFout != tekst) {
+            verbindingFout = tekst
+            meld()
+        }
     }
 
     @Synchronized
