@@ -61,6 +61,7 @@ class MainActivity : Activity() {
     private lateinit var inhoud: FrameLayout
     private lateinit var tabs: LinearLayout
     private lateinit var kopStand: TextView
+    private var verbindingStand: TextView? = null          // regel onder het adres in Instellingen
     private var tab = "chat"
 
     // chat
@@ -230,6 +231,8 @@ class MainActivity : Activity() {
             setText(Pi.adres(this@MainActivity)); inputType = InputType.TYPE_TEXT_VARIATION_URI; setSingleLine()
         }
         s.addView(adres)
+        verbindingStand = uitleg("").also { s.addView(it) }
+        tekenChat()
         s.addView(uitleg("Onderweg via de hotspot van de Pi: 10.42.0.1. Thuis op je eigen wifi: het adres dat je router " +
             "de Pi geeft (bijv. 192.168.1.50)."))
         s.addView(Button(this).apply {
@@ -340,6 +343,8 @@ class MainActivity : Activity() {
         if (!::chatScherm.isInitialized) return
         kopStand.text = (Chat.mij.ifEmpty { "" }) + (if (Chat.verbonden && Chat.frequentie.isNotEmpty()) " · " + Chat.frequentie else "") +
             if (Chat.verbonden) "  ●" else "  ○ geen verbinding met de Pi"
+        verbindingStand?.text = if (Chat.verbonden) "Verbonden met " + Pi.adres(this)
+            else Chat.verbindingFout.ifEmpty { "Verbinden met " + Pi.adres(this) + "…" }
 
         gesprekBalk.removeAllViews()
         for (g in Chat.gesprekken() + "+") {

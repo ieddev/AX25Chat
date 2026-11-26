@@ -26,6 +26,9 @@ object Pi {
     @Volatile var wifi: Network? = null
         private set
 
+    /** Wordt aangeroepen als de wifi (terug)komt: LiveService probeert dan meteen opnieuw. */
+    @Volatile var bijWifi: (() -> Unit)? = null
+
     fun adres(ctx: Context): String =
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString("adres", STANDAARD_ADRES) ?: STANDAARD_ADRES
 
@@ -61,6 +64,7 @@ object Pi {
             override fun onAvailable(network: Network) {
                 wifi = network
                 cm.bindProcessToNetwork(network)
+                bijWifi?.invoke()
             }
 
             override fun onLost(network: Network) {

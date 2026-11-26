@@ -426,7 +426,9 @@ Na een herstart van de telefoon start de GPS pas weer als je de app een keer ope
 **Meldingen:** de app blijft op de achtergrond verbonden met de Pi en geeft een melding bij een nieuw bericht aan
 jou of aan CQ, ook met het scherm uit. Android vereist daarvoor een vaste melding *AX25Chat luistert*. Die kun je
 verbergen: houd hem ingedrukt en zet *Verbinding met de Pi* uit; de meldingen voor berichten blijven werken. Ga je
-buiten bereik van de hotspot, dan probeert de app het elke 10 seconden opnieuw. Wil je helemaal stoppen:
+buiten bereik van de hotspot of herstart de Pi, dan probeert de app het na 3 seconden opnieuw (na vijf mislukte
+pogingen elke 10 seconden), en meteen zodra de wifi terugkomt. Waarom er geen verbinding is en wanneer de volgende
+poging komt, zie je in Instellingen onder het adres van de Pi en in de vaste melding. Wil je helemaal stoppen:
 Instellingen, *Stoppen met luisteren*.
 
 **Voor de beheerder van de repository: een nieuwe versie uitbrengen.** GitHub bouwt de APK zelf (Actions,

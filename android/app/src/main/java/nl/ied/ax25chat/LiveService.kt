@@ -18,11 +18,19 @@ import android.location.LocationManager
 import android.os.Bundle
 import android.os.Looper
 import org.json.JSONObject
+import java.net.ConnectException
+import java.net.NoRouteToHostException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 /**
  * Houdt de verbinding met de Pi open (/api/live), ook als de app op de achtergrond staat of het scherm uit is.
- * Een nieuw bericht aan jou of aan CQ geeft een melding. Valt de verbinding weg (buiten bereik van de hotspot),
- * dan probeert de service het elke 10 seconden opnieuw.
+ * Een nieuw bericht aan jou of aan CQ geeft een melding. Valt de verbinding weg (buiten bereik van de hotspot,
+ * de Pi herstart), dan probeert de service het na 3 seconden opnieuw, na een paar mislukte pogingen elke 10 seconden.
+ * Komt de wifi terug, dan meteen. De reden staat in Chat.verbindingFout (Instellingen en de vaste melding).
  *
  * Staat 'GPS van de telefoon' aan, dan stuurt de dienst ook elke 10 seconden de positie naar de Pi (/api/positie),
  * voor het APRS-baken (bron 'GPS van de telefoon' op de Pi) en de kaart.
@@ -42,6 +50,7 @@ class LiveService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == STOP) {
             stoppen = true
+            wekker.wek()
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
             return START_NOT_STICKY
@@ -72,27 +81,59 @@ class LiveService : Service() {
 
     override fun onDestroy() {
         stoppen = true
+        wekker.wek()
         stopGps()
         super.onDestroy()
     }
 
     private fun lus() {
+        var mislukt = 0
+        Pi.bijWifi = { wekker.wek() }
         while (!stoppen) {
+            var reden: String
             try {
                 Chat.laad(this)
+                mislukt = 0
+                Chat.zetFout("")
                 Chat.zetVerbonden(true)
                 werkVastBij("Verbonden met " + Pi.adres(this))
                 Pi.luister(this, { stoppen }) { soort, data -> gebeurtenis(soort, data) }
-            } catch (_: Exception) {
+                reden = "De Pi heeft de verbinding verbroken (herstart hij?)"
+            } catch (e: Exception) {
+                reden = reden(e)
             }
             Chat.zetVerbonden(false)
             if (stoppen) break
-            werkVastBij("Geen verbinding met " + Pi.adres(this) + ". Ben je verbonden met de wifi van de Pi?")
-            try {
-                Thread.sleep(10000)
-            } catch (_: InterruptedException) {
-            }
+            mislukt++
+            val wacht = if (mislukt <= 5) 3 else 10
+            Chat.zetFout(reden + ". Opnieuw proberen om " + SimpleDateFormat("HH:mm:ss", Locale("nl", "NL"))
+                .format(Date(System.currentTimeMillis() + wacht * 1000L)) + ".")
+            werkVastBij("Geen verbinding met " + Pi.adres(this) + ": " + reden)
+            wekker.slaap(wacht * 1000L)
         }
+        Pi.bijWifi = null
+    }
+
+    /** Een foutmelding van Java in gewone woorden. */
+    private fun reden(e: Exception): String = when (e) {
+        is SocketTimeoutException -> "De Pi reageert niet op tijd"
+        is ConnectException -> if (Pi.wifi == null) "Geen wifi. Ben je verbonden met de wifi van de Pi?"
+            else "De Pi weigert de verbinding op " + Pi.adres(this) + " (draait AX25Chat, klopt het adres?)"
+        is NoRouteToHostException, is UnknownHostException ->
+            "Pi niet gevonden op " + Pi.adres(this) + ". Ben je verbonden met de wifi van de Pi?"
+        is org.json.JSONException -> "Onverwacht antwoord van " + Pi.adres(this) + " (is dit de Pi?)"
+        else -> "Verbinding mislukt (" + (e.message ?: e.javaClass.simpleName) + ")"
+    }
+
+    /** Wachten tot de volgende poging, of eerder als de wifi terugkomt. */
+    private val wekker = object {
+        private val slot = Object()
+        private var gewekt = false
+        fun slaap(ms: Long) = synchronized(slot) {
+            if (!gewekt) try { slot.wait(ms) } catch (_: InterruptedException) {}
+            gewekt = false
+        }
+        fun wek() = synchronized(slot) { gewekt = true; slot.notifyAll() }
     }
 
     private fun gebeurtenis(soort: String, data: org.json.JSONObject) {
