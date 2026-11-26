@@ -100,10 +100,43 @@ dan is dat bijna altijd RF in de kabel of de voeding.
 | Set | Wat Zoek mijn set vindt | Let op |
 |---|---|---|
 | IC-9700 | CAT op poort A, geluid van de set | *MENU > SET > Connectors > USB SEND* op **OFF** (PTT gaat via CAT) |
-| IC-7300 | CAT, geluid van de set, modem 300 baud | Alleen HF: kies bij Station *Zelf instellen op de set* |
+| IC-7300 | CAT, geluid van de set, modem 300 baud | Alleen HF: zet je HF-frequenties bij Mijn frequenties (bijv. 14,105 USB-D 300) |
 | FT-818 + SCU-17 | CAT op poort A, geluid van de SCU-17 | Vermogen is niet uit te lezen; max 6 W |
 | GM-340 + DigiRig | DigiRig, PTT via RTS | Kanaal met de packetfrequentie vooraf programmeren |
 | UV-5R + DigiRig | DigiRig, PTT via RTS | TXDELAY 300-400 ms (Handmatig instellen), lage zendstand, squelch laag |
+
+### Instellingen op de IC-7300
+
+Getest door PD3PAM (26-11-2026, HF packet 300 baud).
+
+| Menu | Instelling | Waarom |
+|---|---|---|
+| MENU > SET > Connectors > MOD Input > **DATA MOD** | **USB** | Anders zoekt de set het geluid bij de microfoon |
+| MENU > SET > Connectors > MOD Input > **USB MOD Level** | **50–70%** | Hoe hard het geluid van de Pi binnenkomt |
+| MENU > SET > Connectors > **USB SEND** | **OFF** | PTT gaat via CAT; met USB SEND gaat de set soms zomaar zenden |
+| MENU > SET > Connectors > CI-V > **CI-V USB Port** | **Unlink from [REMOTE]** | Anders vindt Zoek mijn set de CAT niet |
+| RF POWER | bijv. **45 W** | Packet belast de eindtrap minder dan FT8, maar ga niet voluit |
+
+**Afstellen op de ALC-meter**: zend een testuitzending (tabblad Radio) en kijk naar de ALC. Die mag net een
+beetje uitslaan, niet tot het einde: dan wordt je signaal vervormd. Te weinig, ook met USB MOD Level hoog?
+Zet dan op de Pi het afspeelvolume van de geluidskaart hoger: `alsamixer`, F6, kies *USB Audio CODEC*.
+
+### Instellingen op de IC-9700
+
+Getest door PD3PAM: CAT, frequentie en mode (FM-D en USB-D op 2 m). De geluidsinstellingen zijn
+dezelfde als bij de IC-7300, maar zijn op de IC-9700 nog niet apart nagelopen.
+
+| Menu | Instelling | Waarom |
+|---|---|---|
+| MENU > SET > Connectors > MOD Input > **DATA MOD** | **USB** | Anders zoekt de set het geluid bij de microfoon |
+| MENU > SET > Connectors > MOD Input > **USB MOD Level** | **50%** als begin | Afstellen zoals hieronder |
+| MENU > SET > Connectors > **USB SEND** | **OFF** | PTT gaat via CAT |
+| MENU > SET > Connectors > CI-V > **CI-V USB Port** | **Unlink from [REMOTE]** | Anders vindt Zoek mijn set de CAT niet |
+| MENU > SET > Connectors > CI-V > **CI-V Address** | **A2h** (standaard) | AX25Chat gaat uit van het standaardadres |
+
+**Afstellen**: in FM-D let je niet op de ALC, maar op de zwaai (deviatie): stel USB MOD Level zo in dat het
+tegenstation (of een tweede ontvanger) je zonder vervorming hoort; begin rond 50%. In USB-D geldt hetzelfde
+als bij de IC-7300: ALC net een beetje laten uitslaan. 9600 baud (438,175) is met de IC-9700 nog niet getest.
 
 ## Chatten
 
