@@ -173,6 +173,22 @@ CREATE INDEX IF NOT EXISTS berichten_gewijzigd ON berichten(gewijzigd);
             self.db.execute("DELETE FROM monitor WHERE id <= ?", (c.lastrowid - MONITOR_MAX,))
             return dict(self.db.execute("SELECT * FROM monitor WHERE id=?", (c.lastrowid,)).fetchone())
 
+    def wis(self, gesprek):
+        """Berichten van één gesprek ('CQ', een roepnaam) of de Monitor ('MONITOR') weghalen. Berichten die nog
+        verzonden of herhaald worden blijven staan. Geeft de ids van de weggehaalde berichten."""
+        with self.lock, self.db:
+            if gesprek == "MONITOR":
+                self.db.execute("DELETE FROM monitor")
+                return []
+            if gesprek == "CQ":
+                waar, args = "aan='CQ'", ()
+            else:
+                waar, args = "((richting='uit' AND aan=?) OR (richting='in' AND van=? AND aan!='CQ'))", (gesprek, gesprek)
+            waar += " AND NOT (richting='uit' AND status IN ('wacht','verzonden'))"
+            ids = [r[0] for r in self.db.execute(f"SELECT id FROM berichten WHERE {waar}", args)]
+            self.db.execute(f"DELETE FROM berichten WHERE {waar}", args)
+            return ids
+
     def monitor(self, n=200):
         with self.lock:
             return [dict(r) for r in reversed(self.db.execute(
@@ -257,6 +273,15 @@ class Chat:
             return False
         self._meld("bericht", self.opslag.werk_bij(bid, status="wacht", pogingen=0, volgende=0))
         self.wek.set()
+        return True
+
+    def wis(self, gesprek):
+        """Een berichtscherm leegmaken (alleen berichten; instellingen en frequenties blijven)."""
+        gesprek = str(gesprek or "").strip().upper()
+        if gesprek not in ("CQ", "MONITOR") and not CALL_RE.match(gesprek):
+            return False
+        ids = self.opslag.wis(gesprek)
+        self._meld("gewist", {"gesprek": gesprek, "ids": ids})
         return True
 
     def stop(self, bid):
