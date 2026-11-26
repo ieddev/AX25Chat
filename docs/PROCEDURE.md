@@ -263,6 +263,22 @@ een dal of tussen hoge gebouwen kan een baken een keer gemist worden; het volgen
 **Tips voor mobiel**: zet je roepnaam (Station) met **-9** erachter, bijv. PD3PAM-9; kies het symbool **Auto**;
 en zet **Vaker tijdens het rijden** aan, dan wordt je spoor op de kaart mooi gelijkmatig.
 
+### Wat zet je in het commentaar?
+
+Kort en nuttig, want elk teken kost zendtijd: 20 tot 40 tekens is genoeg. Gebruikelijk is je naam en hoe je
+bereikbaar bent, eventueel met de software. Bijvoorbeeld:
+
+`Gert mobiel - QRV 144.925 - AX25Chat`
+
+Laat persoonlijke dingen zoals je telefoonnummer of adres weg: alles wat je zendt is openbaar op aprs.fi.
+
+### Hoe snel sta je op aprs.fi?
+
+Hoort een iGate je baken (direct of via een digipeater), dan sta je meestal **binnen een minuut** op aprs.fi.
+Zoek op je roepnaam met SSID, bijv. `PD3PAM-9`. Zie je na een paar minuten niets, dan heeft geen iGate je
+gehoord: probeer een hogere plek of een betere antenne, of kijk of het baken in de Monitor staat. Onder
+*raw packets* op aprs.fi zie je precies welke pakketten zijn aangekomen en via welke digipeater.
+
 ### SSID: het nummer achter je roepnaam
 
 Met de SSID (het getal achter het streepje, 0 t/m 15) kun je meer stations met dezelfde roepnaam tegelijk in
