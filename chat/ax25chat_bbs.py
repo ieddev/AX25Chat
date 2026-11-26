@@ -135,6 +135,7 @@ class Sessie:
         self.aangemeld = ""
         self.sinds = 0
         self.wisselen = False           # set wordt naar een andere frequentie gezet (Direwolf kan herstarten)
+        self.terug_hz = None            # frequentie van voor de verbinding: na verbreken gaat de set daarheen terug
         self.link = link or agw.AgwLink(self._pakket, self._bij_verbinding, adres, log)
         threading.Thread(target=self._klok, daemon=True).start()
 
@@ -161,6 +162,23 @@ class Sessie:
             self._regel("info", info)
         else:
             self.meld("bbs", dict(self.stand_info(), regel=None))
+        with self.lock:
+            terug = self.terug_hz if stand == "verbroken" and not self.wisselen else None
+            if terug is not None:
+                self.terug_hz = None
+        if terug is not None:                      # bijv. terug naar 144,800, zodat het APRS-baken verder kan
+            threading.Thread(target=self._terug, args=(terug,), daemon=True).start()
+
+    def _terug(self, hz):
+        if not hz or hz == self.lees_station().get("frequentie"):
+            return
+        self._regel("info", f"Set terug naar {rig.mhz(hz)}." if hz else "Set terug naar de frequentie van ervoor.")
+        try:
+            fouten, _ = self.wissel(hz)
+        except Exception as e:
+            fouten = [str(e)]
+        if fouten:
+            self._regel("info", "Let op: " + "; ".join(fouten))
 
     def _aanmelden(self):
         mijn = self.mijn()
@@ -244,6 +262,8 @@ class Sessie:
     def _wissel_en_verbind(self, call, hz, via):
         gen = self.generatie
         self.wisselen = True
+        if self.terug_hz is None:
+            self.terug_hz = self.lees_station().get("frequentie")
         try:
             fouten, herstart = self.wissel(hz)
         except Exception as e:
@@ -256,8 +276,12 @@ class Sessie:
                 time.sleep(0.3)
         self.wisselen = False
         with self.lock:
-            if self.stand != "verbinden" or self.tegen != call:      # intussen afgebroken
-                return
+            stand, tegen = self.stand, self.tegen
+        if stand == "verbroken":                       # intussen afgebroken: set terug naar de vorige frequentie
+            self._zet("verbroken")
+            return
+        if stand != "verbinden" or tegen != call:
+            return
         self._start(call, via)
 
     def _start(self, call, via):

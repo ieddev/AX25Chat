@@ -67,6 +67,7 @@ de Pi zit dan niet meer op je thuis-wifi.
    Het advies zegt of het ontvangstniveau goed is.
 6. **Testuitzending**: tik op *Opslaan + testuitzending*. De set moet kort gaan zenden. Luister op een
    tweede ontvanger: schoon packet-geluid, niet vervormd. Pas het zendniveau aan en test opnieuw.
+7. Optioneel: **APRS-baken** (je positie op de kaart), zie [APRS-baken](#aprs-baken-je-positie-op-de-kaart).
 
 ## Kabels
 
@@ -167,6 +168,9 @@ PD4R-1. AX25Chat is zelf geen BBS: het is je terminal. Er is steeds één verbin
 1. **BBS toevoegen**: roepnaam (met SSID), een naam en de frequentie. Kies de frequentie uit de lijst; mode
    en snelheid komen van **Mijn frequenties** (tabblad Radio). Zet de frequentie van de BBS daar dus eerst
    neer, bijv. 144,925 FM-D 1200 baud. *Frequentie niet wisselen* = op de frequentie blijven die nu ingesteld is.
+   Dezelfde roepnaam mag vaker in de lijst, met een andere frequentie: een node als PD4R-12 heeft ingangen op
+   meerdere banden. Dezelfde roepnaam met dezelfde frequentie nog eens toevoegen vervangt de oude (bijv. om de
+   naam te wijzigen).
 2. **Verbinden**: kies de BBS in de keuzelijst (de laatst gekozen staat er al) en druk op Verbinden. De set gaat naar de frequentie van de BBS en de Pi maakt verbinding. Bovenaan zie je
    *Verbinden met…*, *Verbonden met…* of *Niet verbonden*. Moet Direwolf voor een andere snelheid opnieuw
    starten, dan duurt het een paar seconden langer.
@@ -179,12 +183,30 @@ PD4R-1. AX25Chat is zelf geen BBS: het is je terminal. Er is steeds één verbin
      de commando's achter de `}`. Bijvoorbeeld **BBS** (naar de BBS), **MHEARD** (welke stations de node
      gehoord heeft), **NODES** (andere nodes), **INFO**, **USERS**, **CHAT** en **BYE** (afmelden).
      **CONNECT** zet het commando in de invoerregel: typ de roepnaam erachter om verder te verbinden.
-     Houd je vinger op een knop (of ga er met de muis op staan) voor de uitleg.
+     Houd je vinger op een knop (of ga er met de muis op staan) voor de uitleg. De gangbare BPQ-commando's:
+
+     | Commando | Wat het doet |
+     |---|---|
+     | **CONNECT** roepnaam (of **C**) | Vanaf de node verder verbinden met een ander station of een andere node |
+     | **BYE** | Afmelden bij de node; de verbinding wordt verbroken |
+     | **INFO** | Informatie over de node (beheerder, plaats, frequenties) |
+     | **NODES** | Andere nodes die via deze node bereikbaar zijn |
+     | **ROUTES** | De directe buren van de node en hoe goed de verbinding is |
+     | **PORTS** | De poorten (radio's/frequenties) van de node; het nummer heb je nodig bij MHEARD |
+     | **USERS** | Wie er nu met de node verbonden is |
+     | **MHEARD** poortnummer | Welke stations de node op die poort de laatste tijd gehoord heeft |
+     | **DX** | DX-meldingen (DX-cluster) |
+     | **CHAT** | Naar de chatserver van het netwerk (verlaten met /B) |
+     | **CONV** | Conferentie, een ander soort chat |
+     | **BBS** / **MAIL** | Naar de BBS (post lezen en sturen) |
+     | **EMAIL** | E-mail via de node (alleen als de beheerder dat heeft ingesteld) |
+
    - **BBS** (een prompt die eindigt op `>`): L, R, S, K en B. Kwam je via de node, dan brengt B je
      meestal terug naar de node.
    - **Chat** (de chatserver van de node): /U (wie), /H (hulp) en /B (de chat verlaten).
 4. **Verbreken** (rood): verbreekt de verbinding netjes. Met **B** meld je je bij de BBS zelf af; die
-   verbreekt dan zelf.
+   verbreekt dan zelf. Was de set voor de verbinding naar een andere frequentie gezet, dan gaat hij na het
+   verbreken terug naar de frequentie van ervoor (bijv. 144,800, zodat het APRS-baken verder kan).
 
 Antwoordt de BBS niet, dan staat er na ongeveer een halve minuut *Geen antwoord van…*. Controleer dan de
 frequentie, de mode en de snelheid. Je kunt ook een roepnaam invullen die niet in je lijst staat
@@ -194,6 +216,28 @@ gekozen BBS uit de lijst.
 
 Voor de BBS-verbinding gebruikt de Pi de AGW-poort 8000 van Direwolf. Een Pi van voor deze versie zet die
 poort bij de eerste start na **Bijwerken** zelf aan (Direwolf herstart dan één keer).
+
+## APRS-baken (je positie op de kaart)
+
+Op het tabblad **Radio** staat **APRS-baken**. Het baken zendt je positie op 144,800 MHz (de APRS-frequentie in
+Europa, FM-D 1200 baud), zodat je via digipeaters en iGates op kaarten als aprs.fi verschijnt.
+
+- **Positie**: uit een **GPS-ontvanger via USB** (een u-blox-stickje, NMEA, kost een paar tientjes), of een
+  **vaste positie** die je zelf invult (breedte- en lengtegraad, bijv. 52,1234 en 6,1234). Steek de GPS in de Pi
+  en druk op **Zoek GPS**. De GPS van de telefoon kan niet gebruikt worden: de browser geeft de locatie alleen
+  aan beveiligde (https) pagina's.
+- **Alleen als je positie verandert** (meer dan 200 m sinds het vorige baken). Tijdens het rijden elke 10, 15,
+  20 of 30 minuten; met **Vaker tijdens het rijden** hoe harder je rijdt hoe vaker (tot elke 3 minuten bij
+  90 km/h) en ook na een bocht. Stilstaand zendt hij niets, tenzij je **Ook stilstaand eens per uur** aanzet.
+- **Alleen op 144,800**: zet bij Station de frequentie op 144,800. Staat de set op een andere frequentie, dan
+  wacht het baken (dat staat erbij).
+- **Niet tijdens een BBS-verbinding**: zolang je op het tabblad BBS verbonden bent, pauzeert het baken. Na het
+  verbreken gaat het verder.
+- **Symbool** (auto, camper, fiets, huis …), **commentaar** (max. 40 tekens) en **pad** (standaard
+  `WIDE1-1,WIDE2-1`) kun je zelf kiezen. Elk baken staat ook in de Monitor.
+- **Nu een baken zenden** zendt er meteen een (handig om te testen; kijk daarna op aprs.fi).
+
+Het is een gedeeld kanaal: zend niet vaker dan nodig.
 
 ## Wisselen van set
 

@@ -31,6 +31,7 @@ from urllib.parse import parse_qs, quote, urlparse
 
 import queue
 
+import ax25chat_baken as baken
 import ax25chat_bbs as bbs
 import ax25chat_bbspagina as bbspagina
 import ax25chat_bijwerken as bijwerken
@@ -45,6 +46,7 @@ CSRF = secrets.token_urlsafe(24)
 ZOEK_LOCK = threading.Lock()
 CHAT = None                                # ax25chat_chat.Chat, gestart in main()
 BBS = None                                 # ax25chat_bbs.Sessie (connected mode), gestart in main()
+BAKEN = None                               # ax25chat_baken.Baken (APRS-positie), gestart in main()
 
 CSS = """
 :root{--bg:#f6f7f9;--kaart:#fff;--tekst:#1b1f24;--zacht:#5b6470;--lijn:#dde1e6;--rood:#b3261e;--rood-z:#fbe9e7;
@@ -410,6 +412,24 @@ class Handler(BaseHTTPRequestHandler):
             if rig.cat_actief(r) and rig.doelfrequentie():
                 mis += rig.zet_set(r)
             return self._terug("/radio", ("fout:" + "; ".join(mis)) if mis else "ok:Station opgeslagen.")
+        if pad == "baken":
+            if f.get("actie") == "zoek":
+                gevonden = baken.zoek_gps()
+                if not gevonden:
+                    return self._terug("/radio", "fout:Geen GPS gevonden. Zit hij in de USB, en is het een GPS met NMEA (bijv. u-blox)?")
+                b = baken.instellingen()
+                b.update(gps_poort=gevonden, bron="gps")
+                s["baken"] = b
+                radio.schrijf(radio.STATION_FILE, s)
+                return self._terug("/radio", "ok:GPS gevonden: " + radio.usb.korte_naam(gevonden) + ". Zet het baken aan en sla op.")
+            fouten, melding = baken.verwerk(f)
+            if fouten:
+                return self._terug("/radio", "fout:" + "; ".join(fouten))
+            if f.get("actie") == "nu" and BAKEN:
+                info = BAKEN.nu()
+                melding = ("Baken verzonden: " + info) if info else BAKEN.stand
+                return self._terug("/radio", ("ok:" if info else "fout:") + melding)
+            return self._terug("/radio", "ok:" + melding)
         if pad == "frequentie":
             fouten, melding = radio.verwerk_eigen(f)
             return self._terug("/radio", ("fout:" + "; ".join(fouten)) if fouten else "ok:" + melding)
@@ -489,6 +509,10 @@ def main():
         radio.pas_toe(r, met_rig=False)
     global BBS
     BBS = bbs.Sessie(radio.station, CHAT._meld, log=lambda t: print(t, flush=True))
+    global BAKEN
+    BAKEN = baken.Baken(CHAT, log=lambda t: print(t, flush=True),
+                        verbonden=lambda: BBS.tegen if BBS.stand != "verbroken" else "")
+    radio.NA_EIGEN.append(lambda verborgen: baken.html(verborgen, BAKEN))
     server = ThreadingHTTPServer(("0.0.0.0", args.poort), Handler)
     print(f"AX25Chat op http://0.0.0.0:{args.poort}", flush=True)
     try:

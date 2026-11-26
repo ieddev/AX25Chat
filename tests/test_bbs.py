@@ -153,6 +153,7 @@ class TestSessie(Basis):
 
         def wissel(hz):                      # Direwolf herstart (andere snelheid): de AGW-verbinding valt even weg
             gewisseld.append(hz)
+            radio.schrijf(radio.STATION_FILE, dict(radio.station(), frequentie=hz))
             s._bij_verbinding(False)
             s._bij_verbinding(True)
             return [], True
@@ -164,6 +165,13 @@ class TestSessie(Basis):
         self.assertEqual(gewisseld, [144775000])
         self.assertEqual(self.link.gestuurd[-1], ("C", "PD3PAM-7", "PD4R-1"))
         self.assertEqual(s.stand, "verbinden")
+        s._pakket("C", "PD4R-1", "PD3PAM-7", b"*** CONNECTED With Station PD4R-1\r")
+        s._pakket("d", "PD4R-1", "PD3PAM-7", b"*** DISCONNECTED From Station PD4R-1\r")      # na verbreken: terug
+        eind = time.time() + 5
+        while time.time() < eind and len(gewisseld) < 2:
+            time.sleep(0.05)
+        self.assertEqual(gewisseld, [144775000, 144900000])
+        self.assertIn("Set terug naar 144,900", s.regels[-1]["tekst"])
 
     def test_eigen_roepnaam_en_roepnaam_gewijzigd(self):
         s = self.maak()

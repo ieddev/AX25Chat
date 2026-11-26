@@ -853,12 +853,16 @@ def verwerk_test(roepnaam, f):
     return uit
 
 
+NA_EIGEN = []          # extra secties na Mijn frequenties (het APRS-baken), gezet door de webserver
+
+
 def html_radio(verborgen, bovenaan="", luister=None):
     r = instellingen()
     if luister:                                   # uitslag van de luistertest bovenaan, waar je hem ziet
         return (bovenaan + html_luister(verborgen, luister) + html_station(verborgen) + html_set(verborgen, r) +
                 html_zoek(verborgen) + html_profielen(verborgen, r) + html_test(verborgen, r) + html_handmatig(verborgen, r))
-    return (bovenaan + html_station(verborgen) + html_eigen(verborgen) + html_set(verborgen, r) + html_zoek(verborgen) +
+    return (bovenaan + html_station(verborgen) + html_eigen(verborgen) + "".join(f(verborgen) for f in NA_EIGEN) +
+            html_set(verborgen, r) + html_zoek(verborgen) +
             html_profielen(verborgen, r) + html_luister(verborgen) + html_test(verborgen, r) + html_handmatig(verborgen, r))
 
 
