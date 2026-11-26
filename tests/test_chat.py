@@ -110,6 +110,28 @@ class TestChat(unittest.TestCase):
         self.assertEqual(len(self.link.verzonden), 1)
         self.assertFalse(self.chat.stop(9999))
 
+    def test_wissen(self):
+        self.chat.ontvangen("PA1ABC-9", "APZAXC", [], b":CQ       :CQ de PA1ABC")
+        self.chat.ontvangen("PA1ABC-9", "APDR16", [], b":PD3PAM-7 :Hallo{7")
+        _, [klaar] = self.chat.verstuur("PA1ABC-9", "Hoi")
+        self.chat.ontvangen("PA1ABC-9", "APDR16", [], f":PD3PAM-7 :ack{klaar['nummer']}".encode())
+        _, [bezig] = self.chat.verstuur("PA1ABC-9", "Nog onderweg")
+        _, [ander] = self.chat.verstuur("PD3F", "Ander gesprek")
+        self.chat.stop(ander["id"])
+        self.assertTrue(self.chat.wis("pa1abc-9"))
+        over = {b["id"]: b for b in self.opslag.lijst()}
+        self.assertIn(bezig["id"], over)                           # wordt nog verzonden: blijft
+        self.assertIn(ander["id"], over)                           # ander gesprek
+        self.assertEqual([b["aan"] for b in over.values() if b["richting"] == "in"], ["CQ"])   # CQ blijft
+        self.assertEqual(self.gemeld[-1][0], "gewist")
+        self.assertEqual(len(self.gemeld[-1][1]["ids"]), 2)        # Hallo en het bevestigde Hoi
+        self.assertTrue(self.chat.wis("CQ"))
+        self.assertFalse([b for b in self.opslag.lijst() if b["aan"] == "CQ"])
+        self.assertTrue(self.opslag.monitor())
+        self.assertTrue(self.chat.wis("MONITOR"))
+        self.assertEqual(self.opslag.monitor(), [])
+        self.assertFalse(self.chat.wis("'; DROP TABLE berichten; --"))
+
     def test_direwolf_weg(self):
         self.link.aan = False
         _, [b] = self.chat.verstuur("PA1ABC", "Test")
