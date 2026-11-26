@@ -432,9 +432,11 @@ Instellingen, *Stoppen met luisteren*.
 **Voor de beheerder van de repository: een nieuwe versie uitbrengen.** GitHub bouwt de APK zelf (Actions,
 *Android-app*). Eenmalig: zet bij *Settings → Secrets and variables → Actions* twee secrets:
 `AX25CHAT_KEYSTORE_B64` (de inhoud van de sleutel als base64) en `AX25CHAT_KEYSTORE_WACHTWOORD`. Bewaar de sleutel
-ook zelf goed: met een andere sleutel kan niemand de app nog bijwerken zonder hem eerst te verwijderen. Daarna:
-maak een tag `app-v0.2` (enz.) op main, bijv. via *Releases → Draft a new release → Choose a tag*. GitHub maakt
-de release met de APK erbij. Bij elke wijziging in `android/` bouwt GitHub ook een test-APK (onder *Actions*, bij
+ook zelf goed: met een andere sleutel kan niemand de app nog bijwerken zonder hem eerst te verwijderen. Daarna gaat
+een nieuwe versie vanzelf: verhoog het versienummer in `android/versie.txt` (bijv. van 0.2 naar 0.3) in de PR met
+de wijziging. Na de merge naar main maakt GitHub zelf de tag `app-v0.3` en de release met de APK erbij (na
+ongeveer twee minuten). Zonder nieuw versienummer komt er geen release, alleen een test-APK. Met de hand een tag
+maken via *Releases → Draft a new release* werkt ook nog. Bij elke wijziging in `android/` bouwt GitHub ook een test-APK (onder *Actions*, bij
 de run, *Artifacts*).
 
 ## Wisselen van set

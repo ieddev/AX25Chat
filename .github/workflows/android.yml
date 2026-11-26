@@ -1,4 +1,6 @@
-# Bouwt de Android-app (map android/). Bij een tag app-v0.2 (enz.) komt de APK als download bij een GitHub-release.
+# Bouwt de Android-app (map android/). Een nieuwe release gaat vanzelf: verhoog het versienummer in
+# android/versie.txt (bijv. 0.3); na de merge naar main maakt deze workflow tag app-v0.3 en de release met de APK.
+# Een tag app-v... met de hand maken (Releases op GitHub) werkt ook nog.
 # Ondertekenen: secrets AX25CHAT_KEYSTORE_B64 en AX25CHAT_KEYSTORE_WACHTWOORD (zie docs/PROCEDURE.md, Android-app).
 name: Android-app
 
@@ -19,6 +21,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0                # ook de tags: bestaat de release voor deze versie al?
 
       - uses: actions/setup-java@v4
         with:
@@ -42,9 +46,19 @@ jobs:
 
       - name: Versie
         run: |
-          if [[ "$GITHUB_REF" == refs/tags/app-v* ]]; then naam="${GITHUB_REF#refs/tags/app-v}"; else naam="0.0-test.${GITHUB_RUN_NUMBER}"; fi
+          versie="$(tr -d ' \r\n' < android/versie.txt)"
+          uitgeven=nee
+          if [[ "$GITHUB_REF" == refs/tags/app-v* ]]; then
+            naam="${GITHUB_REF#refs/tags/app-v}"; uitgeven=ja
+          elif [[ "$GITHUB_REF" == refs/heads/main && "$GITHUB_EVENT_NAME" == push ]] && ! git rev-parse -q --verify "refs/tags/app-v$versie" >/dev/null; then
+            naam="$versie"; uitgeven=ja              # nieuw versienummer op main: zelf de release maken
+            echo "Nieuwe versie $versie: release app-v$versie wordt gemaakt."
+          else
+            naam="$versie-test.${GITHUB_RUN_NUMBER}"
+          fi
           echo "VERSIE_NAAM=$naam" >> "$GITHUB_ENV"
           echo "VERSIE_CODE=${GITHUB_RUN_NUMBER}" >> "$GITHUB_ENV"
+          echo "UITGEVEN=$uitgeven" >> "$GITHUB_ENV"
 
       - name: APK bouwen
         working-directory: android
@@ -61,9 +75,11 @@ jobs:
           path: AX25Chat-*.apk
 
       - name: Release maken
-        if: startsWith(github.ref, 'refs/tags/app-v')
+        if: env.UITGEVEN == 'ja'
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: app-v${{ env.VERSIE_NAAM }}
+          target_commitish: ${{ github.sha }}
           name: AX25Chat-app ${{ env.VERSIE_NAAM }}
           files: AX25Chat-*.apk
           body: |
