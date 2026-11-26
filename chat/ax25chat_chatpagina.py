@@ -42,6 +42,8 @@ JS = r"""
 (function(){
 var mij = document.body.dataset.mij, berichten = {}, monitor = [], actief = 'CQ', laatst = 0, gelezen = {};
 try { gelezen = JSON.parse(localStorage.getItem('ax25chat-gelezen') || '{}'); } catch (e) {}
+var gevraagd = (new URLSearchParams(location.search).get('aan') || '').trim().toUpperCase();   // van de kaart: 'Bericht sturen'
+if (/^[A-Z0-9]{1,6}(-\d{1,2})?$/.test(gevraagd)) actief = gevraagd;
 var $ = function (s) { return document.querySelector(s); };
 function tegen(b) { return b.aan === 'CQ' ? 'CQ' : (b.richting === 'uit' ? b.aan : b.van); }
 function tijd(t) { var d = new Date(t * 1000); return d.toLocaleTimeString('nl-NL', {hour: '2-digit', minute: '2-digit'}); }
@@ -56,6 +58,7 @@ var STAND = {wacht: 'wacht op zenden', verzonden: 'verzonden, wacht op bevestigi
 function gesprekken() {
   var g = {CQ: 0};
   Object.keys(berichten).forEach(function (id) { var b = berichten[id], k = tegen(b); g[k] = Math.max(g[k] || 0, b.tijd); });
+  if (actief !== 'MONITOR' && !(actief in g)) g[actief] = Date.now() / 1000;   // nieuw gesprek, nog zonder berichten
   return Object.keys(g).sort(function (a, b) { return a === 'CQ' ? -1 : b === 'CQ' ? 1 : g[b] - g[a]; }).map(function (k) { return [k, g[k]]; });
 }
 function teken() {

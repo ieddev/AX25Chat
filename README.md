@@ -32,6 +32,9 @@ PD3PAM-7>APZAXC::CQ       :CQ CQ de PD3PAM           aan iedereen, zonder bevest
 Een bericht aan een station wordt herhaald tot de bevestiging binnen is (hoogstens 5 keer, in ongeveer
 6 minuten). Met **Stop** breek je dat eerder af. Langer dan 67 tekens wordt opgesplitst. Alles wat de Pi verder hoort, staat in de **Monitor**.
 
+Op het tabblad **Kaart** staan de stations die je hoort met een APRS-positie, op een offline kaart van
+Nederland (PDOK). Die download je eenmalig met internet op het tabblad Radio; daarna werkt hij zonder internet.
+
 ## Installeren
 
 1. Zet met de **Raspberry Pi Imager** *Raspberry Pi OS Lite (64-bit)* op een SD-kaart.
