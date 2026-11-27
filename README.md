@@ -110,6 +110,9 @@ Daarna staat **AX25Chat** in het menu. Zie *AX25Chat op een PC* in de procedure.
 De volledige procedure, met per set waar je op moet letten, staat in [docs/PROCEDURE.md](docs/PROCEDURE.md).
 Om te printen of offline te lezen: [docs/AX25Chat-handleiding.pdf](docs/AX25Chat-handleiding.pdf) (README, procedure en
 testplan in één PDF, stand 26-11-2026).
+Gebruik je AX25Chat op een PC, zonder Pi? Dan is er een eigen handleiding met alleen wat voor jouw PC geldt:
+[docs/AX25Chat-Linux.pdf](docs/AX25Chat-Linux.pdf) en [docs/AX25Chat-Windows.pdf](docs/AX25Chat-Windows.pdf)
+(stand 27-11-2026).
 
 ## Testen
 
@@ -129,7 +132,7 @@ Is Hamlib geïnstalleerd (`rigctld`), dan wordt ook het zetten van de mode op ee
 | `pc/` | AX25Chat op een gewone PC zonder Pi: eigen venster (`ax25chat_venster.py`) of in de browser (`ax25chat_pc.py`) |
 | `installatie/windows/` | Inno Setup-script voor de Windows-installer (gebouwd door GitHub Actions) |
 | `installatie/linux/` | Installeert en werkt bij op een Linux-PC (Debian/Ubuntu), met snelkoppeling in het menu |
-| `docs/` | Procedure en testplan, ook samen met deze README als PDF (`AX25Chat-handleiding.pdf`) |
+| `docs/` | Procedure en testplan, ook samen met deze README als PDF (`AX25Chat-handleiding.pdf`); handleidingen voor de PC (`AX25Chat-Linux.pdf`, `AX25Chat-Windows.pdf`) |
 | `tests/` | Tests zonder hardware (nagebootste USB-sets) |
 
 ## Licentie en openheid
