@@ -9,6 +9,7 @@ import os
 import stat
 import sys
 import tempfile
+import time
 import unittest
 
 HIER = os.path.dirname(os.path.abspath(__file__))
@@ -90,6 +91,63 @@ class TestPi(unittest.TestCase):
             "-u ax25chat-direwolf --no-pager -o cat -n 40",
             "-u ax25chat-direwolf --no-pager -o short-iso --since -24h",
             "-u ax25chat-direwolf --no-pager -o cat --since 2026-11-27 12:00:00"])
+
+
+@unittest.skipIf(sys.platform == "win32", "nep-programma is een shellscript")
+class TestPcDiensten(unittest.TestCase):
+    """PC: het programma start, herstart en stopt zelf een dienst, en houdt het logboek bij."""
+
+    def setUp(self):
+        self.map = tempfile.mkdtemp(prefix="ax25chat-pcdienst-")
+        self.s = laad(AX25CHAT_SOORT="pc", AX25CHAT_MAP=self.map)
+        self.s.OPNIEUW_NA = 0.3
+        self.prog = nep(self.map, "prog", 'echo "hallo $$"; trap "exit 0" TERM; while true; do sleep 0.1; done')
+        self.nodig = True
+        self.s.meld_dienst("test", lambda: [self.prog] if self.nodig else None)
+
+    def tearDown(self):
+        self.s.stop_diensten()
+        laad()
+
+    def wacht(self, stand, seconden=5):
+        eind = time.time() + seconden
+        while time.time() < eind and self.s.dienst_status("test") != stand:
+            time.sleep(0.05)
+        return self.s.dienst_status("test")
+
+    def test_start_herstart_stop(self):
+        self.assertEqual(self.s.dienst_status("test"), "inactive")
+        self.assertEqual(self.s.start_diensten(), [])
+        self.assertEqual(self.wacht("active"), "active")
+        eerste = self.s._DIENSTEN["test"]["proc"].pid
+        self.assertEqual(self.s.dienst("restart", "test"), (True, ""))
+        self.assertEqual(self.wacht("active"), "active")
+        self.assertNotEqual(self.s._DIENSTEN["test"]["proc"].pid, eerste)
+        self.s.dienst("stop", "test")
+        self.assertEqual(self.s.dienst_status("test"), "inactive")
+        time.sleep(0.2)
+        log = self.s.logboek("test")
+        self.assertEqual(log.count("hallo "), 2)
+        self.assertIn("2", self.s.logboek("test", regels=1, met_tijd=True)[:4])    # regel begint met het jaartal
+
+    def test_vanzelf_opnieuw_na_vastlopen(self):
+        self.s.start_diensten()
+        self.assertEqual(self.wacht("active"), "active")
+        self.s._DIENSTEN["test"]["proc"].kill()
+        time.sleep(0.1)
+        self.assertEqual(self.wacht("active"), "active")
+        self.assertIn("gestopt", self.s.logboek("test"))
+
+    def test_niet_nodig(self):
+        self.nodig = False
+        self.s.start_diensten()
+        self.assertEqual(self.wacht("niet nodig"), "niet nodig")
+
+    def test_programma_ontbreekt(self):
+        self.prog = os.path.join(self.map, "bestaat-niet")
+        self.s.start_diensten()
+        self.assertEqual(self.wacht("failed"), "failed")
+        self.assertIn("starten lukte niet", self.s.logboek("test"))
 
 
 if __name__ == "__main__":

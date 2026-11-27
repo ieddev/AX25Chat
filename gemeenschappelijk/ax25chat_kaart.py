@@ -33,7 +33,9 @@ import urllib.parse
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 
-MAP = os.path.dirname(os.path.abspath(__file__))
+import ax25chat_systeem as systeem
+
+MAP = systeem.MAP
 KAART_DIR = os.path.join(MAP, "kaart")
 TEGELS = os.path.join(KAART_DIR, "tegels")
 NIEUW = os.path.join(KAART_DIR, "tegels.nieuw")
@@ -386,6 +388,12 @@ if(!s.bezig){location.reload();return}
 el.textContent=(!s.totaal&&s.stap)?s.stap:'Bezig met downloaden voor '+s.plaats+': '+s.klaar+' van '+(s.totaal||'?')+' tegels'+
 (s.totaal?' ('+Math.floor(100*s.klaar/s.totaal)+'%)':'')+'.';setTimeout(kijk,3000)}).catch(function(){setTimeout(kijk,5000)})}
 kijk()})()</script>""" if bezig else ""
+    uitleg_na = ("""<p class="uitleg">De vorige kaart blijft werken tot de nieuwe helemaal binnen is. Heeft de Pi geen internet (een Pi
+Zero op zijn eigen hotspot), dan gaat hij zelf even naar je bekende thuis-wifi en zet daarna de hotspot weer aan, net
+als bij het bijwerken. Deze pagina is dan een paar minuten weg; verbind daarna opnieuw met de hotspot. Via ssh kan
+het ook: <span class="mono">ax25chat-kaart</span> (zie de procedure).</p>""" if systeem.kan("hotspot") else
+                 '<p class="uitleg">De vorige kaart blijft werken tot de nieuwe helemaal binnen is. De kaart wordt '
+                 'opgeslagen in de map van AX25Chat en werkt daarna ook zonder internet.</p>')
     return f"""<section id="kaarten"><h2>Offline kaart</h2>
 <p class="uitleg">Voor het tabblad <b>Kaart</b> en de app: de stations die je hoort, op een kaart die zonder internet
 werkt. Download hem <b>eenmalig met internet</b> (thuis-wifi of netwerkkabel). Kaart: BRT-Achtergrondkaart van het
@@ -400,10 +408,7 @@ paar minuten downloaden. Rond het midden komt meer detail (straten, {DETAIL_KM} 
 <div class="rij"><div><label>Straal rondom het midden</label><select name="straal">{o_straal}</select></div>
 <div><label>Detail</label><select name="zoom">{o_zoom}</select></div></div>
 <div class="balk" style="margin-top:10px">{knop}</div></form>
-<p class="uitleg">De vorige kaart blijft werken tot de nieuwe helemaal binnen is. Heeft de Pi geen internet (een Pi
-Zero op zijn eigen hotspot), dan gaat hij zelf even naar je bekende thuis-wifi en zet daarna de hotspot weer aan, net
-als bij het bijwerken. Deze pagina is dan een paar minuten weg; verbind daarna opnieuw met de hotspot. Via ssh kan
-het ook: <span class="mono">ax25chat-kaart</span> (zie de procedure).</p>{ververs}</section>"""
+{uitleg_na}{ververs}</section>"""
 
 
 # ---------------------------------------------------------------------------
@@ -432,6 +437,8 @@ def _wifi(actie):
 
 def thuiswifi():
     """(naam van de bekende thuis-wifi of None, staat de hotspot nu aan?)"""
+    if not systeem.kan("hotspot"):
+        return None, False                      # PC: gewoon het eigen internet gebruiken
     try:
         import ax25chat_bijwerken as bw
         return bw.thuiswifi_naam(), not bw.thuiswifi_actief()

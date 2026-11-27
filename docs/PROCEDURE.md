@@ -558,6 +558,49 @@ Daarna `sudo reboot`: de hotspot is terug en de knop werkt voortaan.
 Tabblad **Status** → *Pi uitschakelen*. Wacht tot het groene lampje niet meer knippert (± 20 seconden)
 en haal dan pas de stroom eraf.
 
+## AX25Chat op een PC (Linux)
+
+Nog in de testfase. Je kunt AX25Chat ook zonder Pi gebruiken, op een gewone Linux-PC of laptop. De set hangt dan
+met een DigiRig, een SignaLink of een eigen USB-kabel aan de PC. Windows volgt later.
+
+**Eenmalig installeren** (Debian, Ubuntu, Linux Mint):
+
+```bash
+sudo apt install git python3 direwolf libhamlib-utils alsa-utils
+sudo usermod -aG dialout,audio $USER        # daarna één keer uit- en weer inloggen
+git clone https://github.com/ieddev/AX25Chat ~/AX25Chat
+```
+
+**Starten:**
+
+```bash
+python3 ~/AX25Chat/pc/ax25chat_pc.py
+```
+
+AX25Chat start Direwolf (en bij CAT ook rigctld) zelf en opent de webpagina in je browser:
+`http://localhost:8080`. Sluit je AX25Chat af (Ctrl+C in het venster), dan stoppen Direwolf en rigctld ook.
+Stel daarna alles in zoals op de Pi: tabblad **Radio**, roepnaam bij *Station*, dan **Zoek mijn set**.
+
+Wat anders is dan op de Pi:
+
+- **Geen inloggen.** De webpagina is alleen te zien op deze PC zelf, dus een wachtwoord is niet nodig.
+- **Geen hotspot en geen Pi uitzetten.** Die onderdelen staan niet op het tabblad Status.
+- **Instellingen apart.** Je instellingen, berichten, de kaart en het logboek van Direwolf staan in
+  `~/.local/share/ax25chat`. Het tabblad Status laat zien waar precies.
+- **Bijwerken:** sluit AX25Chat en typ `git -C ~/AX25Chat pull`. Je instellingen blijven bewaard.
+- **Kaart downloaden** gaat gewoon via het internet van de PC.
+- Draait er al een andere Direwolf (bijvoorbeeld voor een ander programma), sluit die dan eerst. AX25Chat gebruikt
+  de poorten 8000 (AGW) en 8001 (KISS).
+
+**Opties bij het starten:**
+
+| Optie | Wat het doet |
+|---|---|
+| `--geen-browser` | Start AX25Chat zonder de browser te openen. Open zelf `http://localhost:8080`. |
+| `--poort 8090` | Een andere poort voor de webpagina, als 8080 al bezet is. |
+| `--thuisnetwerk` | De PC is ook bereikbaar voor je telefoon of de Android-app op je thuisnetwerk, via `http://<adres van de PC>:8080`. Dan is wel inloggen nodig: stel eerst een wachtwoord in met `python3 ~/AX25Chat/pc/ax25chat_pc.py --wachtwoord` (gebruiker `beheer`). |
+| `--wachtwoord` | Wachtwoord instellen of wijzigen voor `--thuisnetwerk`. |
+
 ## Problemen oplossen
 
 | Probleem | Oplossing |
