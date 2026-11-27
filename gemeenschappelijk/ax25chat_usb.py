@@ -39,10 +39,11 @@ USB_APPARAAT = re.compile(r"^\d+-\d+(\.\d+)*$")          # 1-1.3 (een apparaat; 
 CMEDIA = ("c-media", "cm108", "cm119", "usb audio device", "usb pnp sound")
 
 
-def geluidskaarten():
-    """[(nummer, id, beschrijving)] uit /proc/asound/cards (Windows: de USB-geluidskaarten)."""
+def geluidskaarten(vers=False):
+    """[(nummer, id, beschrijving)] uit /proc/asound/cards (Windows: de USB-geluidskaarten; vers=True vraagt opnieuw
+    in plaats van de uitkomst van de laatste 30 s te gebruiken)."""
     if WINDOWS:
-        return [(nr, kid, tekst) for nr, kid, tekst, _ in _windows()[0]]
+        return [(nr, kid, tekst) for nr, kid, tekst, _ in _windows(vers)[0]]
     uit = []
     try:
         with open(ASOUND_CARDS, encoding="utf-8") as f:
@@ -57,10 +58,10 @@ def geluidskaarten():
     return uit
 
 
-def seriele_poorten():
+def seriele_poorten(vers=False):
     """[pad] uit /dev/serial/by-id (blijft gelijk na herstart, anders dan ttyUSB0). Windows: COM-poorten via USB."""
     if WINDOWS:
-        return [p for p, _ in _windows()[1]]
+        return [p for p, _ in _windows(vers)[1]]
     return sorted(glob.glob(os.path.join(SERIAL_BY_ID, "*")))
 
 
@@ -233,6 +234,8 @@ def _windows_ruw(vers=False):
         if not vers and _WIN_LAATST[1] is not None and time.time() - _WIN_LAATST[0] < _WIN_BEWAAR:
             return _WIN_LAATST[1]
         data = _windows_ps()
+        if data is None:
+            return _WIN_LAATST[1] or []                     # mislukt: de vorige uitkomst, en niets bewaren
         _WIN_LAATST[:] = [time.time(), data]
         return data
 
@@ -247,14 +250,19 @@ def _windows_ps():
     if WIN_JSON:
         with open(WIN_JSON, encoding="utf-8") as f:
             return json.load(f)
+    """None als PowerShell faalde (dan wordt er niets bewaard en vraagt de volgende keer opnieuw)."""
+    begin = time.time()
     try:
         r = subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", PS_SCRIPT],
-                           capture_output=True, text=True, timeout=60,
+                           capture_output=True, text=True, timeout=90,
                            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         data = json.loads(r.stdout or "[]")
-    except (OSError, subprocess.SubprocessError, ValueError):
-        return []
-    return data if isinstance(data, list) else [data]
+    except (OSError, subprocess.SubprocessError, ValueError) as fout:
+        print(f"USB-apparaten opvragen lukte niet ({time.time() - begin:.0f} s): {fout}", flush=True)
+        return None
+    data = data if isinstance(data, list) else [data]
+    print(f"USB-apparaten opgevraagd: {len(data)} in {time.time() - begin:.1f} s", flush=True)
+    return data
 
 
 def win_hub(pad):

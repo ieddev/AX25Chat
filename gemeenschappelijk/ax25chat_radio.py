@@ -43,7 +43,7 @@ DIENSTEN = [(RIGD, "CAT-besturing van de set (rigctld)"), (DW, "Direwolf (modem)
 STANDAARD = {"set_naam": "", "geluidskaart": "", "ptt_methode": "VOX", "ptt_poort": "",
              "cat_model": 0, "cat_poort": "", "cat_baud": 0, "cat_watt": None, "cat_mode": "PKTFM",
              "modem": "auto", "txdelay_ms": 300}
-METHODES = [("CAT", "CAT: de Pi bestuurt de set (Icom, Yaesu)"), ("RTS", "RTS: alleen PTT (DigiRig, SCU-17 poort B)"),
+METHODES = [("CAT", "CAT: AX25Chat bestuurt de set (Icom, Yaesu)"), ("RTS", "RTS: alleen PTT (DigiRig, SCU-17 poort B)"),
             ("DTR", "DTR: alleen PTT"), ("VOX", "VOX van de set (geen PTT-aansluiting)")]
 ROEPNAAM_RE = re.compile(r"^[A-Z0-9]{3,6}(-([0-9]|1[0-5]))?$")
 
@@ -234,8 +234,12 @@ def gebruik_profiel(naam):
     let = []
     kaarten = [k for _, k, _ in usb.geluidskaarten()]
     poorten = usb.seriele_poorten()
+    nodig = [r.get(k) for k in ("cat_poort", "ptt_poort") if r.get(k)]
+    if r.get("geluidskaart") and r["geluidskaart"] not in kaarten or any(p not in poorten for p in nodig):
+        kaarten = [k for _, k, _ in usb.geluidskaarten(vers=True)]   # Windows: niet op een oude uitkomst afgaan
+        poorten = usb.seriele_poorten(vers=True)
     if r.get("geluidskaart") and r["geluidskaart"] not in kaarten:
-        let.append(f"Geluidskaart {r['geluidskaart']} is nu niet aangesloten. Zit de set aan de Pi en staat hij aan?")
+        let.append(f"Geluidskaart {r['geluidskaart']} is nu niet aangesloten. Zit de set aan de {systeem.TOESTEL} en staat hij aan?")
     for sleutel in ("cat_poort", "ptt_poort"):
         if r.get(sleutel) and r["ptt_methode"] != "VOX" and r[sleutel] not in poorten and \
                 (sleutel == "ptt_poort" or rig.cat_actief(r)):
@@ -562,7 +566,7 @@ def kies_voorstel(f):
         return ["Ongeldige keuze; zoek opnieuw."], []
     if r["modem"] not in ("auto", "1200", "300", "9600"):
         r["modem"] = "auto"
-    poorten = usb.seriele_poorten()
+    poorten = usb.seriele_poorten(vers=True)
     if r["ptt_methode"] == "CAT" and r["cat_poort"] not in poorten or \
             r["ptt_methode"] in ("RTS", "DTR") and r["ptt_poort"] not in poorten:
         return ["Deze poort is niet (meer) gevonden; zoek opnieuw."], []
@@ -718,7 +722,7 @@ def html_station(verborgen, s=None):
     s = s or station()
     rn = "" if str(s.get("roepnaam", "")).startswith("N0CALL") else s.get("roepnaam", "")
     return f"""<section id="station"><h2>Station</h2><p class="uitleg">Je roepnaam (met SSID, bijv. PD3PAM-7) en de frequentie.
-Met CAT zet de Pi de set zelf op deze frequentie; zonder CAT zet je de set (het kanaal) zelf goed.</p>
+Met CAT zet AX25Chat de set zelf op deze frequentie; zonder CAT zet je de set (het kanaal) zelf goed.</p>
 <form method="post" action="/station">{verborgen}
 <div class="rij"><div><label>Roepnaam</label><input type="text" name="roepnaam" value="{e(rn)}" placeholder="PD3PAM-7"
 autocapitalize="characters" required></div>
@@ -752,12 +756,12 @@ def html_set(verborgen, r, live=False):
         wat = (f"Zet je set op <b>{rig.mhz(doel)}</b>, FM (datamode als je set dat heeft)." if doel else
                "Zet je set zelf op de packetfrequentie, in FM (of USB-D op HF).")
         return (f"<section id='set'><h2>{e(naam)}</h2><div class='melding let' style='font-size:18px'>{wat}</div>"
-                f"<p class='uitleg'>Deze set heeft geen CAT-besturing via de Pi; PTT: "
+                f"<p class='uitleg'>Deze set heeft geen CAT-besturing via AX25Chat; PTT: "
                 f"{e(dict(METHODES).get(r.get('ptt_methode'), '-'))}. Modem {modem(r)} baud.</p></section>")
     live = html_set_live(r) if live else LADEN.format(deel="set", tekst="De set wordt uitgelezen…", hoog=190)
     log = "".join(f"<tr><td class='mono'>{e(t)}</td><td>{e(x)}</td></tr>" for t, x in rig.logregels())
     return f"""<section id="set"><h2>{e(naam)} (CAT)</h2><p class="uitleg">{e(rig.MODEL_NAAM.get(int(r.get('cat_model') or 0), ''))}
-· ingesteld: <b>{rig.mhz(doel)}</b> · modem {modem(r)} baud. Draait iemand aan de set, dan zet de Pi hem terug.</p>{live}
+· ingesteld: <b>{rig.mhz(doel)}</b> · modem {modem(r)} baud. Draait iemand aan de set, dan zet AX25Chat hem terug.</p>{live}
 <form method="post" action="/set_nu" class="balk">{verborgen}<button type="submit">Set nu instellen</button></form>
 {('<details style="margin-top:10px"><summary>Laatste acties</summary><table>' + log + '</table></details>') if log else ''}</section>"""
 
@@ -784,11 +788,11 @@ def html_set_live(r=None):
 
 def html_zoek(verborgen):
     return f"""<form method="post" action="/set_zoek">{verborgen}<section id="zoek"><h2>Zoek mijn set</h2>
-<p class="uitleg">De Pi kijkt welke sets er via USB aan hangen: Icom en Yaesu (CAT), DigiRig en losse USB-geluidskaarten.
+<p class="uitleg">AX25Chat kijkt welke sets er via USB aan hangen: Icom en Yaesu (CAT), DigiRig en losse USB-geluidskaarten.
 Bij CAT-sets probeert hij de bekende modellen en snelheden. Zet de set aan. Dit duurt tot anderhalve minuut;
 Direwolf is zolang even uit.</p>
 <div class="melding let">Zet vóór het zoeken <b>PTT via RTS/DTR in de set uit</b> (IC-9700/IC-7300: <i>USB SEND</i> = OFF),
-en zorg voor een goede antenne of dummyload. Anders kan de set kort gaan zenden als de Pi een poort opent.</div>
+en zorg voor een goede antenne of dummyload. Anders kan de set kort gaan zenden als AX25Chat een poort opent.</div>
 <button type="submit">Zoek mijn set</button></section></form>"""
 
 

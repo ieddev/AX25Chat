@@ -315,7 +315,7 @@ class Baken:
         if not pos:
             self.stand = ("Wacht op de GPS: " + (self.gps.stand if self.gps else "geen GPS")) if b.get("bron") == "gps" \
                 else ("Wacht op de positie van de telefoon: staat de app aan, met 'GPS van de telefoon' aan en "
-                      "verbonden met de Pi?") if b.get("bron") == "telefoon" \
+                      f"verbonden met de {systeem.TOESTEL}?") if b.get("bron") == "telefoon" \
                 else "Vul je positie in (breedte- en lengtegraad)."
             self.nu_gevraagd = False
             return ""
@@ -356,7 +356,7 @@ class Baken:
         r = radio.instellingen()
         waar = rig.mhz(freq) if freq else "een zelf ingestelde frequentie"
         if not rig.cat_actief(r):
-            return (f"de set staat op {waar} en heeft geen CAT, dus de Pi kan hem niet even naar "
+            return (f"de set staat op {waar} en heeft geen CAT, dus AX25Chat kan hem niet even naar "
                     f"{rig.mhz(rig.APRS_FREQ)} zetten. Zet Station (of de set) op {rig.mhz(rig.APRS_FREQ)}.")
         if int(r.get("cat_model") or 0) in rig.ALLEEN_HF:
             return f"de {rig.MODEL_NAAM.get(int(r['cat_model']), 'set')} kan niet op 2 m."
