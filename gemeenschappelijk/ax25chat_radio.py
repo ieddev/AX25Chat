@@ -18,11 +18,11 @@ import json
 import math
 import os
 import re
-import subprocess
 import sys
 import time
 
 import ax25chat_rig as rig
+import ax25chat_systeem as systeem
 import ax25chat_usb as usb
 
 e = html.escape
@@ -33,11 +33,8 @@ STATION_FILE = rig.STATION_FILE
 PROFIEL_FILE = os.path.join(MAP, "profielen.json")
 DIREWOLF_CONF = os.path.join(MAP, "direwolf.conf")
 HOTSPOT_FILE = os.path.join(MAP, "hotspot.json")
-SUDO = os.environ.get("AX25CHAT_SUDO", "sudo")
-SYSTEMCTL = os.environ.get("AX25CHAT_SYSTEMCTL", "systemctl")
-JOURNALCTL = os.environ.get("AX25CHAT_JOURNALCTL", "journalctl")
-AMIXER = os.environ.get("AX25CHAT_AMIXER", "amixer")
-ARECORD = os.environ.get("AX25CHAT_ARECORD", "arecord")
+SUDO = systeem.SUDO                # Bijwerken (alleen Pi) gebruikt deze nog rechtstreeks
+SYSTEMCTL = systeem.SYSTEMCTL
 
 DW = "ax25chat-direwolf"
 RIGD = "ax25chat-rigctld"
@@ -98,25 +95,18 @@ def reservekopie(pad):
 
 
 def _uit(cmd, timeout=5):
-    try:
-        return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout).stdout
-    except Exception:
-        return ""
+    return systeem.uit(cmd, timeout)
 
 
 def dienst(actie, naam):
-    """systemctl restart/stop/start van een eigen dienst (sudo zonder wachtwoord, zie installeer.sh). Geeft (ok, fout)."""
+    """restart/stop/start van een eigen dienst (op de Pi: sudo systemctl, zie installeer.sh). Geeft (ok, fout)."""
     if naam not in [d for d, _ in DIENSTEN] or actie not in ("restart", "stop", "start"):
         return False, "onbekende dienst"
-    try:
-        r = subprocess.run([SUDO, "-n", SYSTEMCTL, actie, naam], capture_output=True, text=True, timeout=30)
-        return (True, "") if r.returncode == 0 else (False, (r.stderr or r.stdout).strip()[:200])
-    except Exception as fout:
-        return False, str(fout)
+    return systeem.dienst(actie, naam)
 
 
 def dienst_status(naam):
-    return _uit([SYSTEMCTL, "is-active", naam]).strip() or "onbekend"
+    return systeem.dienst_status(naam)
 
 
 # ---------------------------------------------------------------------------
@@ -254,7 +244,7 @@ def mixer(kaart):
     """Regelaars van de geluidskaart: {"zend": (naam, %), "ontvang": (naam, %)} (alleen wat er is)."""
     if not kaart:
         return {}
-    tekst = _uit([AMIXER, "-c", kaart, "scontents"])
+    tekst = systeem.mixer_tekst(kaart)
     regelaars, huidig = [], None
     for regel in tekst.splitlines():
         m = re.match(r"Simple mixer control '(.+)',(\d+)", regel)
@@ -296,8 +286,7 @@ def zet_niveaus(r=None):
         if waarde is None or sleutel not in m:
             continue
         try:
-            subprocess.run([AMIXER, "-q", "-c", kaart, "sset", m[sleutel][0], f"{int(waarde)}%"] + extra,
-                           check=True, capture_output=True, text=True, timeout=5)
+            systeem.mixer_zet(kaart, m[sleutel][0], waarde, extra)
         except Exception as fout:
             fouten.append(f"Niveau {sleutel} zetten lukte niet: {getattr(fout, 'stderr', '') or fout}")
     return fouten
@@ -313,7 +302,7 @@ def gehoorde_stations(uren=24, log=None):
         oud = _GEHOORD.get(uren)
         if oud and time.time() - oud[0] < 30:
             return oud[1]
-        uit = gehoorde_stations(uren, _uit([JOURNALCTL, "-u", DW, "--no-pager", "-o", "short-iso", "--since", f"-{int(uren)}h"], timeout=10))
+        uit = gehoorde_stations(uren, systeem.logboek(DW, uren=uren, met_tijd=True))
         _GEHOORD[uren] = (time.time(), uit)
         return uit
     st = {}
@@ -381,12 +370,7 @@ def luistertest(r=None, seconden=5):
         return "fout", "Kies eerst de geluidskaart van de set.", None, None
     dienst("stop", DW)
     try:
-        p = subprocess.run([ARECORD, "-q", "-D", f"plughw:CARD={kaart},DEV=0", "-f", "S16_LE", "-r", "48000",
-                            "-c", "1", "-t", "raw", "-d", str(int(seconden))],
-                           capture_output=True, timeout=seconden + 10)
-        data, fout = p.stdout, p.stderr.decode(errors="replace").strip()
-    except Exception as x:
-        data, fout = b"", str(x)
+        data, fout = systeem.neem_op(kaart, seconden)
     finally:
         dienst("start", DW)
     if not data:
@@ -419,8 +403,7 @@ def testuitzending(roepnaam, lang=False, wacht=None):
     except (OSError, ValueError) as fout:
         return False, [f"Geen verbinding met Direwolf (poort 8001): {fout}"]
     time.sleep(wacht if wacht is not None else (7 if lang else 3))
-    log = _uit([JOURNALCTL, "-u", DW, "--no-pager", "-o", "cat",
-                "--since", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(begin - 1))], timeout=10)
+    log = systeem.logboek(DW, sinds=time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(begin - 1)))
     regels = [x.strip() for x in log.splitlines() if ">TEST" in x or "PTT" in x or "rror" in x]
     return True, regels[-8:]
 

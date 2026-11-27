@@ -20,13 +20,13 @@ import math
 import os
 import re
 import select
-import termios
 import threading
 import time
 
 import ax25chat_ax25 as ax25
 import ax25chat_radio as radio
 import ax25chat_rig as rig
+import ax25chat_systeem as systeem
 import ax25chat_usb as usb
 
 INTERVALLEN = [10, 15, 20, 30]                  # minuten
@@ -128,16 +128,7 @@ def lees_rmc(regel):
 
 
 def _open_serieel(pad, baud=9600):
-    fd = os.open(pad, os.O_RDONLY | os.O_NOCTTY | os.O_NONBLOCK)
-    a = termios.tcgetattr(fd)
-    snelheid = getattr(termios, f"B{baud}", termios.B9600)
-    a[0] = termios.IGNPAR                              # iflag
-    a[1] = 0                                           # oflag
-    a[2] = termios.CS8 | termios.CREAD | termios.CLOCAL
-    a[3] = 0                                           # lflag: geen echo, niet regel voor regel
-    a[4] = a[5] = snelheid
-    termios.tcsetattr(fd, termios.TCSANOW, a)
-    return fd
+    return systeem.open_serieel(pad, baud)
 
 
 def is_gps(pad, seconden=3):
