@@ -636,6 +636,8 @@ Wat anders is dan op de Pi en op Linux:
 - Het logboek van AX25Chat zelf staat in `%APPDATA%\AX25Chat\logboek\ax25chat.log`, dat van Direwolf ernaast.
 - Het eigen venster gebruikt Microsoft Edge WebView2 (zit in Windows 10 en 11). Ontbreekt dat, dan opent AX25Chat
   in je browser op `http://localhost:8080`.
+- In het Startmenu staat ook **AX25Chat (in de browser)**: dat opent AX25Chat zonder eigen venster in je gewone
+  browser (`AX25Chat.exe --browser`). Handig als het eigen venster niet wil.
 - Is poort 8080 al in gebruik door een ander programma, dan kiest het venster vanzelf een andere vrije poort. Met
   `--thuisnetwerk` of `--poort` blijft de poort vast, want de telefoon en de app rekenen erop.
 - **AX25Chat start niet of verdwijnt meteen:** start het als gewone gebruiker, niet als administrator. Kijk in

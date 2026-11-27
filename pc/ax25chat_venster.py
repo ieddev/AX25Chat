@@ -8,7 +8,8 @@ gebruikt het pywebview (Linux: GTK-WebKit of Qt, Windows: Edge WebView2).
 
     python3 pc/ax25chat_venster.py
 
-Is pywebview niet geïnstalleerd, dan opent AX25Chat gewoon in de browser (zoals ax25chat_pc.py).
+Is pywebview niet geïnstalleerd, of start je met --browser, dan opent AX25Chat gewoon in de browser (zoals
+ax25chat_pc.py).
 Draait AX25Chat al (bijvoorbeeld twee keer op het pictogram geklikt), dan opent alleen een tweede venster
 naar het programma dat al draait.
 Sluit je het venster, dan stopt AX25Chat, en daarmee ook Direwolf en rigctld.
@@ -237,6 +238,10 @@ def main():
     if "--wachtwoord" in args or "-h" in args or "--help" in args:
         import ax25chat_web as web
         return web.main(args)
+    if "--browser" in args:                       # zonder eigen venster, in de gewone browser
+        sys.argv = [sys.argv[0], *[a for a in args if a != "--browser"]]
+        import ax25chat_pc
+        return ax25chat_pc.main()
     try:
         import webview
     except Exception as fout:
