@@ -286,6 +286,7 @@ class TestWebpagina(unittest.TestCase):
         nav = web.html_nav("radio")
         self.assertIn('href="/radio#baken"', nav)
         self.assertIn('href="/status#bijwerken"', nav)
+        self.assertNotIn('"lijst"', nav)            # de chatpagina gebruikt .lijst voor de berichten
 
     def test_inlog_onthouden(self):
         import ax25chat_web as web

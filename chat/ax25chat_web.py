@@ -78,18 +78,18 @@ th{color:var(--zacht);font-weight:600;font-size:13px}
 pre{background:var(--bg);border:1px solid var(--lijn);border-radius:8px;padding:10px;overflow:auto;max-height:420px;font-size:12.5px;white-space:pre-wrap}
 details summary{cursor:pointer;color:var(--blauw);font-weight:600;margin:8px 0}
 html{scroll-padding-top:72px}
-nav details.menu{position:relative}
+nav details.navmenu{position:relative}
 nav summary{list-style:none;margin:0;padding:8px 12px;border-radius:8px;color:var(--tekst);font-weight:500;user-select:none}
 nav summary::-webkit-details-marker{display:none}
 nav summary::after{content:"";display:inline-block;margin-left:7px;border:5px solid transparent;border-top-color:currentColor;
 border-bottom:0;vertical-align:2px}
 nav summary.actief{background:var(--blauw-z);color:var(--blauw)}nav details[open]>summary{background:var(--lijn)}
-nav .lijst{position:absolute;top:calc(100% + 6px);left:0;min-width:240px;background:var(--kaart);border:1px solid var(--lijn);
+nav .menulijst{position:absolute;top:calc(100% + 6px);left:0;min-width:240px;background:var(--kaart);border:1px solid var(--lijn);
 border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.2);padding:6px;z-index:20}
-nav .lijst a{display:block;padding:10px 12px;font-weight:600}nav .lijst a.sub{padding-left:30px;font-weight:400}
-nav .lijst a:hover,nav .lijst a:focus{background:var(--blauw-z);color:var(--blauw)}
-@media(max-width:560px){nav{padding:8px}nav a,nav summary{padding:8px 10px}nav details.menu{position:static}
-nav .lijst{left:8px;right:8px;top:100%;min-width:0}}
+nav .menulijst a{display:block;padding:10px 12px;font-weight:600}nav .menulijst a.sub{padding-left:30px;font-weight:400}
+nav .menulijst a:hover,nav .menulijst a:focus{background:var(--blauw-z);color:var(--blauw)}
+@media(max-width:560px){nav{padding:8px}nav a,nav summary{padding:8px 10px}nav details.navmenu{position:static}
+nav .menulijst{left:8px;right:8px;top:100%;min-width:0}}
 .laden p.uitleg{font-style:italic}
 """
 
@@ -104,15 +104,15 @@ SEGMENTEN = {i for lijst in MENU.values() for i, _, _ in lijst}
 
 # Voor elke pagina: menu's open/dicht, melding naar het segment waar je op Opslaan tikte, trage delen later laden
 PAGINA_JS = """(function () {
-  var nav = document.querySelector('nav'), menus = nav.querySelectorAll('details.menu');
+  var nav = document.querySelector('nav'), menus = nav.querySelectorAll('details.navmenu');
   function ruimte() { document.documentElement.style.scrollPaddingTop = (nav.offsetHeight + 8) + 'px'; }
   ruimte(); addEventListener('resize', ruimte);
   function sluit(behalve) { menus.forEach(function (d) { if (d !== behalve) d.open = false; }); }
   menus.forEach(function (d) { d.addEventListener('toggle', function () { if (d.open) sluit(d); }); });
-  document.addEventListener('click', function (ev) { if (!ev.target.closest('nav details.menu')) sluit(); });
+  document.addEventListener('click', function (ev) { if (!ev.target.closest('nav details.navmenu')) sluit(); });
   document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') sluit(); });
   function open(id) { var el = id && document.getElementById(id); if (el && el.tagName === 'DETAILS') el.open = true; return el; }
-  nav.querySelectorAll('.lijst a').forEach(function (a) {
+  nav.querySelectorAll('.menulijst a').forEach(function (a) {
     a.addEventListener('click', function () { sluit(); if (a.pathname === location.pathname) open(a.hash.slice(1)); });
   });
   var bij = document.body.getAttribute('data-bij'), doel = open(bij || location.hash.slice(1)), m = document.getElementById('meld');
@@ -217,7 +217,7 @@ def html_nav(actief):
         kl = "actief" if p == actief else ""
         if p in MENU:
             items = "".join(f'<a href="/{p}#{i}"{" class=sub" if sub else ""}>{e(n)}</a>' for i, n, sub in MENU[p])
-            uit += f'<details class="menu"><summary class="{kl}">{t}</summary><div class="lijst">{items}</div></details>'
+            uit += f'<details class="navmenu"><summary class="{kl}">{t}</summary><div class="menulijst">{items}</div></details>'
         else:
             uit += f'<a href="/{"" if p == "chat" else p}" class="{kl}">{t}</a>'
     return uit

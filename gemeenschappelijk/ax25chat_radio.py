@@ -667,7 +667,7 @@ def html_eigen(verborgen):
         f"<td>{e(x['baud'])}</td><td>{e(x['naam'])}</td>"
         f"<td style='text-align:right'><form method='post' action='/frequentie' style='margin:0'>{verborgen}"
         f"<input type='hidden' name='actie' value='weg'><input type='hidden' name='hz' value='{x['hz']}'>"
-        f"<button class='licht' type='submit'>Weg</button></form></td></tr>" for x in lijst)
+        f"<button class='licht' type='submit'>Verwijderen</button></form></td></tr>" for x in lijst)
     tabel = (f"<table><tr><th>MHz</th><th>Mode</th><th>Baud</th><th>Naam</th><th></th></tr>{rijen}</table>"
              if lijst else "")
     return f"""<section id="frequenties"><h2>Mijn frequenties</h2><p class="uitleg">Frequenties van stations, bakens en BBS'en bij jou
@@ -772,7 +772,7 @@ def html_profielen(verborgen, r):
                   f"{verborgen}<input type='hidden' name='naam' value='{e(naam)}'>"
                   f"<button type='submit' name='actie' value='gebruik'{' class=licht' if actief else ''}>Gebruiken</button> "
                   f"<button type='submit' name='actie' value='weg' class='licht' "
-                  f"onclick=\"return confirm('Profiel verwijderen?')\">Weg</button></form></td></tr>")
+                  f"onclick=\"return confirm('Profiel verwijderen?')\">Verwijderen</button></form></td></tr>")
     lijst = (f"<table>{rijen}</table>" if rijen else
              "<p class='uitleg'>Nog geen profielen. Gebruik <b>Zoek mijn set</b>: elke gekozen set wordt een profiel.</p>")
     return f"""<section id="sets"><h2>Mijn sets</h2><p class="uitleg">Wissel van set met één tik. Sluit de set eerst aan.</p>{lijst}

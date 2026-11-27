@@ -179,7 +179,7 @@ eerst naar de frequentie die erbij hoort.</p>
 <div class="bbs-stand"></div>
 <form class="bbs-kies" autocomplete="off"><select aria-label="BBS"></select>
 <input type="text" placeholder="Roepnaam, bijv. PD4R-12" maxlength="9" aria-label="Roepnaam">
-<button type="submit">Verbinden</button><button type="button" class="licht" data-weg title="Uit de lijst halen">Weg</button>
+<button type="submit">Verbinden</button><button type="button" class="licht" data-weg title="Uit de lijst halen">Verwijderen</button>
 <p class="info"></p></form>
 <details><summary>BBS toevoegen</summary>
 <form class="bbs-nieuw" autocomplete="off">
@@ -189,7 +189,7 @@ eerst naar de frequentie die erbij hoort.</p>
 <label>Frequentie <small>mode en snelheid komen van Mijn frequenties (tabblad Radio)</small></label>{keuze}
 <div class="balk"><button type="submit">Toevoegen</button></div></form></details></section>
 <section><div class="term" aria-live="polite"></div>
-<div class="snel"><span class="knoppen" style="display:contents"></span><button type="button" class="licht" data-leeg style="margin-left:auto" title="Scherm leegmaken">Leeg</button></div>
+<div class="snel"><span class="knoppen" style="display:contents"></span><button type="button" class="licht" data-leeg style="margin-left:auto" title="Scherm leegmaken">Wissen</button></div>
 <form class="invoer" autocomplete="off"><input type="text" maxlength="250" placeholder="Typ een commando of tekst"
  aria-label="Invoer" enterkeyhint="send"><button type="submit">Zenden</button></form>
 <p class="uitleg verbinding" style="margin:8px 0 0"></p></section>
