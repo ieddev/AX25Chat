@@ -40,7 +40,7 @@ CSS = """
 
 JS = r"""
 (function(){
-var mij = document.body.dataset.mij, berichten = {}, monitor = [], actief = 'CQ', laatst = 0, gelezen = {};
+var mij = document.body.dataset.mij, berichten = {}, monitor = [], actief = 'MONITOR', laatst = 0, gelezen = {};   // start op de Monitor: wie komt er door
 try { gelezen = JSON.parse(localStorage.getItem('ax25chat-gelezen') || '{}'); } catch (e) {}
 var gevraagd = (new URLSearchParams(location.search).get('aan') || '').trim().toUpperCase();   // van de kaart: 'Bericht sturen'
 if (/^[A-Z0-9]{1,6}(-\d{1,2})?$/.test(gevraagd)) actief = gevraagd;

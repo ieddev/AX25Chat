@@ -165,7 +165,10 @@ Open **http://10.42.0.1** (tabblad **Chat**, zonder inloggen).
   Komt er na 5 keer geen bevestiging, dan staat er *niet bevestigd* met een knop **Opnieuw**.
   Antwoordt het tegenstation niet, dan kun je het herhalen eerder afbreken met **Stop**. Komt er daarna toch nog
   een bevestiging binnen, dan staat het bericht alsnog op *bevestigd*.
-- **Monitor**: alles wat de Pi hoort, ook APRS-posities en berichten tussen anderen.
+- **Monitor**: alles wat de Pi hoort, ook APRS-posities en berichten tussen anderen. Als je op **Chat** tikt,
+  opent de Monitor meteen, zodat je ziet wie er doorkomt. Tik op CQ of een gesprek om een bericht te sturen;
+  een nieuw bericht in een gesprek zie je aan het puntje achter de naam. (Via *Bericht sturen* op de kaart
+  opent meteen het gesprek met dat station.)
 - **Wissen** (rechtsboven in elk scherm): maakt dat scherm leeg. Alleen de berichten gaan weg; je instellingen,
   Station en Mijn frequenties blijven staan. Een bericht dat nog verzonden of herhaald wordt, blijft staan.
 
