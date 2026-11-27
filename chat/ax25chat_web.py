@@ -23,7 +23,6 @@ import html
 import json
 import os
 import secrets
-import subprocess
 import sys
 import threading
 import time
@@ -41,6 +40,7 @@ import ax25chat_kaart as kaart
 import ax25chat_kaartpagina as kaartpagina
 import ax25chat_locator as locator
 import ax25chat_radio as radio
+import ax25chat_systeem as systeem
 
 rig = radio.rig
 e = html.escape
@@ -290,7 +290,7 @@ Schakel de Pi hier uit en wacht tot het groene lampje niet meer knippert (± 20 
 
 
 def html_log():
-    log = radio._uit([radio.JOURNALCTL, "-u", radio.DW, "-n", "40", "--no-pager", "-o", "cat"], timeout=10).strip()
+    log = systeem.logboek(radio.DW, regels=40).strip()
     log = log.replace("<0x0d><0x0a>", "\n").replace("<0x0d>", "\n").replace("<0x0a>", "\n")   # regeleinden in banners
     return f"<pre>{e(log or '(geen logregels)')}</pre>"
 
@@ -369,8 +369,7 @@ def pi_actie(actie):
 
     def later():
         time.sleep(2)
-        subprocess.run([radio.SUDO, "-n", radio.SYSTEMCTL, "poweroff" if actie == "uit" else "reboot"],
-                       capture_output=True, timeout=30)
+        systeem.pi_uitzetten(actie)
     threading.Thread(target=later, daemon=True).start()
     if actie == "uit":
         return pagina("status", bij="pi", melding=meldingen(ok="De Pi wordt uitgeschakeld. Wacht tot het groene lampje niet meer knippert "
