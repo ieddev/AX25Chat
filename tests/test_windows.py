@@ -119,6 +119,23 @@ class TestWindowsUsb(unittest.TestCase):
         self.assertEqual(self.usb.win_hub(R + "#USB(3)"), "")        # direct aan de PC: geen hubje
 
 
+    def test_powershell_een_keer_per_pagina(self):
+        """De Radio-pagina vraagt geluidskaarten en poorten apart op; PowerShell mag maar één keer draaien.
+        Zoek mijn set (inventaris) vraagt wel altijd opnieuw."""
+        tellen = []
+        oud = self.usb._windows_ps
+        self.usb._windows_ps = lambda: tellen.append(1) or oud()
+        try:
+            self.usb._WIN_LAATST[:] = [0.0, None]
+            self.usb.geluidskaarten()
+            self.usb.seriele_poorten()
+            self.assertEqual(len(tellen), 1)
+            self.usb.inventaris()
+            self.assertEqual(len(tellen), 2)
+        finally:
+            self.usb._windows_ps = oud
+
+
 class TestWindowsNiveau(unittest.TestCase):
     def test_niveau_uit_log(self):
         import ax25chat_radio as radio

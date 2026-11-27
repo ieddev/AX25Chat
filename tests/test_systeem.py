@@ -150,5 +150,17 @@ class TestPcDiensten(unittest.TestCase):
         self.assertIn("starten lukte niet", self.s.logboek("test"))
 
 
+
+
+@unittest.skipUnless(sys.platform == "win32", "alleen Windows")
+class TestGeenConsolevensters(unittest.TestCase):
+    def test_popen_zonder_venster(self):
+        import subprocess
+        import ax25chat_systeem  # noqa: F401
+        self.assertTrue(getattr(subprocess.Popen, "_ax25chat_stil", False))
+        r = subprocess.run([sys.executable, "-c", "print('ok')"], capture_output=True, text=True)
+        self.assertEqual(r.stdout.strip(), "ok")
+
+
 if __name__ == "__main__":
     unittest.main()

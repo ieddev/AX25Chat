@@ -21,6 +21,25 @@ import sys
 import threading
 import time
 
+def _stil_op_windows():
+    """Windows: geen zwart consolevenster bij elk hulpprogramma (rigctl, PowerShell, Direwolf, git). AX25Chat.exe
+    heeft zelf geen console, dus anders opent Windows er voor elk programma dat AX25Chat start een."""
+    if sys.platform != "win32" or getattr(subprocess.Popen, "_ax25chat_stil", False):
+        return
+    geen_venster = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+
+    class StillePopen(subprocess.Popen):
+        _ax25chat_stil = True
+
+        def __init__(self, *args, **kwargs):
+            kwargs["creationflags"] = kwargs.get("creationflags", 0) | geen_venster
+            super().__init__(*args, **kwargs)
+
+    subprocess.Popen = StillePopen
+
+
+_stil_op_windows()
+
 SOORT = (os.environ.get("AX25CHAT_SOORT") or ("pc" if sys.platform == "win32" else "pi")).lower()
 IS_PI = SOORT == "pi"
 CODE = os.path.dirname(os.path.abspath(__file__))        # waar de programma's staan

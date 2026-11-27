@@ -791,6 +791,7 @@ def main(argv=None):
         for fout in systeem.start_diensten():
             print("Let op: " + fout, flush=True)
         atexit.register(systeem.stop_diensten)
+        radio.usb.win_vooraf()                  # Windows: USB-apparaten alvast opvragen (duurt even)
     rig.start_bewaker(radio.instellingen, lambda t: print("Set: " + t, flush=True))
     global CHAT
     import ax25chat_chat

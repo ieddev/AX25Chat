@@ -26,6 +26,8 @@ import os
 import re
 import subprocess
 import sys
+import threading
+import time
 
 ASOUND_CARDS = os.environ.get("AX25CHAT_ASOUND_CARDS", "/proc/asound/cards")
 SERIAL_BY_ID = os.environ.get("AX25CHAT_SERIAL_BY_ID", "/dev/serial/by-id")
@@ -147,7 +149,7 @@ def inventaris():
     soort van de groep: 'icom', 'yaesu', 'digirig', 'geluid' (alleen geluidskaart: VOX) of 'serieel' (alleen poort).
     """
     if WINDOWS:
-        kaarten, poorten, hub = _windows()
+        kaarten, poorten, hub = _windows(vers=True)
     else:
         kaarten = [(nr, kid, tekst, usb_kaart(nr)) for nr, kid, tekst in geluidskaarten()]
         kaarten = [k for k in kaarten if k[3]]                # alleen USB (niet de HDMI-/koptelefoonuitgang)
@@ -179,37 +181,75 @@ def inventaris():
 
 # Per apparaat (geluidskaart-ingang/-uitgang en COM-poort): naam, InstanceId, het USB-apparaat erboven en zijn
 # USB-pad, bijv. PCIROOT(0)#PCI(1400)#USBROOT(0)#USB(3)#USB(2). Alles in één keer, als JSON.
+# Snel: de ouders worden per niveau in één keer opgevraagd (niet per apparaat), want elke Get-PnpDeviceProperty
+# kost op Windows een flinke fractie van een seconde. Met veel apparaten duurde het per apparaat soms minuten.
 PS_SCRIPT = r"""
 $ErrorActionPreference = 'SilentlyContinue'
-function Ouder($id) {
-  for ($i = 0; $i -lt 8 -and $id; $i++) {
-    if ($id -match '^USB\\VID_[0-9A-F]{4}&PID_[0-9A-F]{4}\\') {
-      $lp = (Get-PnpDeviceProperty -InstanceId $id -KeyName DEVPKEY_Device_LocationPaths).Data
-      return @($id, ($lp | Select-Object -First 1))
-    }
-    $id = (Get-PnpDeviceProperty -InstanceId $id -KeyName DEVPKEY_Device_Parent).Data
+$usbpat = '^USB\\VID_[0-9A-F]{4}&PID_[0-9A-F]{4}\\'
+$dev = @(Get-PnpDevice -PresentOnly -Class AudioEndpoint, Ports)
+$ouder = @{}
+$todo = @($dev | ForEach-Object { [string]$_.InstanceId } | Where-Object { $_ -notmatch $usbpat })
+for ($i = 0; $i -lt 8 -and $todo.Count -gt 0; $i++) {
+  $volgende = @()
+  foreach ($p in @(Get-PnpDeviceProperty -InstanceId $todo -KeyName DEVPKEY_Device_Parent)) {
+    $o = [string]$p.Data
+    $ouder[[string]$p.InstanceId] = $o
+    if ($o -and $o -notmatch $usbpat -and -not $ouder.ContainsKey($o)) { $volgende += $o }
   }
-  return @('', '')
+  $todo = @($volgende | Select-Object -Unique)
+}
+$usb = @{}
+foreach ($d in $dev) {
+  $id = [string]$d.InstanceId
+  for ($i = 0; $i -lt 9 -and $id -and $id -notmatch $usbpat; $i++) { $id = $ouder[$id] }
+  if ($id -match $usbpat) { $usb[[string]$d.InstanceId] = $id } else { $usb[[string]$d.InstanceId] = '' }
+}
+$pad = @{}
+$ids = @($usb.Values | Where-Object { $_ } | Select-Object -Unique)
+if ($ids.Count -gt 0) {
+  foreach ($p in @(Get-PnpDeviceProperty -InstanceId $ids -KeyName DEVPKEY_Device_LocationPaths)) {
+    $pad[[string]$p.InstanceId] = [string]($p.Data | Select-Object -First 1)
+  }
 }
 $uit = @()
-foreach ($d in (Get-PnpDevice -PresentOnly -Class AudioEndpoint, Ports)) {
-  $o = Ouder $d.InstanceId
+foreach ($d in $dev) {
+  $u = $usb[[string]$d.InstanceId]
   $uit += [pscustomobject]@{ klasse = [string]$d.Class; naam = [string]$d.FriendlyName; id = [string]$d.InstanceId;
-                             usb = [string]$o[0]; pad = [string]$o[1] }
+                             usb = [string]$u; pad = $(if ($u) { [string]$pad[$u] } else { '' }) }
 }
 ConvertTo-Json -InputObject @($uit) -Compress
 """
 
+_WIN_BEWAAR = 30        # seconden dat de uitkomst geldig blijft (een pagina vraagt hem meerdere keren op)
+_WIN_LAATST = [0.0, None]
+_WIN_SLOT = threading.Lock()
 _WIN_KAARTEN = {}     # geluidskaart (tekst tussen haakjes) -> {"in": volledige naam, "uit": volledige naam}
 
 
-def _windows_ruw():
+def _windows_ruw(vers=False):
+    """De apparaten volgens PowerShell. Bewaard voor _WIN_BEWAAR seconden; vers=True vraagt opnieuw (Zoek mijn set).
+    Vragen er twee tegelijk, dan wacht de tweede op de eerste in plaats van zelf PowerShell te starten."""
+    with _WIN_SLOT:
+        if not vers and _WIN_LAATST[1] is not None and time.time() - _WIN_LAATST[0] < _WIN_BEWAAR:
+            return _WIN_LAATST[1]
+        data = _windows_ps()
+        _WIN_LAATST[:] = [time.time(), data]
+        return data
+
+
+def win_vooraf():
+    """Bij het starten op de achtergrond alvast opvragen, zodat de eerste keer Radio openen niet hoeft te wachten."""
+    if WINDOWS:
+        threading.Thread(target=_windows_ruw, daemon=True).start()
+
+
+def _windows_ps():
     if WIN_JSON:
         with open(WIN_JSON, encoding="utf-8") as f:
             return json.load(f)
     try:
         r = subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", PS_SCRIPT],
-                           capture_output=True, text=True, timeout=30,
+                           capture_output=True, text=True, timeout=60,
                            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         data = json.loads(r.stdout or "[]")
     except (OSError, subprocess.SubprocessError, ValueError):
@@ -246,12 +286,13 @@ def _byid_naam(x, usb_id):
     return f"usb-{chip}{'_' + serie if serie else ''}-if{mi.group(1) if mi else '00'}-port0"
 
 
-def _windows():
+def _windows(vers=False):
     """(kaarten [(nr, id, tekst, usb-pad)], poorten [(COMx, usb-pad)], hub-functie) voor inventaris()."""
     kaarten, poorten = {}, []
+    ruw = _windows_ruw(vers)
     _NAMEN.clear()
     _WIN_KAARTEN.clear()
-    for x in _windows_ruw():
+    for x in ruw:
         if not x.get("usb"):
             continue                                        # niet via USB (ingebouwde geluidskaart, COM1)
         if x.get("klasse") == "Ports":

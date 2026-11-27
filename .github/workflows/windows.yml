@@ -49,6 +49,21 @@ jobs:
       - name: Tests (Windows-delen)
         run: python -m unittest -v tests.test_systeem tests.test_windows tests.test_venster
 
+      - name: USB-apparaten opvragen met PowerShell (snelheid en geldige JSON)
+        run: |
+          python - <<'PY'
+          import json, subprocess, sys, time
+          sys.path.insert(0, "gemeenschappelijk")
+          import ax25chat_usb as usb
+          t = time.time()
+          r = subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", usb.PS_SCRIPT],
+                             capture_output=True, text=True, timeout=120)
+          print(f"{time.time() - t:.1f} s, code {r.returncode}")
+          print("stderr:", r.stderr[:2000])
+          data = json.loads(r.stdout or "[]")
+          print(len(data), "apparaten:", json.dumps(data, indent=1)[:3000])
+          PY
+
       - name: Python-pakketten
         run: python -m pip install --upgrade pip pyinstaller pywebview pillow
 
