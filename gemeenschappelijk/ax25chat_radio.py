@@ -905,6 +905,46 @@ def hotspot_status():
     return {"aan": aan, "ssid": h.get("ssid", ""), "wachtwoord": h.get("wachtwoord", ""), "clients": st.count("Station ")}
 
 
+# ---------------------------------------------------------------------------
+# PC: Direwolf en rigctld start het programma zelf (op de Pi doet systemd dat)
+# ---------------------------------------------------------------------------
+
+DIREWOLF = os.environ.get("AX25CHAT_DIREWOLF", "direwolf")
+RIGCTLD = os.environ.get("AX25CHAT_RIGCTLD", "rigctld")
+
+
+def _pc_rigctld():
+    """Zoals start_rigctld.sh: alleen als CAT is gekozen (rigctld.env)."""
+    env = {}
+    try:
+        with open(rig.ENV_FILE, encoding="utf-8") as f:
+            for regel in f:
+                k, _, v = regel.strip().partition("=")
+                env[k] = v
+    except OSError:
+        return None
+    if not env.get("MODEL") or not env.get("POORT"):
+        return None
+    return [RIGCTLD, "-m", env["MODEL"], "-r", env["POORT"], "-s", env.get("BAUD") or "19200",
+            "-T", "127.0.0.1", "-t", str(rig.POORT)]
+
+
+def _pc_direwolf():
+    return [DIREWOLF, "-c", DIREWOLF_CONF, "-t", "0", "-q", "d"] if os.path.exists(DIREWOLF_CONF) else None
+
+
+def _pc_voor_direwolf():
+    """Zoals ExecStartPre in ax25chat-direwolf.service: niveaus zetten, bij CAT de set instellen."""
+    for x in zet_niveaus():
+        systeem._logregel(DW, "[AX25Chat] " + x)
+    systeem._logregel(DW, "[AX25Chat] " + rig.wacht_en_zet())
+
+
+if not systeem.IS_PI:
+    systeem.meld_dienst(RIGD, _pc_rigctld)
+    systeem.meld_dienst(DW, _pc_direwolf, voor=_pc_voor_direwolf)
+
+
 if __name__ == "__main__":
     if "--niveau" in sys.argv:          # door ax25chat-direwolf.service bij het starten
         for x in zet_niveaus():

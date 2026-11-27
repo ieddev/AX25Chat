@@ -67,6 +67,9 @@ bash <(curl -sL https://raw.githubusercontent.com/ieddev/AX25Chat/main/installee
 Bijwerken: tabblad **Status**, *AX25Chat bijwerken*. Een Pi Zero zet daarvoor even de hotspot uit en gaat via je
 thuis-wifi; daarna komt de hotspot vanzelf terug. Of via ssh: `ax25chat-bijwerken`. Instellingen blijven bewaard.
 
+**Zonder Pi, op een Linux-PC** (testfase): `python3 pc/ax25chat_pc.py`. AX25Chat start Direwolf dan zelf en opent
+`http://localhost:8080`. Zie *AX25Chat op een PC* in de procedure. Windows volgt.
+
 De volledige procedure, met per set waar je op moet letten, staat in [docs/PROCEDURE.md](docs/PROCEDURE.md).
 Om te printen of offline te lezen: [docs/AX25Chat-handleiding.pdf](docs/AX25Chat-handleiding.pdf) (README, procedure en
 testplan in één PDF, stand 26-11-2026).
@@ -86,6 +89,7 @@ Is Hamlib geïnstalleerd (`rigctld`), dan wordt ook het zetten van de mode op ee
 | `installeer.sh` | Installeert en werkt bij |
 | `gemeenschappelijk/` | Set en modem: Zoek mijn set, CAT (rigctld), Direwolf, USB-herkenning, AX.25/KISS, hotspot, diensten |
 | `chat/` | De chat (APRS-berichten, bevestigen, herhalen, monitor), de chatpagina en de webserver (tabbladen Chat, Radio en Status) |
+| `pc/` | AX25Chat op een gewone PC zonder Pi (`ax25chat_pc.py`) |
 | `docs/` | Procedure en testplan, ook samen met deze README als PDF (`AX25Chat-handleiding.pdf`) |
 | `tests/` | Tests zonder hardware (nagebootste USB-sets) |
 

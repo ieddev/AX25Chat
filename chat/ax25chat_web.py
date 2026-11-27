@@ -48,6 +48,8 @@ MAP = radio.MAP
 WW_FILE = os.path.join(MAP, "web_wachtwoord.json")
 CSRF = secrets.token_urlsafe(24)
 ZOEK_LOCK = threading.Lock()
+KLAAR = None                               # PC: wordt aangeroepen met het adres zodra de webserver luistert
+LOKAAL = False                             # PC zonder thuisnetwerk: alleen bereikbaar vanaf de PC zelf, geen inlog
 CHAT = None                                # ax25chat_chat.Chat, gestart in main()
 BBS = None                                 # ax25chat_bbs.Sessie (connected mode), gestart in main()
 BAKEN = None                               # ax25chat_baken.Baken (APRS-positie), gestart in main()
@@ -101,6 +103,8 @@ MENU = {"radio": [("station", "Station", 0), ("frequenties", "Mijn frequenties",
                   ("luister", "Luistertest", 1), ("test", "Testuitzending", 1), ("handmatig", "Handmatig instellen", 1)],
         "status": [("diensten", "Diensten", 0), ("hotspot", "Wifi-hotspot", 0), ("bijwerken", "Bijwerken", 0),
                    ("log", "Log van Direwolf", 0), ("pi", "Raspberry Pi", 0)]}
+if not systeem.IS_PI:                      # PC: geen hotspot, geen Pi uitzetten; bijwerken gaat anders
+    MENU["status"] = [x for x in MENU["status"] if x[0] not in ("hotspot", "pi")]
 SEGMENTEN = {i for lijst in MENU.values() for i, _, _ in lijst}
 
 # Voor elke pagina: menu's open/dicht, melding naar het segment waar je op Opslaan tikte, trage delen later laden
@@ -264,11 +268,22 @@ def html_status():
     for d, titel in radio.DIENSTEN:
         st = radio.dienst_status(d)
         kl = "p-ok" if st == "active" else ("p-let" if st in ("activating", "reloading") else "p-uit")
-        tekst = {"active": "draait", "inactive": "staat uit", "failed": "GESTOPT MET FOUT", "activating": "start op..."}.get(st, st)
+        if st == "niet nodig":
+            kl = "p-ok"
+        tekst = {"active": "draait", "inactive": "staat uit", "failed": "GESTOPT MET FOUT", "activating": "start op...",
+                 "niet nodig": "niet nodig (geen CAT)" if d == radio.RIGD else "wacht op instellingen (tabblad Radio)"}.get(st, st)
         knop = "" if d == "ax25chat-web" else (
             f"<form method='post' action='/herstart' style='margin:0'>{verborgen()}<input type='hidden' name='dienst' "
             f"value='{e(d)}'><button class='licht' type='submit'>Herstart</button></form>")
         rijen += f"<tr><td><span class='punt {kl}'></span>{e(titel)}</td><td>{e(tekst)}</td><td style='text-align:right'>{knop}</td></tr>"
+    laden = radio.LADEN.format
+    if not systeem.IS_PI:
+        return f"""<section id="diensten"><h2>Diensten</h2><table>{rijen}</table>
+{laden(deel="setkort", tekst="De set wordt uitgelezen…", hoog=40)}</section>
+<section id="bijwerken"><h2>Bijwerken</h2><p class="uitleg">AX25Chat draait op deze PC vanuit
+<span class="mono">{e(systeem.CODE)}</span>. Een nieuwe versie: sluit AX25Chat en haal de nieuwste versie op (zie de
+procedure, deel 'AX25Chat op een PC'). Je instellingen staan apart in <span class="mono">{e(MAP)}</span> en blijven bewaard.</p></section>
+<section id="log"><h2>Log van Direwolf</h2>{laden(deel="log", tekst="Het log wordt opgehaald…", hoog=200)}</section>"""
     h = radio.hotspot_status()
     hotspot = (f"<p><span class='punt {'p-ok' if h['aan'] else 'p-let'}'></span><b>{'Hotspot aan' if h['aan'] else 'Hotspot uit'}</b>"
                f"{' · ' + str(h['clients']) + ' apparaat/apparaten verbonden' if h['aan'] else ' (de Pi gebruikt een ander netwerk)'}</p>"
@@ -276,7 +291,6 @@ def html_status():
                f"<div><label>Wachtwoord</label><div class='mono'>{e(h['wachtwoord'] or '-')}</div></div></div>"
                f"<p class='uitleg' style='margin-top:10px'>Adres: http://10.42.0.1 · Android meldt \"geen internet\": "
                f"kies <i>Verbonden blijven</i>.</p>")
-    laden = radio.LADEN.format
     return f"""<section id="diensten"><h2>Diensten</h2><table>{rijen}</table>
 {laden(deel="setkort", tekst="De set wordt uitgelezen…", hoog=40)}</section>
 <section id="hotspot"><h2>Wifi-hotspot</h2>{hotspot}</section>
@@ -364,7 +378,7 @@ def eigen_positie():
 
 
 def pi_actie(actie):
-    if actie not in ("uit", "herstart"):
+    if actie not in ("uit", "herstart") or not systeem.kan("uitzetten"):
         return None
 
     def later():
@@ -389,6 +403,8 @@ class Handler(BaseHTTPRequestHandler):
         sys.stderr.write("%s %s\n" % (self.address_string(), fmt % args))
 
     def _auth(self):
+        if LOKAAL:
+            return True                    # alleen bereikbaar vanaf deze PC (127.0.0.1)
         kop = self.headers.get("Authorization", "")
         if kop.startswith("Basic "):
             if inlog_bekend(kop):
@@ -461,7 +477,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self._stuur(b"", 404, "text/plain")
             return self._bestand(bestand, "image/png", 86400)
         if pad in STATISCH:
-            return self._bestand(os.path.join(MAP, pad), STATISCH[pad], 86400)
+            return self._bestand(os.path.join(systeem.CODE, pad), STATISCH[pad], 86400)
         if pad.startswith("api/"):
             return self._api_get(pad[4:], parse_qs(url.query))
         if pad == "status.json":                      # voor de webapp (stap 3)
@@ -728,7 +744,7 @@ class Handler(BaseHTTPRequestHandler):
         if pad == "herstart":
             ok, fout = radio.dienst("restart", f.get("dienst", ""))
             return self._terug("/status", "ok:Dienst herstart." if ok else "fout:Herstart lukte niet: " + fout, "diensten")
-        if pad == "bijwerken":
+        if pad == "bijwerken" and systeem.kan("bijwerken_wifi"):
             uit = bijwerken.verwerk(f, verborgen())
             if uit[0] == "naar":
                 return self._terug(uit[1], uit[2], "bijwerken" if uit[1] == "/status" else "")
@@ -744,15 +760,28 @@ def _vaste_positie():
     return (b["lat"], b["lon"]) if b.get("lat") is not None and b.get("lon") is not None else None
 
 
-def main():
+def main(argv=None):
     ap = argparse.ArgumentParser()
-    ap.add_argument("--poort", type=int, default=80)
+    ap.add_argument("--poort", type=int, default=80 if systeem.IS_PI else 8080)
     ap.add_argument("--wachtwoord", action="store_true", help="wachtwoord instellen of wijzigen")
-    args = ap.parse_args()
+    ap.add_argument("--thuisnetwerk", action="store_true",
+                    help="PC: ook bereikbaar voor je telefoon of de app op het thuisnetwerk (met wachtwoord)")
+    args = ap.parse_args(argv)
     if args.wachtwoord:
         return stel_wachtwoord_in()
-    if not radio.lees(WW_FILE):
+    global LOKAAL
+    LOKAAL = not systeem.IS_PI and not args.thuisnetwerk
+    adres = "127.0.0.1" if LOKAAL else "0.0.0.0"
+    if not LOKAAL and not radio.lees(WW_FILE):
         sys.exit("Stel eerst een wachtwoord in:  python3 ax25chat_web.py --wachtwoord")
+    if not systeem.IS_PI:                       # PC: Direwolf en rigctld zelf starten (op de Pi doet systemd dat)
+        import atexit
+        import signal
+        signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))      # afsluiten: Direwolf en rigctld ook stoppen
+        print(f"Instellingen en logboek: {MAP}", flush=True)
+        for fout in systeem.start_diensten():
+            print("Let op: " + fout, flush=True)
+        atexit.register(systeem.stop_diensten)
     rig.start_bewaker(radio.instellingen, lambda t: print("Set: " + t, flush=True))
     global CHAT
     import ax25chat_chat
@@ -768,12 +797,17 @@ def main():
                         verbonden=lambda: BBS.tegen if BBS.stand != "verbroken" else "")
     radio.NA_EIGEN.append(lambda verborgen: baken.html(verborgen, BAKEN))
     radio.NA_EIGEN.append(lambda verborgen: kaart.html_beheer(verborgen, _vaste_positie()))
-    server = ThreadingHTTPServer(("0.0.0.0", args.poort), Handler)
-    print(f"AX25Chat op http://0.0.0.0:{args.poort}", flush=True)
+    server = ThreadingHTTPServer((adres, args.poort), Handler)
+    print(f"AX25Chat op http://{'localhost' if LOKAAL else adres}:{args.poort}", flush=True)
+    if KLAAR:
+        KLAAR(f"http://localhost:{args.poort}/")
     try:
         server.serve_forever()
     except KeyboardInterrupt:
         pass
+    finally:
+        if not systeem.IS_PI:
+            systeem.stop_diensten()
 
 
 if __name__ == "__main__":

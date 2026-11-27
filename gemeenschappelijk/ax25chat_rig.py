@@ -21,7 +21,9 @@ import subprocess
 import threading
 import time
 
-MAP = os.environ.get("AX25CHAT_MAP") or os.path.dirname(os.path.abspath(__file__))
+import ax25chat_systeem as systeem
+
+MAP = systeem.MAP
 ENV_FILE = os.path.join(MAP, "rigctld.env")
 LOG_FILE = os.path.join(MAP, "rig_log.json")
 STATION_FILE = os.path.join(MAP, "station.json")
