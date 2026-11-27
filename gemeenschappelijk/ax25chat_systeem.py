@@ -42,6 +42,7 @@ _stil_op_windows()
 
 SOORT = (os.environ.get("AX25CHAT_SOORT") or ("pc" if sys.platform == "win32" else "pi")).lower()
 IS_PI = SOORT == "pi"
+TOESTEL = "Pi" if IS_PI else "PC"                         # in teksten: "Zit de set aan de Pi/PC?"
 CODE = os.path.dirname(os.path.abspath(__file__))        # waar de programma's staan
 
 

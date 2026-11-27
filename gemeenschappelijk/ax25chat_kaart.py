@@ -162,7 +162,7 @@ def voortgang():
     v = _lees(VOORTGANG_FILE)
     if v and v.get("bezig") and time.time() - v.get("bijgewerkt", 0) > 120:
         v["bezig"] = False
-        v["fout"] = v.get("fout") or "De download is onderbroken (Pi herstart?). Start hem opnieuw."
+        v["fout"] = v.get("fout") or "De download is onderbroken (AX25Chat herstart?). Start hem opnieuw."
     return v
 
 
@@ -382,9 +382,9 @@ def html_beheer(verborgen, positie=None):
     o_straal = "".join(f'<option value="{s}" {"selected" if s == straal else ""}>{s} km</option>' for s in STRALEN)
     o_zoom = "".join(f'<option value="{z}" {"selected" if z == zoom else ""}>{_e(t)}</option>' for z, t in ZOOMS.items())
     n, mb = schatting(52.2, 5.5, STANDAARD_STRAAL, STANDAARD_ZOOM)
-    pos = (f"Laat je leeg, dan neemt de Pi je vaste positie van het APRS-baken "
+    pos = (f"Laat je leeg, dan neemt AX25Chat je vaste positie van het APRS-baken "
            f"({positie[0]:.4f}, {positie[1]:.4f})." if positie else
-           "Laat je leeg, dan neemt de Pi de vaste positie van het APRS-baken (nu nog niet ingevuld).")
+           "Laat je leeg, dan neemt AX25Chat de vaste positie van het APRS-baken (nu nog niet ingevuld).")
     knop = "<button type='submit' disabled>Bezig...</button>" if bezig else "<button type='submit'>Kaart downloaden</button>"
     ververs = """<script>(function(){var el=document.getElementById('kaart_stand');if(!el)return;
 function kijk(){fetch('/api/kaart').then(function(r){return r.json()}).then(function(d){var s=d.download||{};
