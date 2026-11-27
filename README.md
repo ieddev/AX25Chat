@@ -41,6 +41,35 @@ de hand in: daarmee kun je het baken niet naast het chatten aanzetten. Het baken
 op 144,800 zet en bij Station ook 144,800 kiest (je chat dan ook op 144,800). Zie
 [docs/PROCEDURE.md](docs/PROCEDURE.md#aprs-baken-je-positie-op-de-kaart).
 
+## Frequenties
+
+Bij **Station** (tabblad Radio) kies je de frequentie uit een vaste **voorkeuzelijst** met bekende
+packetfrequenties. Elke frequentie heeft zijn eigen mode en snelheid. Met CAT zet de Pi de set daarop, en Direwolf
+krijgt de goede snelheid:
+
+| Band | Frequentie (dial, MHz) | Mode | Baud |
+|---|---|---|---|
+| 2 m | 144,800 (APRS) | FM-D | 1200 |
+| 2 m | 144,850 - 144,950 (12,5 kHz-stappen, standaard 144,900) | FM-D | 1200 |
+| 70 cm | 438,175 | FM-D | 9600 |
+| 20 m | 14,1025 | USB-D | 300 |
+| 30 m | 10,1476 (HF-APRS) | USB-D | 300 |
+| 40 m | 7,0476 | USB-D | 300 |
+| 80 m | 3,6103 | USB-D | 300 |
+
+**Zelf aanpassen:** de lijst staat in `voorkeuze.json` in de map met instellingen (Pi `~/ax25chat/`, Linux
+`~/.local/share/ax25chat/`, Windows `%APPDATA%\AX25Chat\`). Je wijzigt hem met een teksteditor of op de webpagina
+onder Radio → Mijn frequenties → **Voorkeuzelijst**. Daar staat ook *Terug naar standaard*. Frequenties van stations
+bij jou in de buurt zet je bij **Mijn frequenties**. Die gaan voor de voorkeuzelijst.
+
+**HF (300 baud):** de HF-waarden zijn dial-frequenties voor USB-D met de tonen 1600/1800 Hz. Het signaal ligt
+1,7 kHz hoger. Zie ze als richtwaarde en stem de eerste keer af tot de tonen rond 1600/1800 Hz staan. Direwolf
+luistert met 9 decoders, dus je mag ongeveer 120 Hz naast zitten. Zet de goede dial daarna bij Mijn frequenties,
+dan klopt hij altijd. Op 2 m en 70 cm (FM) hoef je niets af te stemmen. Uitleg in
+[docs/PROCEDURE.md](docs/PROCEDURE.md#voorkeuzelijst-bekende-packetfrequenties).
+
+## Kaart en app
+
 Op het tabblad **Kaart** staan de stations die je hoort met een APRS-positie, op een offline kaart van
 Nederland (PDOK). Nodes en BBS'en zonder APRS-positie staan er ook op als hun locator bekend is (uit hun baken,
 of zelf ingevuld), met een eigen symbool op het midden van het locatorvak. Die download je eenmalig met internet op het tabblad Radio; daarna werkt hij zonder internet.
