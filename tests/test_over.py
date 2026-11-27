@@ -47,5 +47,27 @@ class TestKaartbron(unittest.TestCase):
         self.assertIn("Nog geen offline kaart", kaartpagina.html_pagina({"kaart": False, "kaartbron": "offline"}))
 
 
+class TestOnderbrokenDownload(unittest.TestCase):
+    def setUp(self):
+        d = tempfile.mkdtemp()
+        kaart.BRON_FILE = os.path.join(d, "kaartbron.txt")
+        kaart.VOORTGANG_FILE = os.path.join(d, "voortgang.json")
+        kaart._schrijf(kaart.VOORTGANG_FILE, {"bezig": True, "bijgewerkt": 1, "fout": ""})   # lang geleden blijven hangen
+
+    def test_geen_rode_melding(self):
+        self.assertTrue(kaart.voortgang()["onderbroken"])
+        self.assertFalse(kaart.voortgang().get("fout"))
+
+    def test_alleen_online_geen_melding(self):
+        kaart.zet_kaartbron("online")
+        self.assertNotIn("niet afgemaakt", kaart.html_beheer(""))
+
+    def test_offline_rustige_melding(self):
+        kaart.zet_kaartbron("offline")
+        h = kaart.html_beheer("")
+        self.assertIn("niet afgemaakt", h)
+        self.assertNotIn("melding fout", h)
+
+
 if __name__ == "__main__":
     unittest.main()
