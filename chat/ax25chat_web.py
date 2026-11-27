@@ -350,14 +350,16 @@ def station_opslaan(f):
 
 
 def frequenties():
-    """Voor de app: de huidige frequentie en de keuzes (2 m-kanalen en Mijn frequenties)."""
+    """Voor de app: de huidige frequentie en de keuzes (voorkeuzelijst en Mijn frequenties)."""
     eigen = {x["hz"]: x for x in rig.eigen_frequenties()}
     keuzes = [{"hz": 0, "tekst": "Zelf instellen op de set", "eigen": False}]
     for hz in rig.frequentie_keuzes():
         if hz in eigen:
             keuzes.append({"hz": hz, "tekst": rig.eigen_tekst(eigen[hz]), "eigen": True})
         elif not any(k["hz"] == hz for k in keuzes):
-            keuzes.append({"hz": hz, "tekst": rig.mhz(hz) + (" (APRS)" if hz == rig.APRS_FREQ else ""), "eigen": False})
+            x = rig.instelling(hz)
+            tekst = rig.eigen_tekst(x) if x else rig.mhz(hz) + (" (APRS)" if hz == rig.APRS_FREQ else "")
+            keuzes.append({"hz": hz, "tekst": tekst, "eigen": False})
     keuzes.sort(key=lambda k: (not k["eigen"], k["hz"]) if k["hz"] else (False, -1))
     s = radio.station()
     return {"huidig": s.get("frequentie") or 0, "tekst": rig.mhz(s.get("frequentie")), "keuzes": keuzes,

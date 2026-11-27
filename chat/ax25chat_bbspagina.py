@@ -186,7 +186,7 @@ eerst naar de frequentie die erbij hoort.</p>
 <div class="rij"><div><label>Roepnaam <small>met SSID, bijv. PD4R-1</small></label><input type="text" name="call" maxlength="9"
  style="text-transform:uppercase" required></div>
 <div><label>Naam <small>mag leeg</small></label><input type="text" name="naam" maxlength="30"></div></div>
-<label>Frequentie <small>mode en snelheid komen van Mijn frequenties (tabblad Radio)</small></label>{keuze}
+<label>Frequentie <small>mode en snelheid komen van de frequentie (tabblad Radio)</small></label>{keuze}
 <div class="balk"><button type="submit">Toevoegen</button></div></form></details></section>
 <section><div class="term" aria-live="polite"></div>
 <div class="snel"><span class="knoppen" style="display:contents"></span><button type="button" class="licht" data-leeg style="margin-left:auto" title="Scherm leegmaken">Scherm wissen</button></div>

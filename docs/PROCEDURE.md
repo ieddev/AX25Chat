@@ -51,16 +51,19 @@ de Pi zit dan niet meer op je thuis-wifi.
 1. Verbind je telefoon of laptop met de wifi **AX25Chat-&lt;roepnaam&gt;**. Android meldt "geen internet":
    kies *Verbonden blijven*.
 2. Open **http://10.42.0.1** en ga naar het tabblad **Radio** (gebruiker `beheer`).
-3. **Station**: controleer je roepnaam en kies de frequentie (144,800 APRS, of 144,850 - 144,950 MHz). Heeft de set geen
-   CAT (DigiRig), of gebruik je een andere band? Kies *Zelf instellen op de set*.
-   **Mode** (alleen met CAT): *Automatisch* zet de set in FM-D (op HF in USB-D). Kies je een frequentie uit Mijn
-   frequenties met een eigen mode, dan geldt die mode en doet deze keuzelijst niet mee. Packet met 1200 baud op 2 m is
+3. **Station**: controleer je roepnaam en kies de frequentie uit de lijst: de voorkeuzelijst (2 m, 70 cm en HF, zie
+   [Voorkeuzelijst](#voorkeuzelijst-bekende-packetfrequenties)) en je eigen Mijn frequenties. Heeft de set geen
+   CAT (DigiRig), of gebruik je een frequentie die nergens in de lijst staat? Kies *Zelf instellen op de set*.
+   **Mode** (alleen met CAT): *Automatisch* zet de set in FM-D (op HF in USB-D). Kies je een frequentie met een eigen
+   mode (uit Mijn frequenties of de voorkeuzelijst), dan geldt die mode en doet deze keuzelijst niet mee. Packet met 1200 baud op 2 m is
    FM-D; kies USB-D alleen als het tegenstation SSB-packet gebruikt. Draait iemand aan de set, dan zet de Pi
    frequentie en mode binnen een minuut terug.
    **Mijn frequenties**: voeg frequenties van stations, bakens en BBS'en bij jou in de buurt toe, elk met mode en
    snelheid (bijv. 144,775 USB-D, of 438,175 FM-D 9600 baud). Ze staan daarna in de lijst bij Station. Met
    Mode en Modem op *Automatisch* neemt de Pi de mode en snelheid van die frequentie over. 9600 baud werkt alleen
    met een set die daarvoor een aansluiting heeft; HF alleen met een HF-set (IC-7300, FT-818).
+   Staat een frequentie zowel in de voorkeuzelijst als bij Mijn frequenties, dan gelden mode, snelheid en naam van
+   Mijn frequenties.
 4. **Zoek mijn set**. Lees eerst de oranje waarschuwing (bij een Icom: *USB SEND* = OFF). De Pi toont
    wat hij gevonden heeft. Geef de set een naam (bijv. *UV-5R onderweg*) en tik op **Gebruiken en bewaren**.
 5. **Luistertest**: open de ruisonderdrukking (squelch) van de set en tik op *Luister 5 seconden*.
@@ -68,6 +71,67 @@ de Pi zit dan niet meer op je thuis-wifi.
 6. **Testuitzending**: tik op *Opslaan + testuitzending*. De set moet kort gaan zenden. Luister op een
    tweede ontvanger: schoon packet-geluid, niet vervormd. Pas het zendniveau aan en test opnieuw.
 7. Optioneel: **APRS-baken** (je positie op de kaart), zie [APRS-baken](#aprs-baken-je-positie-op-de-kaart).
+
+### Voorkeuzelijst (bekende packetfrequenties)
+
+In de lijst bij Station staan altijd een aantal bekende packetfrequenties, met de mode en snelheid die er gebruikt
+worden. Zo hoef je ze niet zelf in te tikken:
+
+| Groep | Frequentie (dial) | Mode | Baud | Waarvoor |
+|---|---|---|---|---|
+| 2 m | 144,800 | automatisch (FM-D) | 1200 | APRS |
+| 2 m | 144,850 - 144,950 (12,5 kHz-stappen) | automatisch (FM-D) | automatisch (1200) | packet in Nederland; 144,900 is de standaard |
+| 70 cm | 438,175 | FM-D | 9600 | 9600 baud packet (alleen sets met een 9k6-aansluiting) |
+| HF | 14,1025 | USB-D | 300 | 20 m packet (getest door PD3PAM met het station op 14,103) |
+| HF | 10,1476 | USB-D | 300 | 30 m HF-APRS, de bekendste HF-APRS-frequentie |
+| HF | 7,0476 | USB-D | 300 | 40 m packet (Europa; weinig verkeer) |
+| HF | 3,6103 | USB-D | 300 | 80 m packet (vooral Duitsland) |
+
+De HF-waarden zijn **dial**-frequenties voor USB-D met de tonen 1600/1800 Hz: het signaal zelf ligt 1,7 kHz hoger
+(10,1476 → 10,1493). Ze komen uit lijsten van G6GVI, M1GEO en SA7SKY (nagezocht 27-11-2026); op 20 m en 40 m
+noemen die lijsten niet allemaal precies dezelfde waarde. Zie het daarom als een richtwaarde:
+
+- **Op HF eenmalig afstemmen.** Hoor je packet maar komt er niets in de Monitor, schuif dan de dial bij tot de tonen
+  rond 1600/1800 Hz staan (zie *Afstemmen bij 300 baud* bij de IC-7300). Dankzij de 9 decoders van Direwolf mag je
+  ongeveer 120 Hz naast zitten. Heb je de goede dial gevonden, zet hem dan bij **Mijn frequenties**: die gaat voor
+  de voorkeuzelijst en klopt daarna altijd.
+- **Op 2 m en 70 cm (FM)** hoef je niets te checken: daar klopt de frequentie meteen.
+
+**Zelf aanpassen.** De voorkeuzelijst staat in het bestand `voorkeuze.json` in de map met instellingen:
+
+| Waar | Pad |
+|---|---|
+| Pi | `~/ax25chat/voorkeuze.json` |
+| Linux-PC | `~/.local/share/ax25chat/voorkeuze.json` |
+| Windows | `%APPDATA%\AX25Chat\voorkeuze.json` |
+
+Je kunt hem op twee manieren aanpassen:
+
+1. Op de webpagina: tabblad **Radio → Mijn frequenties → Voorkeuzelijst**. Daar staat het bestand in een tekstvak.
+   Pas het aan en tik op **Opslaan**. Is de tekst geen geldige JSON (een komma of aanhalingsteken vergeten), dan
+   wordt er niets opgeslagen en zegt de pagina wat er mis is. Een regel met een foute frequentie, mode of
+   snelheid wordt overgeslagen en gemeld; de rest geldt wel. **Terug naar standaard** zet de lijst van AX25Chat terug.
+2. Met een teksteditor (op de Pi via ssh: `nano ~/ax25chat/voorkeuze.json`). Laad daarna het tabblad Radio opnieuw.
+   Is het bestand stuk, dan gebruikt AX25Chat de standaardlijst en staat de fout in rood onder Voorkeuzelijst.
+   Gooi je het bestand weg, dan zet AX25Chat de standaardlijst er weer neer.
+
+Elke frequentie staat op één regel, in een groep (de kopjes in de keuzelijst bij Station):
+
+```json
+{"naam": "HF (300 baud, USB-D)", "frequenties": [
+  {"mhz": "14,1025", "mode": "USB-D", "baud": "300", "naam": "20 m packet"},
+  {"mhz": "10,1476", "mode": "USB-D", "baud": "300", "naam": "30 m HF-APRS"}
+]}
+```
+
+- `mhz`: met een komma of punt, hoogstens 4 cijfers achter de komma, en in een amateurband (160 m t/m 70 cm).
+- `mode`: `FM-D`, `USB-D`, `LSB-D`, `FM`, of leeg (`""`) voor automatisch (FM-D, op HF USB-D).
+- `baud`: `300`, `1200`, `9600`, of leeg voor automatisch (HF 300, anders 1200).
+- `naam`: optioneel, komt achter de frequentie in de lijst.
+
+144,800 (APRS) blijft altijd in de lijst, ook als je hem weghaalt: het APRS-baken heeft hem nodig. Bijwerken van
+AX25Chat laat je eigen `voorkeuze.json` staan; nieuwe standaardfrequenties krijg je dan pas na **Terug naar standaard**.
+Haal je een frequentie weg die nu bij Station gekozen is, dan meldt Station dat en kies je een andere.
 
 ### De webpagina gebruiken: menu, meldingen en laden
 
@@ -120,7 +184,7 @@ dan is dat bijna altijd RF in de kabel of de voeding.
 | Set | Wat Zoek mijn set vindt | Let op |
 |---|---|---|
 | IC-9700 | CAT op poort A, geluid van de set | *MENU > SET > Connectors > USB SEND* op **OFF** (PTT gaat via CAT) |
-| IC-7300 | CAT, geluid van de set, modem 300 baud | Alleen HF: zet je HF-frequenties bij Mijn frequenties (bijv. 14,105 USB-D 300) |
+| IC-7300 | CAT, geluid van de set, modem 300 baud | Alleen HF: kies een HF-frequentie uit de voorkeuzelijst, of zet je eigen bij Mijn frequenties (bijv. 14,105 USB-D 300) |
 | FT-818 + SCU-17 | CAT op poort A, geluid van de SCU-17 | Vermogen is niet uit te lezen; max 6 W |
 | GM-340 + DigiRig | DigiRig, PTT via RTS | Kanaal met de packetfrequentie vooraf programmeren. Geen CAT: APRS-baken alleen als de set zelf op 144,800 staat |
 | UV-5R + DigiRig | DigiRig, PTT via RTS | TXDELAY 300-400 ms (Handmatig instellen), lage zendstand, squelch laag. Geen CAT: APRS-baken alleen als de set zelf op 144,800 staat |
@@ -512,7 +576,7 @@ frequenties, BBS-lijst, baken, offline kaart) doe je eenmalig op de webpagina va
 | **Chat** | Gesprekken bovenaan (CQ, per station, Monitor), *+ Nieuw* voor een ander station. Stuur, Stop en Opnieuw werken zoals op de webpagina. Bovenaan zie je of de app verbonden is met de Pi. |
 | **Kaart** | De kaart van de Pi (zie Kaart hierboven). *Bericht sturen* bij een station opent de chat in de app. |
 | **BBS** | Het tabblad BBS van de Pi: keuzelijst, terminal en snelknoppen. |
-| **Frequentie** (knop bovenaan) | Kies een frequentie uit Mijn frequenties (★) of de 2 m-kanalen; de Pi zet de set erop (met CAT) en Direwolf op de goede snelheid, net als bij Station op de webpagina. Zonder CAT zet je de set zelf goed. Bovenaan staat de huidige frequentie. |
+| **Frequentie** (knop bovenaan) | Kies een frequentie uit Mijn frequenties (★) of de voorkeuzelijst (2 m, 70 cm, HF); de Pi zet de set erop (met CAT) en Direwolf op de goede snelheid, net als bij Station op de webpagina. Zonder CAT zet je de set zelf goed. Bovenaan staat de huidige frequentie. |
 | **Instellingen** | Adres van de Pi, meldingen aan of uit, *GPS van de telefoon*, de webpagina van de Pi openen, stoppen. |
 
 **GPS van de telefoon voor het baken:**

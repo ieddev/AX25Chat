@@ -8,6 +8,7 @@ IC-9700, IC-7300, FT-818 met SCU-17 en twee DigiRigs (GM-340 en UV-5R).
 """
 
 import array
+import json
 import os
 import shutil
 import sys
@@ -220,6 +221,37 @@ class TestRadio(unittest.TestCase):
         radio.verwerk_station({"roepnaam": "PD3PAM-7", "frequentie": "0"})       # zelf instellen: mode uit de set
         self.assertEqual(rig.doelmode({"cat_mode": "PKTUSB"}), "PKTUSB")
 
+    def test_voorkeuzelijst(self):
+        if os.path.exists(rig.VOORKEUZE_FILE):
+            os.remove(rig.VOORKEUZE_FILE)
+        hz = [x["hz"] for x in rig.voorkeuzes()]
+        self.assertTrue(os.path.exists(rig.VOORKEUZE_FILE))                  # standaard neergezet om aan te passen
+        for k in [rig.APRS_FREQ] + rig.FREQ_2M + [438175000, 14102500, 10147600, 7047600, 3610300]:
+            self.assertIn(k, hz)
+        self.assertEqual(rig.instelling(10147600), {"hz": 10147600, "mode": "PKTUSB", "baud": "300", "naam": "30 m HF-APRS"})
+        self.assertIn('data-mode="USB-D"', rig.html_frequentie_keuze(0))
+        r = {"cat_model": 3073, "modem": "auto"}
+        radio.verwerk_station({"roepnaam": "PD3PAM-7", "frequentie": "7047600", "mode": ""})
+        self.assertEqual((rig.doelmode(r), radio.modem(r)), ("PKTUSB", 300))
+        radio.verwerk_station({"roepnaam": "PD3PAM-7", "frequentie": "438175000", "mode": ""})
+        self.assertEqual(radio.modem({"cat_model": 3081, "modem": "auto"}), 9600)
+        # zelf aanpassen via de webpagina: foute regel wordt gemeld, de rest geldt
+        tekst = json.dumps({"groepen": [{"naam": "Mijn HF", "frequenties": [
+            {"mhz": "14.105", "mode": "lsb-d", "baud": "300"}, {"mhz": "146,5"}]}]})
+        fouten, _ = radio.verwerk_eigen({"actie": "voorkeuze", "tekst": tekst})
+        self.assertIn("146,5", fouten[0])
+        self.assertEqual([(x["hz"], x["mode"]) for x in rig.voorkeuzes()], [(14105000, "PKTLSB")])
+        self.assertIn(rig.APRS_FREQ, rig.frequentie_keuzes())                 # 144,800 blijft (baken)
+        self.assertIn('value="144800000"', rig.html_frequentie_keuze(0))
+        self.assertTrue(radio.verwerk_eigen({"actie": "voorkeuze", "tekst": "{kapot"})[0])   # niet opgeslagen
+        with open(rig.VOORKEUZE_FILE, "w") as f:
+            f.write("{kapot")                                                # met de hand stukgemaakt
+        self.assertIn(10147600, [x["hz"] for x in rig.voorkeuzes()])         # standaard geldt
+        self.assertIn("geen geldige JSON", radio.html_eigen(""))
+        self.assertEqual(radio.verwerk_eigen({"actie": "voorkeuze_standaard"})[0], [])
+        self.assertEqual(json.load(open(rig.VOORKEUZE_FILE)), rig.STANDAARD_VOORKEUZE)
+        radio.verwerk_station({"roepnaam": "PD3PAM-7", "frequentie": "144900000", "mode": ""})
+
     def test_mijn_frequenties(self):
         self.assertEqual(rig.lees_mhz("144,775"), 144775000)
         self.assertEqual(rig.lees_mhz("7.0449 MHz"), 7044900)
@@ -270,7 +302,7 @@ class TestRadio(unittest.TestCase):
 
     def test_html_radio(self):
         tekst = radio.html_radio("<input type=hidden name=csrf value=x>")
-        for woord in ("Zoek mijn set", "Mijn sets", "Luistertest", "144,800 MHz (APRS)", "144,850 MHz", "Handmatig instellen"):
+        for woord in ("Zoek mijn set", "Mijn sets", "Luistertest", "144,800 MHz · 1200 baud · APRS", "144,850 MHz", "Handmatig instellen"):
             self.assertIn(woord, tekst)
 
 
