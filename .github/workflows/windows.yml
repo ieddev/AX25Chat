@@ -47,7 +47,7 @@ jobs:
           echo "$naam ($(git log -1 --format='%h %cd' --date=format:'%Y-%m-%d'))" > versie.txt
 
       - name: Tests (Windows-delen)
-        run: python -m unittest -v tests.test_systeem tests.test_windows
+        run: python -m unittest -v tests.test_systeem tests.test_windows tests.test_venster
 
       - name: Python-pakketten
         run: python -m pip install --upgrade pip pyinstaller pywebview pillow
@@ -97,6 +97,15 @@ jobs:
           cat "$AX25CHAT_ZELFTEST" || { echo "geen uitslag; logboek:"; cat "$AX25CHAT_MAP/logboek/ax25chat.log"; exit 1; }
           ! grep -q FOUT "$AX25CHAT_ZELFTEST"
           ./dist/AX25Chat/direwolf/direwolf.exe -h 2>&1 | head -5 || true
+
+      - name: Venstertest van AX25Chat.exe (echt venster met WebView2)
+        run: |
+          export AX25CHAT_VENSTERTEST="$RUNNER_TEMP/venstertest.txt" AX25CHAT_MAP="$RUNNER_TEMP/ax25chat-venster"
+          ./dist/AX25Chat/AX25Chat.exe &
+          for i in $(seq 1 60); do [ -s "$AX25CHAT_VENSTERTEST" ] && break; sleep 2; done
+          echo "--- logboek ---"; cat "$AX25CHAT_MAP/logboek/ax25chat.log" || true
+          echo "--- uitslag ---"; cat "$AX25CHAT_VENSTERTEST" || { echo "geen uitslag"; exit 1; }
+          ! grep -q FOUT "$AX25CHAT_VENSTERTEST"
 
       - name: Installer maken (Inno Setup)
         env:
