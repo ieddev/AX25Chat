@@ -197,6 +197,7 @@ def html_pagina(kaart_info):
     leeg = "" if kaart_info.get("kaart") else (
         "<div class='melding let'>Nog geen offline kaart: download hem eenmalig op het tabblad <a href='/radio'>Radio</a> "
         "(met internet). De stations staan er wel al op, maar zonder ondergrond.</div>")
+    info = json.dumps(kaart_info, ensure_ascii=False).replace("</", "<\\/")   # buiten de f-string: Python 3.11
     return f"""<style>{CSS}</style><link rel="stylesheet" href="/leaflet/leaflet.css">{leeg}
 <div class="kaartbalk"><b id="kaart_aantal">0 stations</b>
 <label for="kaart_uren" style="margin:0;font-weight:400">Toon stations van de</label>
@@ -220,5 +221,5 @@ getekende letters (ASCII-art) of helemaal niet in, vul hem dan hier zelf in. Een
 <p id="loc_melding" class="uitleg"></p>
 <ul class="loclijst" id="loc_lijst"></ul></section>
 <script src="/leaflet/leaflet.js"></script>
-<script>window.KAART = {json.dumps(kaart_info, ensure_ascii=False).replace("</", "<\\/")};</script>
+<script>window.KAART = {info};</script>
 <script>{JS}</script>"""
