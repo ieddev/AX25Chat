@@ -189,7 +189,7 @@ eerst naar de frequentie die erbij hoort.</p>
 <label>Frequentie <small>mode en snelheid komen van Mijn frequenties (tabblad Radio)</small></label>{keuze}
 <div class="balk"><button type="submit">Toevoegen</button></div></form></details></section>
 <section><div class="term" aria-live="polite"></div>
-<div class="snel"><span class="knoppen" style="display:contents"></span><button type="button" class="licht" data-leeg style="margin-left:auto" title="Scherm leegmaken">Wissen</button></div>
+<div class="snel"><span class="knoppen" style="display:contents"></span><button type="button" class="licht" data-leeg style="margin-left:auto" title="Scherm leegmaken">Scherm wissen</button></div>
 <form class="invoer" autocomplete="off"><input type="text" maxlength="250" placeholder="Typ een commando of tekst"
  aria-label="Invoer" enterkeyhint="send"><button type="submit">Zenden</button></form>
 <p class="uitleg verbinding" style="margin:8px 0 0"></p></section>

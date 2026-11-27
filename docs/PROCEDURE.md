@@ -193,7 +193,7 @@ PD4R-1. AX25Chat is zelf geen BBS: het is je terminal. Er is steeds één verbin
 3. **Terminal**: wat de BBS stuurt verschijnt in het tekstvak; wat jij stuurt staat er blauw tussen.
    Snelknoppen: **L** (lijst) en **B** (afmelden) gaan meteen; **R** (lezen), **K** (wissen) en **S** (sturen)
    zetten het commando in de invoerregel, zodat je het nummer of de roepnaam erachter typt. Een lege regel
-   versturen (alleen Zenden) stuurt een Enter. **Wissen** maakt alleen het vak leeg.
+   versturen (alleen Zenden) stuurt een Enter. **Scherm wissen** maakt alleen het vak leeg (het BBS-commando K wist een bericht op de BBS).
    De snelknoppen passen zich aan aan wat er aan de andere kant zit:
    - **Node** (bijv. PD4R-12, een BPQ-node): de knoppen komen uit het menu van de node zelf, de regel met
      de commando's achter de `}`. Bijvoorbeeld **BBS** (naar de BBS), **MHEARD** (welke stations de node
