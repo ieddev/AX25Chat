@@ -1,0 +1,126 @@
+# Bouwt het Windows-programma: PyInstaller (AX25Chat.exe met Python, pywebview en de code), Direwolf en Hamlib
+# erbij, en daarna met Inno Setup één AX25Chat-setup-<versie>.exe.
+# Een nieuwe release gaat vanzelf: verhoog installatie/windows/versie.txt (bijv. 0.2); na de merge naar main maakt
+# deze workflow tag win-v0.2 en de release met de installer. Anders alleen een test-installer onder Actions, Artifacts.
+name: Windows-programma
+
+on:
+  push:
+    branches: [main]
+    paths: ["pc/**", "chat/**", "gemeenschappelijk/**", "installatie/windows/**", ".github/workflows/windows.yml"]
+  pull_request:
+    paths: ["pc/**", "chat/**", "gemeenschappelijk/**", "installatie/windows/**", ".github/workflows/windows.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  bouwen:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Versie
+        run: |
+          versie="$(tr -d ' \r\n' < installatie/windows/versie.txt)"
+          uitgeven=nee
+          if [[ "$GITHUB_REF" == refs/heads/main && "$GITHUB_EVENT_NAME" == push ]] && ! git rev-parse -q --verify "refs/tags/win-v$versie" >/dev/null; then
+            naam="$versie"; uitgeven=ja
+            echo "Nieuwe versie $versie: release win-v$versie wordt gemaakt."
+          else
+            naam="$versie-test.${GITHUB_RUN_NUMBER}"
+          fi
+          echo "VERSIE_NAAM=$naam" >> "$GITHUB_ENV"
+          echo "UITGEVEN=$uitgeven" >> "$GITHUB_ENV"
+          echo "$naam ($(git log -1 --format='%h %cd' --date=format:'%Y-%m-%d'))" > versie.txt
+
+      - name: Tests (Windows-delen)
+        run: python -m unittest -v tests.test_systeem tests.test_windows
+
+      - name: Python-pakketten
+        run: python -m pip install --upgrade pip pyinstaller pywebview pillow
+
+      - name: Pictogram (.ico)
+        run: python -c "from PIL import Image; Image.open('pc/ax25chat.png').save('installatie/windows/ax25chat.ico', sizes=[(16,16),(24,24),(32,32),(48,48),(64,64),(128,128),(256,256)])"
+
+      - name: AX25Chat.exe maken (PyInstaller)
+        run: |
+          verborgen=""
+          for f in chat/ax25chat_*.py gemeenschappelijk/ax25chat_*.py pc/ax25chat_pc.py; do
+            verborgen="$verborgen --hidden-import $(basename "$f" .py)"
+          done
+          pyinstaller --noconfirm --clean --windowed --name AX25Chat \
+            --icon installatie/windows/ax25chat.ico \
+            --paths chat --paths gemeenschappelijk --paths pc $verborgen \
+            --collect-all webview \
+            --add-data "gemeenschappelijk/leaflet;leaflet" \
+            --add-data "pc/ax25chat.png;." \
+            --add-data "versie.txt;." \
+            pc/ax25chat_venster.py
+
+      - name: Direwolf en Hamlib ophalen
+        run: |
+          mkdir -p ophalen/dw ophalen/hl
+          gh release download --repo wb2osz/direwolf --pattern '*x86_64*.zip' --dir ophalen/dw \
+            || gh release download --repo wb2osz/direwolf --pattern '*win*64*.zip' --dir ophalen/dw
+          gh release download --repo Hamlib/Hamlib --pattern 'hamlib-w64-*.zip' --dir ophalen/hl
+          ls -l ophalen/dw ophalen/hl
+          (cd ophalen/dw && unzip -q *.zip && rm -f *.zip)
+          (cd ophalen/hl && unzip -q *.zip && rm -f *.zip)
+          dw="$(dirname "$(find ophalen/dw -iname direwolf.exe | head -1)")"
+          hl="$(dirname "$(find ophalen/hl -iname rigctld.exe | head -1)")"
+          [ -f "$dw/direwolf.exe" ] && [ -f "$hl/rigctld.exe" ] || { echo "direwolf.exe of rigctld.exe niet gevonden"; exit 1; }
+          mkdir -p dist/AX25Chat/direwolf dist/AX25Chat/hamlib
+          cp -r "$dw"/. dist/AX25Chat/direwolf/
+          cp "$hl"/*.exe "$hl"/*.dll dist/AX25Chat/hamlib/
+          for f in COPYING COPYING.LIB LICENSE README; do
+            find ophalen/hl -maxdepth 2 -name "$f*" -exec cp {} dist/AX25Chat/hamlib/ \; ; done
+          ls dist/AX25Chat dist/AX25Chat/direwolf dist/AX25Chat/hamlib
+
+      - name: Zelftest van AX25Chat.exe (zonder venster)
+        run: |
+          export AX25CHAT_ZELFTEST="$RUNNER_TEMP/zelftest.txt" AX25CHAT_MAP="$RUNNER_TEMP/ax25chat-map"
+          ./dist/AX25Chat/AX25Chat.exe --poort 8099 &
+          for i in $(seq 1 60); do [ -s "$AX25CHAT_ZELFTEST" ] && break; sleep 2; done
+          cat "$AX25CHAT_ZELFTEST" || { echo "geen uitslag; logboek:"; cat "$AX25CHAT_MAP/logboek/ax25chat.log"; exit 1; }
+          ! grep -q FOUT "$AX25CHAT_ZELFTEST"
+          ./dist/AX25Chat/direwolf/direwolf.exe -h 2>&1 | head -5 || true
+
+      - name: Installer maken (Inno Setup)
+        env:
+          MSYS2_ARG_CONV_EXCL: "*"            # Git Bash mag /DVersie=... niet in een pad veranderen
+        run: |
+          iscc="/c/Program Files (x86)/Inno Setup 6/ISCC.exe"
+          if [ ! -f "$iscc" ]; then choco install innosetup -y --no-progress; fi
+          "$iscc" "/DVersie=$VERSIE_NAAM" installatie/windows/ax25chat.iss
+          ls -l uitvoer
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AX25Chat-setup-${{ env.VERSIE_NAAM }}
+          path: uitvoer/*.exe
+
+      - name: Release maken
+        if: env.UITGEVEN == 'ja'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: win-v${{ env.VERSIE_NAAM }}
+          target_commitish: ${{ github.sha }}
+          name: AX25Chat voor Windows ${{ env.VERSIE_NAAM }}
+          files: uitvoer/*.exe
+          body: |
+            AX25Chat voor Windows (testfase). Download AX25Chat-setup-${{ env.VERSIE_NAAM }}.exe en start het.
+            Windows kan waarschuwen dat de uitgever onbekend is: kies "Meer informatie" en "Toch uitvoeren".
+            Direwolf en Hamlib (rigctld) zitten erin. Uitleg: docs/PROCEDURE.md, deel "AX25Chat op Windows".

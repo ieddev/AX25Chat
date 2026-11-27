@@ -127,7 +127,14 @@ def modem(r, doel=None):
 
 def direwolf_tekst(roepnaam, r):
     kaart = r.get("geluidskaart") or "Device"
-    if rig.cat_actief(r):
+    if rig.cat_actief(r) and usb.WINDOWS:
+        # Direwolf voor Windows is zonder Hamlib gebouwd: PTT RIG kan niet. IC-9700: PTT via RTS op de andere poort
+        # (B; zet USB SEND op USB(B) RTS). Anders VOX.
+        if r.get("ptt_poort") and r.get("ptt_poort") != r.get("cat_poort"):
+            ptt = f"# Windows: PTT via RTS (Direwolf heeft hier geen Hamlib)\nPTT {r['ptt_poort']} RTS"
+        else:
+            ptt = "# Windows: PTT via CAT kan niet (Direwolf zonder Hamlib); zet de set op VOX"
+    elif rig.cat_actief(r):
         ptt = "# PTT via CAT: rigctld (dienst ax25chat-rigctld)\nPTT RIG 2 localhost:4532"
     elif r.get("ptt_poort") and r.get("ptt_methode") in ("RTS", "DTR"):
         ptt = f"PTT {r['ptt_poort']} {r['ptt_methode']}"
@@ -140,7 +147,7 @@ def direwolf_tekst(roepnaam, r):
     return f"""# Gemaakt door AX25Chat ({time.strftime('%Y-%m-%d %H:%M')}), tabblad Radio.
 # Met de hand wijzigen heeft geen zin: dit bestand wordt overschreven.
 # Set: {r.get('set_naam') or '-'}
-ADEVICE plughw:CARD={kaart},DEV=0
+{usb.win_adevice(kaart) if usb.WINDOWS else f"ADEVICE plughw:CARD={kaart},DEV=0"}
 ACHANNELS 1
 CHANNEL 0
 MYCALL {schoon_call(roepnaam) or 'N0CALL'}
@@ -361,6 +368,40 @@ def advies_luister(piek, dbfs):
     return "ok", "Er komt geluid van de set binnen. Goed zo; zet de ruisonderdrukking (squelch) daarna weer terug."
 
 
+def niveau_uit_log(tekst):
+    """Laatste 'receive audio level CH0 34' van Direwolf (-a), of None."""
+    m = re.findall(r"receive audio levels? CH0 (\d+)", tekst or "")
+    return int(m[-1]) if m else None
+
+
+def advies_niveau(niveau):
+    """Advies bij het ontvangstniveau dat Direwolf zelf meet (0-100; rond 50 is goed)."""
+    if niveau is None:
+        return "fout", "Direwolf meldde geen geluidsniveau. Draait Direwolf (tabblad Status)?"
+    if niveau < 5:
+        return "fout", (f"Ontvangstniveau {niveau}: er komt (bijna) geen geluid binnen. Klopt de geluidskaart, staat de "
+                        "set aan en is de ruisonderdrukking (squelch) even open?")
+    if niveau < 25:
+        return "let", f"Ontvangstniveau {niveau}: te zacht. Zet het opnameniveau in Windows (Geluid, Opnemen) hoger; rond 50 is goed."
+    if niveau > 90:
+        return "let", f"Ontvangstniveau {niveau}: te hard. Zet het opnameniveau in Windows lager; rond 50 is goed."
+    return "ok", f"Ontvangstniveau {niveau}: goed. Zet de ruisonderdrukking (squelch) daarna weer terug."
+
+
+def luistertest_direwolf(seconden=12):
+    """Windows (geen arecord): wacht op de volgende niveaumelding van Direwolf (die draait met -a 10)."""
+    if dienst_status(DW) != "active":
+        return "fout", "Direwolf draait niet. Kies de geluidskaart en sla op.", None, None
+    begin = time.strftime("%Y-%m-%d %H:%M:%S")
+    eind = time.time() + seconden
+    niveau = None
+    while time.time() < eind and niveau is None:
+        time.sleep(1)
+        niveau = niveau_uit_log(systeem.logboek(DW, sinds=begin))
+    soort, tekst = advies_niveau(niveau)
+    return soort, tekst, None, None
+
+
 def luistertest(r=None, seconden=5):
     """Direwolf even stoppen (die houdt de geluidskaart bezet), opnemen, meten, Direwolf weer starten.
     Geeft (soort, tekst, piek, dbfs)."""
@@ -368,6 +409,8 @@ def luistertest(r=None, seconden=5):
     kaart = r.get("geluidskaart")
     if not kaart:
         return "fout", "Kies eerst de geluidskaart van de set.", None, None
+    if usb.WINDOWS:
+        return luistertest_direwolf()
     dienst("stop", DW)
     try:
         data, fout = systeem.neem_op(kaart, seconden)
@@ -424,6 +467,12 @@ def voorstellen(groepen, gevonden):
             v = dict(basis, set_naam=rig.MODEL_NAAM.get(model, g["naam"]), ptt_methode="CAT", cat_model=model,
                      cat_poort=pad, cat_baud=baud, cat_mode="PKTUSB" if hf else "PKTFM", modem="300" if hf else "1200",
                      _uitleg=f"CAT gevonden op {baud} baud, de set staat op {rig.mhz(hz)}.")
+            if usb.WINDOWS:                          # Direwolf voor Windows: geen PTT via CAT
+                ander = next((p for p, _ in g["poorten"] if p != pad), "")
+                v["ptt_poort"] = ander
+                v["_uitleg"] += (f" Op Windows gaat zenden via RTS op {ander}: zet in het menu van de set USB SEND op "
+                                 f"de tweede USB-poort (RTS)." if ander else
+                                 " Op Windows kan zenden via CAT nog niet: zet de set op VOX (DATA VOX).")
         elif g["soort"] == "digirig":
             v = dict(basis, set_naam="DigiRig", ptt_methode="RTS", ptt_poort=usb.ptt_poort(g), modem="1200",
                      _uitleg="DigiRig: PTT via RTS, geen CAT. Stel de frequentie (het kanaal) op de set zelf in.")
@@ -797,7 +846,7 @@ def html_luister(verborgen, uitslag=None):
         cijfers = f" (piek {piek:g}%, gemiddeld {dbfs:g} dBFS)" if piek is not None else ""
         meting = f"<div class='melding {soort}'>{e(tekst)}{e(cijfers)}</div>"
     return f"""<section id="luister"><h2>Luistertest</h2><p class="uitleg">Komt er geluid van de set binnen? Open de
-ruisonderdrukking (squelch) van de set, zodat je ruis hoort, en tik op de knop. De Pi luistert 5 seconden.
+ruisonderdrukking (squelch) van de set, zodat je ruis hoort, en tik op de knop. AX25Chat luistert 5 tot 10 seconden.
 Werkt ook bij sets zonder CAT.</p>{meting}
 <form method="post" action="/luistertest">{verborgen}<button type="submit" class="licht">Luister 5 seconden</button></form></section>"""
 
@@ -807,6 +856,10 @@ def html_test(verborgen, r, uitslag=""):
     ptt = "Geen PTT-aansluiting gekozen: de set moet op VOX staan." if r.get("ptt_methode") == "VOX" else ""
 
     def balk(sleutel, titel, uitleg):
+        if sleutel not in m and usb.WINDOWS:
+            return (f"<label>{titel}</label><p class='uitleg'>Op Windows stel je dit in bij Instellingen, Systeem, Geluid: "
+                    f"kies de geluidskaart van de set ({'Uitvoer' if sleutel == 'zend' else 'Invoer'}) en zet het volume. "
+                    f"{'Begin rond 50% en kijk naar de zwaai.' if sleutel == 'zend' else 'De luistertest zegt of het goed staat.'}</p>")
         if sleutel not in m:
             return f"<label>{titel}</label><p class='uitleg'>Deze geluidskaart heeft geen regelaar hiervoor; stel het in op de set.</p>"
         naam, huidig = m[sleutel]
@@ -818,9 +871,9 @@ def html_test(verborgen, r, uitslag=""):
 
     return f"""<section id="test"><h2>Geluidsniveau en testuitzending</h2>{uitslag}
 <form method="post" action="/radiotest">{verborgen}
-{balk("zend", "Zendniveau", "Pi naar de set: bepaalt de zwaai")}
-{balk("ontvang", "Ontvangstniveau", "set naar de Pi")}
-<p class="uitleg" style="margin-top:8px">De testknoppen slaan eerst de niveaus op. Daarna zendt de Pi een kort testbericht
+{balk("zend", "Zendniveau", "AX25Chat naar de set: bepaalt de zwaai")}
+{balk("ontvang", "Ontvangstniveau", "set naar AX25Chat")}
+<p class="uitleg" style="margin-top:8px">De testknoppen slaan eerst de niveaus op. Daarna zendt AX25Chat een kort testbericht
 met jouw roepnaam. Gaat de set op <b>zenden</b> (zendlampje)? Luister op een tweede ontvanger: schoon packet-geluid,
 niet vervormd. <b>Lang</b> houdt de zender ongeveer 6 seconden aan (vermogen en SWR aflezen).</p>
 {f'<div class="melding let">{e(ptt)}</div>' if ptt else ''}
@@ -909,8 +962,8 @@ def hotspot_status():
 # PC: Direwolf en rigctld start het programma zelf (op de Pi doet systemd dat)
 # ---------------------------------------------------------------------------
 
-DIREWOLF = os.environ.get("AX25CHAT_DIREWOLF", "direwolf")
-RIGCTLD = os.environ.get("AX25CHAT_RIGCTLD", "rigctld")
+DIREWOLF = systeem.programma("direwolf")
+RIGCTLD = systeem.programma("rigctld")
 
 
 def _pc_rigctld():
@@ -925,12 +978,13 @@ def _pc_rigctld():
         return None
     if not env.get("MODEL") or not env.get("POORT"):
         return None
-    return [RIGCTLD, "-m", env["MODEL"], "-r", env["POORT"], "-s", env.get("BAUD") or "19200",
+    return [RIGCTLD, "-m", env["MODEL"], "-r", rig.hamlib_poort(env["POORT"]), "-s", env.get("BAUD") or "19200",
             "-T", "127.0.0.1", "-t", str(rig.POORT)]
 
 
 def _pc_direwolf():
-    return [DIREWOLF, "-c", DIREWOLF_CONF, "-t", "0", "-q", "d"] if os.path.exists(DIREWOLF_CONF) else None
+    # -a 10: elke 10 s het ontvangstniveau in het logboek (luistertest op Windows, zonder Direwolf te stoppen)
+    return [DIREWOLF, "-c", DIREWOLF_CONF, "-t", "0", "-q", "d", "-a", "10"] if os.path.exists(DIREWOLF_CONF) else None
 
 
 def _pc_voor_direwolf():

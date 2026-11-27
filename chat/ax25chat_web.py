@@ -61,7 +61,7 @@ CSS = """
 --rood-z:#3b1d1b;--groen-z:#16301f;--oranje-z:#3a2a12;--blauw:#8ab4f8;--blauw-z:#1c2a40;--knop:#3d6fb6}}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tekst);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 header{background:#1d4f91;color:#fff;padding:12px 16px}header b{font-size:18px}header span{opacity:.85;font-size:14px;margin-left:8px}
-nav{display:flex;flex-wrap:wrap;gap:4px;padding:8px 12px;background:var(--kaart);border-bottom:1px solid var(--lijn);position:sticky;top:0;z-index:10}
+nav{display:flex;flex-wrap:wrap;gap:4px;padding:8px 12px;background:var(--kaart);border-bottom:1px solid var(--lijn);position:sticky;top:0;z-index:1100}
 nav a{padding:8px 12px;border-radius:8px;color:var(--tekst);text-decoration:none;font-weight:500}nav a.actief{background:var(--blauw-z);color:var(--blauw)}
 main{max-width:880px;margin:0 auto;padding:16px}
 section{background:var(--kaart);border:1px solid var(--lijn);border-radius:12px;padding:16px;margin-bottom:16px}
@@ -209,11 +209,13 @@ def stel_wachtwoord_in():
 # ---------------------------------------------------------------------------
 
 def versie():
-    try:
-        with open(os.path.join(MAP, "versie.txt"), encoding="utf-8") as f:
-            return f.read().strip()[:40]
-    except OSError:
-        return ""
+    for map_ in (MAP, systeem.CODE):          # Pi en Linux-PC: in de map met instellingen; Windows: bij het programma
+        try:
+            with open(os.path.join(map_, "versie.txt"), encoding="utf-8") as f:
+                return f.read().strip()[:40]
+        except OSError:
+            pass
+    return ""
 
 
 def html_nav(actief):

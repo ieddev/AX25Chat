@@ -26,6 +26,24 @@ for deel in ("chat", "gemeenschappelijk"):
     sys.path.insert(0, os.path.join(HIER, "..", deel))
 
 PICTOGRAM = os.path.join(HIER, "ax25chat.png")
+
+
+def uitvoer_naar_logboek():
+    """Windows-programma zonder consolevenster: sys.stdout/stderr zijn er niet. Schrijf dan naar logboek/ax25chat.log
+    in de map met instellingen, zodat er bij problemen iets na te lezen is."""
+    if sys.stdout is not None and sys.stderr is not None:
+        return
+    import ax25chat_systeem as systeem
+    try:
+        os.makedirs(systeem.LOGMAP, exist_ok=True)
+        pad = os.path.join(systeem.LOGMAP, "ax25chat.log")
+        if os.path.exists(pad) and os.path.getsize(pad) > systeem.LOG_MAX:
+            os.replace(pad, pad + ".1")
+        f = open(pad, "a", encoding="utf-8", buffering=1)
+    except OSError:
+        f = open(os.devnull, "w")
+    sys.stdout = sys.stdout or f
+    sys.stderr = sys.stderr or f
 TITEL = "AX25Chat"
 
 
@@ -47,7 +65,41 @@ def poort_uit(args):
     return 8080
 
 
+def zelftest(args, adres):
+    """Voor GitHub Actions: start de server zonder venster, haal een paar pagina's op, schrijf de uitslag naar het
+    bestand in AX25CHAT_ZELFTEST en stop. Zo is te zien of het Windows-programma compleet is."""
+    uitslag = []
+    import ax25chat_web as web
+    klaar = threading.Event()
+    web.KLAAR = lambda _: klaar.set()
+    threading.Thread(target=web.main, args=(args,), daemon=True).start()
+    klaar.wait(60)
+    for pad, moet in (("status.json", "roepnaam"), ("radio", "Zoek mijn set"), ("leaflet/leaflet.js", "Leaflet"),
+                      ("kaart", "kaart")):
+        try:
+            with urllib.request.urlopen(adres + pad, timeout=20) as r:
+                tekst = r.read().decode("utf-8", errors="replace")
+            uitslag.append(f"{'ok  ' if moet in tekst else 'FOUT'} /{pad}")
+        except Exception as fout:
+            uitslag.append(f"FOUT /{pad}: {fout}")
+    import ax25chat_radio as radio
+    for naam_, prog in (("direwolf", radio.DIREWOLF), ("rigctld", radio.RIGCTLD), ("rigctl", radio.rig.RIGCTL)):
+        uitslag.append(f"{'ok  ' if os.path.isfile(prog) else 'FOUT'} {naam_}: {prog}")
+    try:
+        import importlib
+        importlib.import_module("webview")
+        uitslag.append("ok   pywebview")
+    except Exception as fout:
+        uitslag.append(f"FOUT pywebview: {fout}")
+    with open(os.environ["AX25CHAT_ZELFTEST"], "w", encoding="utf-8") as f:
+        f.write("\n".join(uitslag) + "\n")
+    import ax25chat_systeem as systeem
+    systeem.stop_diensten()
+    return 1 if any(x.startswith("FOUT") for x in uitslag) else 0
+
+
 def main():
+    uitvoer_naar_logboek()
     args = sys.argv[1:]
     if "--wachtwoord" in args or "-h" in args or "--help" in args:
         import ax25chat_web as web
@@ -61,6 +113,8 @@ def main():
 
     poort = poort_uit(args)
     adres = f"http://localhost:{poort}/"
+    if os.environ.get("AX25CHAT_ZELFTEST"):
+        return zelftest(args, adres)
     if not draait_al(poort):
         import ax25chat_web as web
         klaar = threading.Event()

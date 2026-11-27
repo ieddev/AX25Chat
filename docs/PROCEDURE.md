@@ -561,7 +561,7 @@ en haal dan pas de stroom eraf.
 ## AX25Chat op een PC (Linux)
 
 Nog in de testfase. Je kunt AX25Chat ook zonder Pi gebruiken, op een gewone Linux-PC of laptop. De set hangt dan
-met een DigiRig, een SignaLink of een eigen USB-kabel aan de PC. Windows volgt later.
+met een DigiRig, een SignaLink of een eigen USB-kabel aan de PC. Voor Windows: zie het volgende hoofdstuk.
 
 **Installeren** (Debian, Ubuntu, Linux Mint). Typ in een terminal, als gewone gebruiker:
 
@@ -603,6 +603,39 @@ Wat anders is dan op de Pi:
 | `--poort 8090` | Een andere poort voor de webpagina, als 8080 al bezet is. |
 | `--thuisnetwerk` | De PC is ook bereikbaar voor je telefoon of de Android-app op je thuisnetwerk, via `http://<adres van de PC>:8080`. Dan is wel inloggen nodig: stel eerst een wachtwoord in met `python3 ~/AX25Chat/pc/ax25chat_pc.py --wachtwoord` (gebruiker `beheer`). |
 | `--wachtwoord` | Wachtwoord instellen of wijzigen voor `--thuisnetwerk`. |
+
+## AX25Chat op Windows
+
+Nog in de testfase. Op Windows 10 of 11 werkt AX25Chat als gewoon programma, met de set via een DigiRig, een
+SCU-17 of de USB-kabel van een Icom.
+
+**Installeren:** download `AX25Chat-setup-<versie>.exe` bij de nieuwste release met een naam die met `win-v` begint
+(GitHub, *Releases*) en start het. Beheerdersrechten zijn niet nodig. Windows kan waarschuwen dat de uitgever
+onbekend is: kies *Meer informatie* en *Toch uitvoeren*. Direwolf en Hamlib (rigctld) zitten in de installer; je
+hoeft niets anders te installeren. Daarna staat **AX25Chat** in het Startmenu (en eventueel op het bureaublad).
+
+**Bijwerken:** installeer de nieuwe versie over de oude heen. **Verwijderen:** via Instellingen, Apps. Je
+instellingen staan apart in `%APPDATA%\AX25Chat` en blijven bewaard.
+
+Wat anders is dan op de Pi en op Linux:
+
+- **Zoek mijn set** herkent de set aan de COM-poorten en de geluidskaart die aan hetzelfde USB-hubje hangen, net als
+  op de Pi. De poorten heten hier `COM5`, `COM6` enzovoort. De geluidskaart heet zoals in Windows, bijvoorbeeld
+  `USB Audio CODEC` of `2- USB PnP Sound Device`.
+- **Geluidsniveaus** stel je in bij Windows: *Instellingen, Systeem, Geluid*. Kies bij *Uitvoer* de geluidskaart
+  van de set voor het zendniveau (begin rond 50%) en bij *Invoer* voor het ontvangstniveau. AX25Chat heeft hier
+  geen schuifjes.
+- **Luistertest:** AX25Chat vraagt Direwolf om het ontvangstniveau (0 tot 100). Rond 50 is goed. Open even de
+  ruisonderdrukking (squelch) van de set en tik op de knop; het duurt hooguit 10 seconden.
+- **GPS-muis** voor het baken werkt op Windows nog niet. Gebruik een vaste positie of de GPS van je telefoon (app).
+- **Zenden met een Icom via USB:** Direwolf voor Windows kan de set niet via CAT laten zenden (er zit geen Hamlib
+  in). Frequentie en mode zet AX25Chat wel via CAT. Voor het zenden:
+  - **IC-9700** (twee USB-poorten): AX25Chat gebruikt RTS op de tweede poort (B). Zet in het menu van de set
+    *USB SEND* op *USB (B) RTS*.
+  - **IC-7300** (één USB-poort): zet de set op *DATA VOX*, of gebruik een DigiRig.
+- Het logboek van AX25Chat zelf staat in `%APPDATA%\AX25Chat\logboek\ax25chat.log`, dat van Direwolf ernaast.
+- Het eigen venster gebruikt Microsoft Edge WebView2 (zit in Windows 10 en 11). Ontbreekt dat, dan opent AX25Chat
+  in je browser op `http://localhost:8080`.
 
 ## Problemen oplossen
 
