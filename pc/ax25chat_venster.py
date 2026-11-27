@@ -88,6 +88,18 @@ def toon_fout(tekst):
 TITEL = "AX25Chat"
 
 
+class VensterApi:
+    """Voor de pagina in het venster (window.pywebview.api): links naar buiten openen in het mailprogramma of de
+    browser van het systeem. In het venster zelf kan dat niet (mailto: geeft 'The URL can't be shown')."""
+
+    def extern(self, url):
+        url = str(url or "")
+        if not (url.startswith("mailto:") or url.startswith("https://")):
+            return False
+        import webbrowser
+        return bool(webbrowser.open(url))
+
+
 def draait_al(poort):
     """Antwoordt er al een AX25Chat op deze poort?"""
     try:
@@ -281,7 +293,8 @@ def main():
             return 1
         meld(f"Webserver klaar op {adres}")
     try:
-        venster = webview.create_window(TITEL, adres, width=1000, height=820, min_size=(360, 480), text_select=True)
+        venster = webview.create_window(TITEL, adres, width=1000, height=820, min_size=(360, 480), text_select=True,
+                                        js_api=VensterApi())
         if os.environ.get("AX25CHAT_VENSTERTEST"):
             venstertest(venster)
         else:

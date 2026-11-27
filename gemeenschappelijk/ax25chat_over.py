@@ -35,15 +35,15 @@ def soort_tekst():
 
 def html_dialoog(versie=""):
     """De popup (een <dialog>) die de knop Over in de menubalk opent."""
-    onderdelen = "".join(f'<li><a href="{e(url)}" target="_blank" rel="noopener">{e(n)}</a>: {e(wat)} ({e(lic)})</li>'
+    onderdelen = "".join(f'<li><a href="{e(url)}" target="_blank" rel="noopener" data-extern>{e(n)}</a>: {e(wat)} ({e(lic)})</li>'
                          for n, wat, lic, url in ONDERDELEN)
     return f"""<dialog id="over" aria-labelledby="over_titel"><form method="dialog">
 <h2 id="over_titel" style="margin:0 0 2px">{e(NAAM)}</h2>
 <p class="uitleg" style="margin:0 0 10px">{e(OMSCHRIJVING)}</p>
 <table class="over"><tr><th>Versie</th><td>{e(versie or "onbekend")} · {e(soort_tekst())}</td></tr>
 <tr><th>Gemaakt door</th><td>{e(MAKERS)}</td></tr>
-<tr><th>Contact</th><td><a href="mailto:{e(EMAIL)}">{e(EMAIL)}</a></td></tr>
-<tr><th>Broncode</th><td><a href="{e(GITHUB)}" target="_blank" rel="noopener">{e(GITHUB.replace("https://", ""))}</a></td></tr>
+<tr><th>Contact</th><td><a href="mailto:{e(EMAIL)}" target="_blank" data-extern>{e(EMAIL)}</a></td></tr>
+<tr><th>Broncode</th><td><a href="{e(GITHUB)}" target="_blank" rel="noopener" data-extern>{e(GITHUB.replace("https://", ""))}</a></td></tr>
 <tr><th>Licentie</th><td>{e(LICENTIE)}</td></tr></table>
 <p style="margin:12px 0 4px"><b>Met dank aan</b></p><ul class="over">{onderdelen}</ul>
 <div class="balk" style="margin-top:12px"><button type="submit">Sluiten</button></div></form></dialog>"""

@@ -64,5 +64,22 @@ class TestStartOpties(unittest.TestCase):
             self.assertEqual(opties["icon"], venster.PICTOGRAM)
 
 
+class TestExtern(unittest.TestCase):
+    def test_alleen_mailto_en_https(self):
+        import webbrowser
+        geopend = []
+        oud = webbrowser.open
+        webbrowser.open = lambda url: geopend.append(url) or True
+        try:
+            api = venster.VensterApi()
+            self.assertTrue(api.extern("mailto:iemand@voorbeeld.nl"))
+            self.assertTrue(api.extern("https://github.com/ieddev/AX25Chat"))
+            self.assertFalse(api.extern("file:///etc/passwd"))
+            self.assertFalse(api.extern("javascript:alert(1)"))
+        finally:
+            webbrowser.open = oud
+        self.assertEqual(geopend, ["mailto:iemand@voorbeeld.nl", "https://github.com/ieddev/AX25Chat"])
+
+
 if __name__ == "__main__":
     unittest.main()
