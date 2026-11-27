@@ -73,7 +73,7 @@ function teken() {
   $('.gesprekken').innerHTML = h;
   var l = $('.lijst'), onder = l.scrollHeight - l.scrollTop - l.clientHeight < 40, b = '';
   if (actief === 'MONITOR') {
-    $('.kop').innerHTML = 'Monitor <small>alles wat de Pi hoort</small>' + WIS;
+    $('.kop').innerHTML = 'Monitor <small>alles wat AX25Chat hoort</small>' + WIS;
     monitor.forEach(function (m) { b += '<div class="mon"><span class="t">' + tijd(m.tijd) + '</span> ' + txt(m.van) + '&gt;' + txt(m.aan) +
       (m.pad ? ',' + txt(m.pad) : '') + ':' + info(m.info) + '</div>'; });
     $('.typen').style.display = 'none';

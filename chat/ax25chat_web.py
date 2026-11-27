@@ -258,7 +258,7 @@ def html_chat():
     stap = ("" if klaar else
             "<div class='melding let'>Nog niet ingesteld: ga naar <a href='/radio'>Radio</a>, vul je roepnaam in en "
             "gebruik <b>Zoek mijn set</b>.</div>")
-    if radio.dienst_status(radio.DW) not in ("active", "onbekend"):
+    if radio.dienst_status(radio.DW) not in ("active", "onbekend", "niet nodig"):
         stap += "<div class='melding fout'>Direwolf draait niet: er wordt niets verzonden of ontvangen. Zie tabblad Status.</div>"
     return chatpagina.html(stap)
 
@@ -403,8 +403,8 @@ class Handler(BaseHTTPRequestHandler):
         sys.stderr.write("%s %s\n" % (self.address_string(), fmt % args))
 
     def _auth(self):
-        if LOKAAL:
-            return True                    # alleen bereikbaar vanaf deze PC (127.0.0.1)
+        if LOKAAL or (not systeem.IS_PI and self.client_address[0] in ("127.0.0.1", "::1")):
+            return True                    # PC: wie op de PC zelf zit, hoeft niet in te loggen
         kop = self.headers.get("Authorization", "")
         if kop.startswith("Basic "):
             if inlog_bekend(kop):
@@ -777,7 +777,8 @@ def main(argv=None):
     if not systeem.IS_PI:                       # PC: Direwolf en rigctld zelf starten (op de Pi doet systemd dat)
         import atexit
         import signal
-        signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))      # afsluiten: Direwolf en rigctld ook stoppen
+        if threading.current_thread() is threading.main_thread():   # (in het venster draait de server in een draad)
+            signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))  # afsluiten: Direwolf en rigctld ook stoppen
         print(f"Instellingen en logboek: {MAP}", flush=True)
         for fout in systeem.start_diensten():
             print("Let op: " + fout, flush=True)
