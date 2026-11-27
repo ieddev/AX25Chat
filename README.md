@@ -2,7 +2,8 @@
 
 Chatten via **AX.25 packetradio** met je telefoon of laptop. Je typt een bericht, een Raspberry Pi
 met **Direwolf** maakt er packet-geluid van en je set zendt het uit. Wat binnenkomt, lees je weer
-op je scherm.
+op je scherm. En natuurlijk is er een Windows versie en een Linux versie zodat je ook in je 
+shack met AX25Chat kunt werken.
 
 ```
 telefoon / laptop ──wifi──► RASPBERRY PI (hotspot 10.42.0.1) ──USB──► SET ──► 2 m
