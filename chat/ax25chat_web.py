@@ -40,6 +40,7 @@ import ax25chat_chatpagina as chatpagina
 import ax25chat_kaart as kaart
 import ax25chat_kaartpagina as kaartpagina
 import ax25chat_locator as locator
+import ax25chat_over as over
 import ax25chat_radio as radio
 import ax25chat_systeem as systeem
 
@@ -95,12 +96,18 @@ nav .menulijst a:hover,nav .menulijst a:focus{background:var(--blauw-z);color:va
 @media(max-width:560px){nav{padding:8px}nav a,nav summary{padding:8px 10px}nav details.navmenu{position:static}
 nav .menulijst{left:8px;right:8px;top:100%;min-width:0}}
 .laden p.uitleg{font-style:italic}
+nav a.overknop{margin-left:auto}
+dialog#over{border:1px solid var(--lijn);border-radius:12px;padding:18px 20px;max-width:min(480px,calc(100vw - 32px));
+background:var(--kaart);color:var(--tekst);box-shadow:0 10px 40px rgba(0,0,0,.25)}
+dialog#over::backdrop{background:rgba(0,0,0,.35)}
+table.over{border-collapse:collapse;width:100%}table.over th{text-align:left;font-weight:600;padding:3px 12px 3px 0;
+white-space:nowrap;vertical-align:top}table.over td{padding:3px 0}ul.over{margin:0;padding-left:20px}
 """
 
 PAGINAS = [("chat", "Chat"), ("bbs", "BBS"), ("kaart", "Kaart"), ("radio", "Radio"), ("status", "Status")]
 # Dropdownmenu's in de balk: (id van het segment, naam, ingesprongen onder Set)
 MENU = {"radio": [("station", "Station", 0), ("frequenties", "Mijn frequenties", 0), ("baken", "APRS-baken", 0),
-                  ("kaarten", "Offline kaart", 0), ("set", "Set", 0), ("zoek", "Zoek mijn set", 1), ("sets", "Mijn sets", 1),
+                  ("kaarten", "Kaart", 0), ("set", "Set", 0), ("zoek", "Zoek mijn set", 1), ("sets", "Mijn sets", 1),
                   ("luister", "Luistertest", 1), ("test", "Testuitzending", 1), ("handmatig", "Handmatig instellen", 1)],
         "status": [("diensten", "Diensten", 0), ("hotspot", "Wifi-hotspot", 0), ("bijwerken", "Bijwerken", 0),
                    ("log", "Log van Direwolf", 0), ("pi", "Raspberry Pi", 0)]}
@@ -111,6 +118,13 @@ SEGMENTEN = {i for lijst in MENU.values() for i, _, _ in lijst}
 # Voor elke pagina: menu's open/dicht, melding naar het segment waar je op Opslaan tikte, trage delen later laden
 PAGINA_JS = """(function () {
   var nav = document.querySelector('nav'), menus = nav.querySelectorAll('details.navmenu');
+  var over = document.getElementById('over');
+  nav.querySelectorAll('[data-over]').forEach(function (a) {
+    a.addEventListener('click', function (ev) {
+      ev.preventDefault();
+      if (over && over.showModal) over.showModal(); else if (over) over.setAttribute('open', '');
+    });
+  });
   function ruimte() { document.documentElement.style.scrollPaddingTop = (nav.offsetHeight + 8) + 'px'; }
   ruimte(); addEventListener('resize', ruimte);
   function sluit(behalve) { menus.forEach(function (d) { if (d !== behalve) d.open = false; }); }
@@ -228,7 +242,7 @@ def html_nav(actief):
             uit += f'<details class="navmenu"><summary class="{kl}">{t}</summary><div class="menulijst">{items}</div></details>'
         else:
             uit += f'<a href="/{"" if p == "chat" else p}" class="{kl}">{t}</a>'
-    return uit
+    return uit + '<a href="#over" class="overknop" data-over="1">Over…</a>'
 
 
 def pagina(actief, inhoud, melding="", bij=""):
@@ -241,7 +255,8 @@ def pagina(actief, inhoud, melding="", bij=""):
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>AX25Chat {e(rn or '')}</title>
 <style>{CSS}</style></head><body data-mij="{e(rn or '')}"{f' data-bij="{bij}"' if bij else ''}>
 <header><b>AX25Chat</b><span>{e(rn or 'roepnaam nog niet ingesteld')}{' · versie ' + e(versie()) if versie() else ''}</span></header>
-<nav>{nav}</nav><main><div id="meld">{melding}</div>{inhoud}</main><script>{PAGINA_JS}</script></body></html>"""
+<nav>{nav}</nav><main><div id="meld">{melding}</div>{inhoud}</main>{over.html_dialoog(versie())}
+<script>{PAGINA_JS}</script></body></html>"""
 
 
 def meldingen(ok=None, fouten=(), let=()):
@@ -692,6 +707,10 @@ class Handler(BaseHTTPRequestHandler):
                 melding = ("Baken verzonden: " + info) if info else BAKEN.stand
                 return self._terug("/radio", ("ok:" if info else "fout:") + melding, "baken")
             return self._terug("/radio", "ok:" + melding, "baken")
+        if pad == "kaartbron":
+            fout = kaart.zet_kaartbron(f.get("kaartbron", ""))
+            return self._terug("/radio", ("fout:" + fout) if fout else "ok:Opgeslagen. Open het tabblad Kaart om het te zien.",
+                               "kaarten")
         if pad == "kaart":
             fout = kaart.start_download(f.get("plaats"), f.get("straal"), f.get("zoom"), _vaste_positie())
             return self._terug("/radio", ("fout:" + fout) if fout else "ok:Download gestart. Dit duurt een paar minuten.", "kaarten")

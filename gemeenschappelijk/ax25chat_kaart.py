@@ -41,6 +41,10 @@ TEGELS = os.path.join(KAART_DIR, "tegels")
 NIEUW = os.path.join(KAART_DIR, "tegels.nieuw")
 INFO_FILE = os.path.join(KAART_DIR, "kaart.json")
 VOORTGANG_FILE = os.path.join(KAART_DIR, "voortgang.json")
+BRON_FILE = os.path.join(MAP, "kaartbron.txt")
+
+# Waar de ondergrond van de kaart vandaan komt (keuze op Radio, Kaart)
+KAARTBRONNEN = {"auto": "Automatisch (offline en online)", "offline": "Alleen offline", "online": "Alleen online"}
 
 TEGEL_URL = "https://service.pdok.nl/brt/achtergrondkaart/wmts/v2_0/standaard/EPSG:3857/{z}/{x}/{y}.png"
 ZOEK_URL = ("https://api.pdok.nl/bzk/locatieserver/search/v3_1/free?rows=1&fl=weergavenaam,centroide_ll,type"
@@ -304,15 +308,40 @@ def tegel_pad(z, x, y):
     return pad if os.path.isfile(pad) else None
 
 
+def kaartbron():
+    """'auto', 'offline' of 'online'."""
+    try:
+        with open(BRON_FILE, encoding="utf-8") as f:
+            v = f.read().strip()
+    except OSError:
+        v = ""
+    return v if v in KAARTBRONNEN else "auto"
+
+
+def zet_kaartbron(v):
+    """Bewaar de keuze. Geeft een foutmelding of ''."""
+    if v not in KAARTBRONNEN:
+        return "Kies waar de kaart vandaan komt."
+    try:
+        os.makedirs(MAP, exist_ok=True)
+        with open(BRON_FILE, "w", encoding="utf-8") as f:
+            f.write(v + "\n")
+    except OSError as fout:
+        return f"Opslaan lukte niet: {fout}"
+    return ""
+
+
 def voor_kaart():
-    """Wat de kaartpagina en de app nodig hebben: {'kaart': bool, midden, zoom's, gebieden, bron}."""
+    """Wat de kaartpagina en de app nodig hebben: {'kaart': bool (offline kaart aanwezig), midden, zoom's, gebieden,
+    bron, kaartbron (auto/offline/online), online_url}."""
+    basis = {"kaart": False, "kaartbron": kaartbron(), "online_url": TEGEL_URL, "bron": BRON}
     k = info()
     if not k or not os.path.isdir(TEGELS):
-        return {"kaart": False}
-    return {"kaart": True, "midden": [k.get("lat"), k.get("lon")], "plaats": k.get("plaats", ""),
-            "max_zoom": k.get("detail_zoom", k.get("max_zoom", 14)), "detail_zoom": k.get("max_zoom", DETAIL_ZOOM),
-            "gebied": k.get("gebied"), "detail_gebied": k.get("detail_gebied"), "bron": k.get("bron", BRON),
-            "datum": k.get("datum", "")}
+        return basis
+    return dict(basis, kaart=True, midden=[k.get("lat"), k.get("lon")], plaats=k.get("plaats", ""),
+                max_zoom=k.get("detail_zoom", k.get("max_zoom", 14)), detail_zoom=k.get("max_zoom", DETAIL_ZOOM),
+                gebied=k.get("gebied"), detail_gebied=k.get("detail_gebied"), bron=k.get("bron", BRON),
+                datum=k.get("datum", ""))
 
 
 def start_download(plaats, straal, zoom, positie=None):
@@ -363,7 +392,8 @@ def html_beheer(verborgen, positie=None):
                   f"{k.get('aantal', 0)} tegels ({map_mb()} MB), gedownload {_e(k.get('datum', ''))}.</p>")
     else:
         huidig = ("<p><b>Nog geen offline kaart.</b> Gehoorde stations staan wel op het tabblad Kaart, "
-                  "maar zonder ondergrond.</p>")
+                  + ("maar zonder ondergrond.</p>" if kaartbron() == "offline" else
+                     "met de kaart van internet als die er is.</p>"))
     melding = ""
     if v and (bezig or v.get("fout") or time.time() - v.get("bijgewerkt", 0) < 600):
         if bezig:
@@ -398,7 +428,18 @@ als bij het bijwerken. Deze pagina is dan een paar minuten weg; verbind daarna o
 het ook: <span class="mono">ax25chat-kaart</span> (zie de procedure).</p>""" if systeem.kan("hotspot") else
                  '<p class="uitleg">De vorige kaart blijft werken tot de nieuwe helemaal binnen is. De kaart wordt '
                  'opgeslagen in de map van AX25Chat en werkt daarna ook zonder internet.</p>')
-    return f"""<section id="kaarten"><h2>Offline kaart</h2>
+    bron = kaartbron()
+    o_bron = "".join(f'<option value="{w}" {"selected" if w == bron else ""}>{_e(t)}</option>'
+                     for w, t in KAARTBRONNEN.items())
+    keuze = f"""<form method="post" action="/kaartbron" class="rij" style="align-items:flex-end;margin:6px 0 14px">{verborgen}
+<div style="flex:3 1 260px"><label>Kaart op het tabblad Kaart</label><select name="kaartbron">{o_bron}</select></div>
+<div style="flex:0 0 auto"><button type="submit" class="licht">Opslaan</button></div></form>
+<p class="uitleg" style="margin-top:-6px"><b>Automatisch:</b> de offline kaart waar je die hebt gedownload,
+daaromheen en bij verder inzoomen de kaart van internet. <b>Alleen offline:</b> nooit internet.
+<b>Alleen online:</b> altijd van internet, ook zonder gedownloade kaart. Online haalt de browser de kaart zelf van PDOK; dat werkt alleen als het
+apparaat waarop je kijkt internet heeft. Op de hotspot van de Pi is dat meestal niet zo: daar helpt alleen de offline
+kaart. De app gebruikt altijd de offline kaart.</p>"""
+    return f"""<section id="kaarten"><h2>Kaart</h2>{keuze}<h3 style="margin:10px 0 4px">Offline kaart</h3>
 <p class="uitleg">Voor het tabblad <b>Kaart</b> en de app: de stations die je hoort, op een kaart die zonder internet
 werkt. Download hem <b>eenmalig met internet</b> (thuis-wifi of netwerkkabel). Kaart: BRT-Achtergrondkaart van het
 Kadaster via PDOK (open data, CC BY 4.0). Die dekt alleen Nederland: stations over de grens staan er wel op, maar
