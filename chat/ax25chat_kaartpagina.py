@@ -53,8 +53,13 @@ var TEKEN = {'>':'🚗','<':'🏍','b':'🚲','[':'🚶','-':'🏠','k':'🚚','
 var center = D.midden || [52.2, 5.5];
 var map = L.map('kaart', {minZoom: 6, maxZoom: 17}).setView(center, D.kaart ? 10 : 8);
 map.attributionControl.setPrefix('Leaflet');
-if (D.kaart) {
-  L.tileLayer('/tegels/{z}/{x}/{y}.png', {maxNativeZoom: D.max_zoom, maxZoom: 17, attribution: D.bron}).addTo(map);
+var bron = D.kaartbron || 'auto';
+if (bron !== 'offline' && D.online_url) {                       // online (PDOK), onder de offline kaart
+  L.tileLayer(D.online_url, {maxZoom: 17, attribution: D.bron}).addTo(map);
+}
+if (D.kaart && bron !== 'online') {
+  L.tileLayer('/tegels/{z}/{x}/{y}.png', {maxNativeZoom: D.max_zoom, maxZoom: 17,
+    attribution: bron === 'offline' ? D.bron : ''}).addTo(map);
   if (D.detail_gebied && D.detail_zoom > D.max_zoom) {          // meer detail rond het midden
     var g = D.detail_gebied;
     L.tileLayer('/tegels/{z}/{x}/{y}.png', {minZoom: D.max_zoom + 1, maxNativeZoom: D.detail_zoom, maxZoom: 17,
@@ -194,7 +199,7 @@ if (window.EventSource) {
 
 
 def html_pagina(kaart_info):
-    leeg = "" if kaart_info.get("kaart") else (
+    leeg = "" if kaart_info.get("kaart") or kaart_info.get("kaartbron") != "offline" else (
         "<div class='melding let'>Nog geen offline kaart: download hem eenmalig op het tabblad <a href='/radio'>Radio</a> "
         "(met internet). De stations staan er wel al op, maar zonder ondergrond.</div>")
     info = json.dumps(kaart_info, ensure_ascii=False).replace("</", "<\\/")   # buiten de f-string: Python 3.11

@@ -72,10 +72,13 @@ de Pi zit dan niet meer op je thuis-wifi.
 ### De webpagina gebruiken: menu, meldingen en laden
 
 - **Menu**: tik in de balk op **Radio** of **Status**. Er klapt een lijstje open met de onderdelen van die pagina
-  (Radio: Station, Mijn frequenties, APRS-baken, Offline kaart, Set met daaronder Zoek mijn set, Mijn sets,
+  (Radio: Station, Mijn frequenties, APRS-baken, Kaart, Set met daaronder Zoek mijn set, Mijn sets,
   Luistertest, Testuitzending en Handmatig instellen; Status: Diensten, Wifi-hotspot, Bijwerken, Log van Direwolf,
   Raspberry Pi). Tik op een onderdeel en de pagina springt er meteen naartoe. Tik ergens anders of druk op Esc om
   het lijstje te sluiten. Dit werkt op de PC en op de telefoon (op de telefoon is het lijstje schermbreed).
+- **Over…** (rechts in de balk) opent een venstertje met de naam en versie van AX25Chat, de makers, het
+  e-mailadres voor vragen, de licentie (EUPL-1.2), de link naar GitHub en de onderdelen van anderen die AX25Chat
+  gebruikt (Direwolf, Hamlib, Leaflet, de kaart van PDOK). Sluiten met *Sluiten* of Esc.
 - **Meldingen**: tik je op *Opslaan* (of een andere knop) in een onderdeel, dan verschijnt de groene (gelukt) of rode
   (fout) melding bovenin **dat onderdeel**, en blijft de pagina daar staan. Je hoeft dus niet meer terug te scrollen.
 - **Sneller laden**: de pagina's Radio en Status verschijnen meteen. Wat op een Pi Zero tijd kost, komt een tel later
@@ -354,8 +357,19 @@ Op het tabblad **Kaart** zie je de stations die je Pi hoort met een APRS-positie
 nodes, weerstations. Ook jezelf (groene rand), met de positie van je GPS of de vaste positie van het baken. De
 kaart werkt **zonder internet**: de kaarttegels en het kaartprogramma (Leaflet) staan op de Pi.
 
+**Waar komt de kaart vandaan?** Op het tabblad **Radio**, bij *Kaart*, kies je:
+
+| Keuze | Uitleg |
+|---|---|
+| **Automatisch** (standaard) | De offline kaart waar je die hebt gedownload; daaromheen, en bij verder inzoomen, de kaart van internet (PDOK) als het apparaat waarop je kijkt internet heeft. Zonder internet zie je gewoon alleen de offline kaart. |
+| **Alleen offline** | Nooit internet gebruiken, alleen de gedownloade kaart. |
+| **Alleen online** | Altijd de kaart van internet, ook zonder gedownloade kaart. Handig op een PC met internet. Werkt niet op de hotspot van de Pi (daar is geen internet). |
+
+Online haalt de browser (of het venster op de PC) de kaart zelf bij PDOK, niet de Pi. De Android-app gebruikt altijd
+de offline kaart.
+
 **Eenmalig de kaart downloaden** (met internet: thuis-wifi of netwerkkabel), op het tabblad **Radio**, onderaan bij
-*Offline kaart*:
+*Kaart*, onder *Offline kaart*:
 
 | Keuze | Uitleg |
 |---|---|
@@ -663,6 +677,6 @@ Wat anders is dan op de Pi en op Linux:
 | Niets ontvangen | Luistertest doen; ontvangstniveau omhoog; staat de set op de goede frequentie? |
 | App: *geen verbinding met de Pi* | Ben je met de wifi van de Pi verbonden (en *Verbonden blijven* gekozen)? Klopt het adres bij Instellingen? Thuis: het adres van de Pi op je eigen wifi. |
 | App installeert niet over de oude heen | Een test-APK uit Actions heeft een andere sleutel dan een release. Verwijder de app en installeer opnieuw (berichten staan op de Pi). |
-| Kaart blijft grijs | Op het tabblad Radio de offline kaart downloaden (met internet). Stations staan er ook zonder op. |
+| Kaart blijft grijs | Op het tabblad Radio de offline kaart downloaden (met internet), of bij *Kaart* kiezen voor *Automatisch* of *Alleen online* als je internet hebt. Stations staan er ook zonder op. |
 | Station niet op de kaart | Staat het in de Monitor? Alleen frames met een APRS-positie komen op de kaart (geen berichten of status). |
 | Log bekijken via ssh | `journalctl -u ax25chat-direwolf -f` |
