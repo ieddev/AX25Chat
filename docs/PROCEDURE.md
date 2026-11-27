@@ -590,7 +590,7 @@ Wat anders is dan op de Pi:
 - **Geen hotspot en geen Pi uitzetten.** Die onderdelen staan niet op het tabblad Status.
 - **Instellingen apart.** Je instellingen, berichten, de kaart en het logboek van Direwolf staan in
   `~/.local/share/ax25chat`. Het tabblad Status laat zien waar precies.
-- **Bijwerken:** sluit AX25Chat en draai het installatiescript nog een keer.
+- **Bijwerken:** tabblad **Status**, blok *Bijwerken*: **Controleren op nieuwe versie**, daarna **Nu bijwerken**. AX25Chat haalt de nieuwste versie van GitHub en start vanzelf opnieuw (ook Direwolf). Het installatiescript nog een keer draaien kan ook. `sudo apt update` werkt alleen Direwolf en Hamlib bij, niet AX25Chat.
 - **Kaart downloaden** gaat gewoon via het internet van de PC.
 - Draait er al een andere Direwolf (bijvoorbeeld voor een ander programma), sluit die dan eerst. AX25Chat gebruikt
   de poorten 8000 (AGW) en 8001 (KISS).
@@ -614,7 +614,7 @@ SCU-17 of de USB-kabel van een Icom.
 onbekend is: kies *Meer informatie* en *Toch uitvoeren*. Direwolf en Hamlib (rigctld) zitten in de installer; je
 hoeft niets anders te installeren. Daarna staat **AX25Chat** in het Startmenu (en eventueel op het bureaublad).
 
-**Bijwerken:** installeer de nieuwe versie over de oude heen. **Verwijderen:** via Instellingen, Apps. Je
+**Bijwerken:** tabblad **Status**, blok *Bijwerken*: **Controleren op nieuwe versie**, daarna **Nu bijwerken**. AX25Chat downloadt de nieuwe installer, sluit en start de installer; daarna start AX25Chat vanzelf weer. Met de hand kan ook: download de nieuwe installer en installeer over de oude heen. **Verwijderen:** via Instellingen, Apps. Je
 instellingen staan apart in `%APPDATA%\AX25Chat` en blijven bewaard.
 
 Wat anders is dan op de Pi en op Linux:

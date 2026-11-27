@@ -35,6 +35,7 @@ import ax25chat_baken as baken
 import ax25chat_bbs as bbs
 import ax25chat_bbspagina as bbspagina
 import ax25chat_bijwerken as bijwerken
+import ax25chat_pcbijwerken as pcbijwerken
 import ax25chat_chatpagina as chatpagina
 import ax25chat_kaart as kaart
 import ax25chat_kaartpagina as kaartpagina
@@ -282,9 +283,7 @@ def html_status():
     if not systeem.IS_PI:
         return f"""<section id="diensten"><h2>Diensten</h2><table>{rijen}</table>
 {laden(deel="setkort", tekst="De set wordt uitgelezen…", hoog=40)}</section>
-<section id="bijwerken"><h2>Bijwerken</h2><p class="uitleg">AX25Chat draait op deze PC vanuit
-<span class="mono">{e(systeem.CODE)}</span>. Een nieuwe versie: sluit AX25Chat en haal de nieuwste versie op (zie de
-procedure, deel 'AX25Chat op een PC'). Je instellingen staan apart in <span class="mono">{e(MAP)}</span> en blijven bewaard.</p></section>
+{pcbijwerken.html_sectie(verborgen())}
 <section id="log"><h2>Log van Direwolf</h2>{laden(deel="log", tekst="Het log wordt opgehaald…", hoog=200)}</section>"""
     h = radio.hotspot_status()
     hotspot = (f"<p><span class='punt {'p-ok' if h['aan'] else 'p-let'}'></span><b>{'Hotspot aan' if h['aan'] else 'Hotspot uit'}</b>"
@@ -751,6 +750,13 @@ class Handler(BaseHTTPRequestHandler):
             if uit[0] == "naar":
                 return self._terug(uit[1], uit[2], "bijwerken" if uit[1] == "/status" else "")
             return self._stuur(pagina("status", uit[1]))
+        if pad == "bijwerken_pc" and not systeem.IS_PI:
+            soort, tekst = pcbijwerken.verwerk(f)
+            if f.get("stap") == "bijwerken" and soort == "ok":
+                wacht = """<script>setTimeout(function kijk(){fetch('/status.json').then(function(r){if(r.ok)
+location.href='/status#bijwerken';else setTimeout(kijk,2000)}).catch(function(){setTimeout(kijk,2000)})},5000)</script>"""
+                return self._stuur(pagina("status", meldingen(ok=tekst) + wacht))
+            return self._terug("/status", (soort + ":" + tekst) if tekst else "", "bijwerken")
         if pad == "pi":
             uit = pi_actie(f.get("actie", ""))
             return self._stuur(uit) if uit else self._terug("/status", "fout:Ongeldige opdracht.", "pi")
