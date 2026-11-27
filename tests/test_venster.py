@@ -58,7 +58,10 @@ class TestStartOpties(unittest.TestCase):
         self.assertEqual(venster.start_opties(Oud), {})
         opties = venster.start_opties(Nieuw)
         self.assertTrue(opties["storage_path"].endswith("webview"))
-        self.assertEqual(opties["icon"], venster.PICTOGRAM)
+        if sys.platform == "win32":
+            self.assertNotIn("icon", opties)          # WinForms wil een .ico; zonder neemt hij dat van de exe
+        else:
+            self.assertEqual(opties["icon"], venster.PICTOGRAM)
 
 
 if __name__ == "__main__":

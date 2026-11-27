@@ -186,14 +186,16 @@ def lees_versie():
 
 def start_opties(webview):
     """Opties voor webview.start. De gegevens van het venster (WebView2/WebKit) komen in de map met instellingen,
-    waar de gebruiker altijd mag schrijven, en niet naast het programma. icon= alleen als deze pywebview dat kent."""
+    waar de gebruiker altijd mag schrijven, en niet naast het programma. icon= alleen als deze pywebview dat kent,
+    en niet op Windows: daar moet het een .ico zijn (een .png laat WinForms crashen) en neemt pywebview vanzelf het
+    pictogram van AX25Chat.exe."""
     import inspect
     import ax25chat_systeem as systeem
     kent = inspect.signature(webview.start).parameters
     opties = {}
     if "storage_path" in kent:
         opties["storage_path"] = os.path.join(systeem.MAP, "webview")
-    if "icon" in kent:
+    if "icon" in kent and sys.platform != "win32":
         opties["icon"] = PICTOGRAM
     return opties
 
