@@ -16,6 +16,8 @@ APRS-stations de berichten kunnen lezen en beantwoorden. Andere packetstations z
   - langer dan 67 tekens: opgesplitst in meer berichten
   - alles wat Direwolf hoort, komt ook in de monitor (laatste 500 frames)
   - een gehoorde APRS-positie komt in de lijst met stations, voor de kaart (een week bewaard)
+  - geen APRS-positie, maar wel een locator in gewone tekst (bijv. 'JO32CD' in het baken van een node):
+    die komt in de lijst met locators, ook voor de kaart
 
 Berichten staan in een SQLite-bestand (berichten.db), zodat ze een herstart overleven.
 Alleen standaard-Python.
@@ -29,6 +31,7 @@ import time
 
 import ax25chat_aprs as aprs
 import ax25chat_ax25 as ax25
+import ax25chat_locator as locator
 
 MAX_TEKST = 67
 WACHTTIJDEN = [30, 45, 60, 90, 120]       # seconden na elke poging; na de laatste: niet bevestigd
@@ -111,6 +114,8 @@ CREATE TABLE IF NOT EXISTS monitor (id INTEGER PRIMARY KEY, tijd REAL, van TEXT,
 CREATE TABLE IF NOT EXISTS teller (naam TEXT PRIMARY KEY, waarde INTEGER);
 CREATE TABLE IF NOT EXISTS stations (call TEXT PRIMARY KEY, tijd REAL, lat REAL, lon REAL, symbool TEXT,
   commentaar TEXT, koers INTEGER, kmh INTEGER, via TEXT, direct INTEGER);
+CREATE TABLE IF NOT EXISTS locators (call TEXT PRIMARY KEY, tijd REAL, locator TEXT, tekst TEXT);
+CREATE TABLE IF NOT EXISTS gehoord (call TEXT PRIMARY KEY, tijd REAL);
 CREATE INDEX IF NOT EXISTS berichten_gewijzigd ON berichten(gewijzigd);
 """)
 
@@ -209,6 +214,30 @@ CREATE INDEX IF NOT EXISTS berichten_gewijzigd ON berichten(gewijzigd);
     def stations(self, sinds=0):
         with self.lock:
             return [dict(r) for r in self.db.execute("SELECT * FROM stations WHERE tijd > ? ORDER BY tijd DESC", (sinds,))]
+
+    def locator_toe(self, call, locator, tekst, nu=None):
+        """Locator uit een (niet-APRS) baken bewaren, met de tekst waar hij in stond."""
+        nu = nu or time.time()
+        with self.lock, self.db:
+            self.db.execute("INSERT OR REPLACE INTO locators (call, tijd, locator, tekst) VALUES (?,?,?,?)",
+                            (call.upper(), nu, locator, tekst[:120]))
+            self.db.execute("DELETE FROM locators WHERE tijd < ?", (nu - STATION_DAGEN * 86400,))
+
+    def locators(self, sinds=0):
+        with self.lock:
+            return [dict(r) for r in self.db.execute("SELECT * FROM locators WHERE tijd > ? ORDER BY tijd DESC", (sinds,))]
+
+    def gehoord_toe(self, call, nu=None):
+        """Wanneer een roepnaam voor het laatst gehoord is (elk frame), voor de kaart."""
+        nu = nu or time.time()
+        with self.lock, self.db:
+            self.db.execute("INSERT OR REPLACE INTO gehoord (call, tijd) VALUES (?,?)", (call.upper(), nu))
+            self.db.execute("DELETE FROM gehoord WHERE tijd < ?", (nu - STATION_DAGEN * 86400,))
+
+    def gehoord(self):
+        """{roepnaam: laatst gehoord}"""
+        with self.lock:
+            return {r[0]: r[1] for r in self.db.execute("SELECT call, tijd FROM gehoord")}
 
     def monitor(self, n=200):
         with self.lock:
@@ -366,9 +395,15 @@ class Chat:
             return                                        # mijn eigen frame, terug via een digipeater
         self._meld("monitor", self.opslag.monitor_toe(van, aan, pad, tekst))
         pos = aprs.lees_positie(info if isinstance(info, (bytes, bytearray)) else tekst, aan)
+        self.opslag.gehoord_toe(van)
         if pos:
             self._meld("station", self.opslag.station_toe(van, pad, pos))
         b = lees_bericht(tekst)
+        if not pos and not b:                             # bijv. het baken van een node: staat er een locator in?
+            loc = locator.zoek(tekst)
+            if loc:
+                self.opslag.locator_toe(van, loc, " ".join(tekst.split()))
+                self._meld("locator", {"call": van.upper(), "locator": loc})
         if not b:
             return
         if b["soort"] in ("ack", "rej"):

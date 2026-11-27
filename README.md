@@ -42,7 +42,8 @@ op 144,800 zet en bij Station ook 144,800 kiest (je chat dan ook op 144,800). Zi
 [docs/PROCEDURE.md](docs/PROCEDURE.md#aprs-baken-je-positie-op-de-kaart).
 
 Op het tabblad **Kaart** staan de stations die je hoort met een APRS-positie, op een offline kaart van
-Nederland (PDOK). Die download je eenmalig met internet op het tabblad Radio; daarna werkt hij zonder internet.
+Nederland (PDOK). Nodes en BBS'en zonder APRS-positie staan er ook op als hun locator bekend is (uit hun baken,
+of zelf ingevuld), met een eigen symbool op het midden van het locatorvak. Die download je eenmalig met internet op het tabblad Radio; daarna werkt hij zonder internet.
 
 **Android-app:** voor dagelijks gebruik (chat met meldingen, kaart, BBS). Download de APK bij
 [Releases](https://github.com/ieddev/AX25Chat/releases); uitleg in [docs/PROCEDURE.md](docs/PROCEDURE.md#android-app).
