@@ -114,5 +114,31 @@ class TestPc(unittest.TestCase):
         self.assertIn("Leaflet", self.haal("/leaflet/leaflet.js")[:2000])
 
 
+@unittest.skipIf(sys.platform == "win32", "zelfde opzet als hierboven")
+class TestThuisnetwerk(unittest.TestCase):
+    """--thuisnetwerk: telefoon en app moeten inloggen, maar op de PC zelf (venster) hoeft dat niet."""
+
+    def test_lokaal_geen_inlog(self):
+        map_ = tempfile.mkdtemp(prefix="ax25chat-pc-thuis-")
+        with open(os.path.join(map_, "web_wachtwoord.json"), "w") as f:
+            json.dump({"gebruiker": "beheer", "zout": "AAAA", "hash": "AAAA", "rondes": 1}, f)
+        poort = vrije_poort()
+        env = dict(os.environ, AX25CHAT_MAP=map_, AX25CHAT_SOORT="pc", AX25CHAT_DIREWOLF="false")
+        p = subprocess.Popen([sys.executable, START, "--geen-browser", "--thuisnetwerk", "--poort", str(poort)], env=env,
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        try:
+            eind, html = time.time() + 15, ""
+            while time.time() < eind and not html:
+                try:
+                    with urllib.request.urlopen(f"http://127.0.0.1:{poort}/status", timeout=5) as r:
+                        html = r.read().decode()
+                except OSError:
+                    time.sleep(0.2)
+            self.assertIn("Diensten", html)
+        finally:
+            p.terminate()
+            p.wait(timeout=10)
+
+
 if __name__ == "__main__":
     unittest.main()

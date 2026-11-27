@@ -563,23 +563,26 @@ en haal dan pas de stroom eraf.
 Nog in de testfase. Je kunt AX25Chat ook zonder Pi gebruiken, op een gewone Linux-PC of laptop. De set hangt dan
 met een DigiRig, een SignaLink of een eigen USB-kabel aan de PC. Windows volgt later.
 
-**Eenmalig installeren** (Debian, Ubuntu, Linux Mint):
+**Installeren** (Debian, Ubuntu, Linux Mint). Typ in een terminal, als gewone gebruiker:
 
 ```bash
-sudo apt install git python3 direwolf libhamlib-utils alsa-utils
-sudo usermod -aG dialout,audio $USER        # daarna één keer uit- en weer inloggen
-git clone https://github.com/ieddev/AX25Chat ~/AX25Chat
+bash <(curl -sL https://raw.githubusercontent.com/ieddev/AX25Chat/main/installatie/linux/installeer.sh)
 ```
 
-**Starten:**
+Het script installeert Direwolf, Hamlib en het eigen venster (pywebview), zet AX25Chat in `~/AX25Chat` en maakt
+een snelkoppeling **AX25Chat** in het menu van je bureaublad. Zegt het script dat je uit en weer in moet loggen,
+doe dat dan één keer: anders ziet AX25Chat de USB-poorten en de geluidskaart niet. Hetzelfde script nog een keer
+draaien = **bijwerken**; je instellingen blijven bewaard.
 
-```bash
-python3 ~/AX25Chat/pc/ax25chat_pc.py
-```
+**Starten:** kies **AX25Chat** in het menu, of typ `ax25chat` in een terminal. AX25Chat opent in een eigen venster
+en start Direwolf (en bij CAT ook rigctld) zelf. Sluit je het venster, dan stoppen Direwolf en rigctld ook.
+Lukt het eigen venster niet (pywebview ontbreekt), dan opent AX25Chat in je browser op `http://localhost:8080`.
+Klik je nog een keer op het pictogram terwijl AX25Chat al draait, dan krijg je een tweede venster naar hetzelfde
+programma.
 
-AX25Chat start Direwolf (en bij CAT ook rigctld) zelf en opent de webpagina in je browser:
-`http://localhost:8080`. Sluit je AX25Chat af (Ctrl+C in het venster), dan stoppen Direwolf en rigctld ook.
 Stel daarna alles in zoals op de Pi: tabblad **Radio**, roepnaam bij *Station*, dan **Zoek mijn set**.
+
+Zonder eigen venster, alleen in de browser: `python3 ~/AX25Chat/pc/ax25chat_pc.py`. Sluit dan af met Ctrl+C.
 
 Wat anders is dan op de Pi:
 
@@ -587,16 +590,16 @@ Wat anders is dan op de Pi:
 - **Geen hotspot en geen Pi uitzetten.** Die onderdelen staan niet op het tabblad Status.
 - **Instellingen apart.** Je instellingen, berichten, de kaart en het logboek van Direwolf staan in
   `~/.local/share/ax25chat`. Het tabblad Status laat zien waar precies.
-- **Bijwerken:** sluit AX25Chat en typ `git -C ~/AX25Chat pull`. Je instellingen blijven bewaard.
+- **Bijwerken:** sluit AX25Chat en draai het installatiescript nog een keer.
 - **Kaart downloaden** gaat gewoon via het internet van de PC.
 - Draait er al een andere Direwolf (bijvoorbeeld voor een ander programma), sluit die dan eerst. AX25Chat gebruikt
   de poorten 8000 (AGW) en 8001 (KISS).
 
-**Opties bij het starten:**
+**Opties bij het starten** (achter `ax25chat` of achter `ax25chat_pc.py`):
 
 | Optie | Wat het doet |
 |---|---|
-| `--geen-browser` | Start AX25Chat zonder de browser te openen. Open zelf `http://localhost:8080`. |
+| `--geen-browser` | Alleen bij `ax25chat_pc.py`: start zonder de browser te openen. Open zelf `http://localhost:8080`. |
 | `--poort 8090` | Een andere poort voor de webpagina, als 8080 al bezet is. |
 | `--thuisnetwerk` | De PC is ook bereikbaar voor je telefoon of de Android-app op je thuisnetwerk, via `http://<adres van de PC>:8080`. Dan is wel inloggen nodig: stel eerst een wachtwoord in met `python3 ~/AX25Chat/pc/ax25chat_pc.py --wachtwoord` (gebruiker `beheer`). |
 | `--wachtwoord` | Wachtwoord instellen of wijzigen voor `--thuisnetwerk`. |
