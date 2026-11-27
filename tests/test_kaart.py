@@ -16,6 +16,7 @@ sys.path.insert(0, os.path.join(HIER, "..", "chat"))
 import ax25chat_aprs as aprs  # noqa: E402
 import ax25chat_chat as chat  # noqa: E402
 import ax25chat_kaart as kaart  # noqa: E402
+import ax25chat_locator as locator  # noqa: E402
 
 
 def mic_e(lat, lon, knopen=0, koers=0, symbool=">", tabel="/"):
@@ -109,11 +110,64 @@ class TestStations(unittest.TestCase):
         self.chat.ontvangen("PA1ABC-9", "APDR16", [], b":PD3PAM-7 :Hoi{3")
         self.assertEqual(self.opslag.stations(), [])
 
+    def test_locator_uit_baken(self):
+        self.chat.ontvangen("PD4R-12", "ALL", [], b"PD4R-12  Warnsveld  JO32CD  144.925 1k2")
+        self.assertEqual([(r["call"], r["locator"]) for r in self.opslag.locators()], [("PD4R-12", "JO32CD")])
+        self.assertIn("locator", [x[0] for x in self.gemeld])
+        self.assertEqual(self.opslag.stations(), [])                   # geen APRS-positie
+        self.chat.ontvangen("PD4R-12", "ID", [], ASCII_ART.encode())  # getekende letters: niets herkend
+        self.assertEqual(len(self.opslag.locators()), 1)
+        self.assertIn("PD4R-12", self.opslag.gehoord())
+
+    def test_aprs_positie_en_bericht_geen_locator(self):
+        self.chat.ontvangen("PA1ABC-9", "APDR16", [], b"=5212.34N/00612.34E>Thuis in JO32CD")
+        self.chat.ontvangen("PA1ABC-9", "APDR16", [], b":PD3PAM-7 :Mijn locator is JO22AB{4")
+        self.assertEqual(self.opslag.locators(), [])
+
     def test_oude_stations_weg(self):
         pos = aprs.lees_positie("=5212.34N/00612.34E>")
         self.opslag.station_toe("PA1OUD", [], pos, nu=1000)
         self.opslag.station_toe("PA1NIEUW", [], pos, nu=1000 + 8 * 86400)
         self.assertEqual([s["call"] for s in self.opslag.stations()], ["PA1NIEUW"])
+
+
+ASCII_ART = r""" _  _   __   ____  __ _  ____  _  _  ____  __
+/ )( \ / _\ (  _ \(  ( \/ ___)/ )( \(  __)(  )
+\ /\ //    \ )   //    /\___ \\ \/ / ) _) / (_/
+(_/\_)\_/\_/(__\_)\_)__)(____/ \__/ (____)\____"""
+
+
+class TestLocator(unittest.TestCase):
+    def test_vak_en_midden(self):
+        self.assertEqual(locator.vak("JO32CD"), (52.125, 6.166667, 52.166667, 6.25))
+        lat, lon = locator.midden("jo32cd")
+        self.assertAlmostEqual(lat, 52.14583, places=4)            # Warnsveld ligt op 52,13 N 6,23 O
+        self.assertAlmostEqual(lon, 6.20833, places=4)
+        self.assertEqual(locator.vak("JO32"), (52, 6, 53, 8))
+        z, w, n, o = locator.vak("JO32CD45")
+        self.assertAlmostEqual(n - z, 0.25 / 60, places=6)
+        for fout in ("", "JZ32", "JO3", "JO32CZ", "JO32CD4", "PD4R", "12AB34"):
+            self.assertIsNone(locator.vak(fout), fout)
+
+    def test_zoek_in_baken(self):
+        for tekst, loc in (("PD4R-12 Warnsveld JO32CD 144.925 1k2", "JO32CD"), ("BPQ node, loc: jo32cd", "JO32CD"),
+                           ("Node Warnsveld QTH JO32", "JO32"), ("LOC=JO32 438.175 9k6", "JO32"),
+                           ("Locator JO32CD45", "JO32CD45")):
+            self.assertEqual(locator.zoek(tekst), loc, tekst)
+
+    def test_geen_valse_locator(self):
+        for tekst in ("PD4R-12 IC9700 FT818 PA3ABC", "AB12 is geen locator", "XJO32CDY", "JO32CD5", ASCII_ART,
+                      "PD3PAM-7>APZAXC 144.925"):
+            self.assertEqual(locator.zoek(tekst), "", tekst)
+
+    def test_zelf_invullen(self):
+        s = {}
+        self.assertEqual(locator.zet_handmatig(s, "pd4r-12", "jo32cd"), "")
+        self.assertEqual(locator.handmatig(s), {"PD4R-12": "JO32CD"})
+        self.assertTrue(locator.zet_handmatig(s, "PD4R-12", "XX99"))
+        self.assertTrue(locator.zet_handmatig(s, "a", "JO32CD"))
+        self.assertEqual(locator.zet_handmatig(s, "PD4R-12", ""), "")
+        self.assertEqual(locator.handmatig(s), {})
 
 
 class TestTegels(unittest.TestCase):

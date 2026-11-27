@@ -134,6 +134,9 @@ TNC of via geluid), of een set met APRS-berichten. Spreek een frequentie af.
 | I10 | Via ssh | Via de hotspot: `ax25chat-kaart Deventer` | Uitleg op het scherm, ssh valt weg; na een paar minuten `ax25chat-kaart --status` geeft de nieuwe kaart | ☐ |
 | I11 | Via ssh met internet | Via de thuis-wifi of kabel: `ax25chat-kaart --straal 25` | Voortgang telt op in het scherm; *Klaar* | ☐ |
 | I12 | Verder na onderbreking | Download halverwege afbreken (Ctrl+C), opnieuw starten | Gaat snel door tot waar hij was | ☐ |
+| I13 | Locator uit baken | Een node die zijn locator als gewone tekst in het baken zet, tabblad Kaart | Paars vierkantje met stippelvak; tik geeft de locator, *uit zijn baken* en de baktekst | ☐ |
+| I14 | Locator zelf invullen | Onder de kaart: PD4R-12, JO32CD, Opslaan | Vierkantje bij Warnsveld, *zelf ingevuld*; Verwijderen haalt het weg | ☐ |
+| I15 | APRS gaat voor | Een station met een locator stuurt ook een APRS-positie | Vierkantje weg, station op de APRS-positie | ☐ |
 
 ## J. Android-app
 

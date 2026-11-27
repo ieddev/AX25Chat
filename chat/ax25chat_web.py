@@ -39,6 +39,7 @@ import ax25chat_bijwerken as bijwerken
 import ax25chat_chatpagina as chatpagina
 import ax25chat_kaart as kaart
 import ax25chat_kaartpagina as kaartpagina
+import ax25chat_locator as locator
 import ax25chat_radio as radio
 
 rig = radio.rig
@@ -326,6 +327,26 @@ def frequenties():
             "cat": bool(rig.cat_actief(radio.instellingen()))}
 
 
+def stations_kaart(sinds=0):
+    """Voor de kaart: stations met een APRS-positie, stations met alleen een locator (uit hun baken of zelf
+    ingevuld) en gehoorde roepnamen zonder positie (om er een locator bij in te vullen).
+    Op de kaart gaat een echte APRS-positie altijd voor een locator."""
+    stations = CHAT.opslag.stations(sinds)
+    gehoord, zelf = CHAT.opslag.gehoord(), locator.handmatig(radio.station())
+    locs = []
+    for call, loc in zelf.items():
+        locs.append(dict(locator.info(loc), call=call, bron="handmatig", tekst="", tijd=gehoord.get(call)))
+    for r in CHAT.opslag.locators(sinds):
+        if r["call"] not in zelf and locator.info(r["locator"]):
+            locs.append(dict(locator.info(r["locator"]), call=r["call"], bron="baken", tekst=r["tekst"],
+                             tijd=max(r["tijd"], gehoord.get(r["call"]) or 0)))
+    bekend = {x["call"] for x in stations} | {x["call"] for x in locs}
+    grens = time.time() - 86400
+    zonder = sorted((c for c, t in gehoord.items() if t > grens and c not in bekend and not CHAT.is_mij(c)),
+                    key=lambda c: -gehoord[c])[:50]
+    return {"nu": time.time(), "stations": stations, "locators": locs, "zonder": zonder}
+
+
 def eigen_positie():
     """Mijn positie voor de kaart: van de GPS of de vaste positie van het baken (ook als het baken uit staat)."""
     b = baken.instellingen()
@@ -498,7 +519,7 @@ class Handler(BaseHTTPRequestHandler):
                 sinds = float(q.get("sinds", ["0"])[0])
             except ValueError:
                 sinds = 0
-            return self._json({"nu": time.time(), "stations": CHAT.opslag.stations(sinds), "mij": eigen_positie()})
+            return self._json(dict(stations_kaart(sinds), mij=eigen_positie()))
         if pad == "live":
             return self._live()
         if pad == "bbs" and BBS:
@@ -568,6 +589,14 @@ class Handler(BaseHTTPRequestHandler):
                 uit["fout"] = "Opgeslagen, maar " + "; ".join(mis)
             CHAT._meld("frequentie", uit)
             return self._json(uit)
+        if pad == "locator":                       # locator per station zelf invullen of weghalen (tabblad Kaart)
+            s = radio.station()
+            fout = locator.zet_handmatig(s, d.get("call"), d.get("locator"))
+            if fout:
+                return self._json({"fout": fout}, 400)
+            radio.schrijf(radio.STATION_FILE, s)
+            CHAT._meld("locator", {"call": str(d.get("call") or "").upper()})
+            return self._json({"ok": True, "handmatig": locator.handmatig(s)})
         if pad == "bbs" and BBS:
             return self._api_bbs(d)
         if pad in ("opnieuw", "stop"):

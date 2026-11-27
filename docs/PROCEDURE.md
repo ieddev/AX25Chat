@@ -410,6 +410,7 @@ Noodnet. Die dekt **alleen Nederland**: stations over de grens staan er wel op, 
 | Oranje rand | Via een digipeater gehoord; in de popup staat via welke |
 | Grijs | Langer dan een uur geleden gehoord |
 | Groene rand | Jij |
+| Paars vierkantje ▦ met stippelvak | Alleen de locator is bekend: het station staat ergens in dat vak (zie hieronder) |
 | 🚗 🏠 📡 🚶 🌤 ... | Het APRS-symbool van het station (auto, huis, digipeater, lopend, weer ...) |
 
 Tik op een station voor de tijd, snelheid en koers, het commentaar en de positie, en **Bericht sturen** (dan opent
@@ -422,6 +423,37 @@ Nieuwe posities komen er vanzelf bij. Een station dat langer dan een week niet g
 De kaart leest de drie gangbare APRS-posities: gewone (zoals AX25Chat en APRSdroid ze zenden), gecomprimeerde
 (trackers) en Mic-E (Kenwood, Yaesu en veel trackers). Objecten (zoals een evenement of een repeater die iemand
 anders op de kaart zet) komen er nog niet op.
+
+### Stations met alleen een locator (nodes en BBS'en)
+
+Veel nodes en BBS'en (bijv. een BPQ-node zoals PD4R-12) sturen geen APRS-positie, maar wel een baken met hun
+**Maidenhead-locator**, zoals `JO32CD`. Ook die stations komen op de kaart, met een **paars vierkantje** op het
+midden van het locatorvak en het vak zelf als stippelrechthoek. Het is namelijk geen precieze positie: het station
+staat *ergens* in dat vak.
+
+| Locator | Grootte van het vak (in Nederland) |
+|---|---|
+| `JO32` (4 tekens) | ca. 135 × 110 km |
+| `JO32CD` (6 tekens, het meest gebruikt) | ca. 6 × 5 km |
+| `JO32CD45` (8 tekens) | ca. 600 × 460 m |
+
+**Vanzelf uit het baken.** Staat de locator als gewone tekst in het baken (bijv. `PD4R-12 Warnsveld JO32CD 144.925`),
+dan pikt de Pi hem op. Een locator van 6 of 8 tekens wordt altijd herkend; een korte van 4 tekens alleen als er
+`LOC`, `LOCATOR`, `QTH` of `QRA` voor staat (anders zou bijv. *AB12* in gewone tekst ook als locator tellen).
+APRS-berichten (chat) tellen niet mee: als iemand in een gesprek een locator noemt, komt hij niet op de kaart.
+
+**Zelf invullen.** Sommige nodes zetten hun roepnaam, plaats en locator in **grote getekende letters**
+(ASCII-art, verdeeld over een paar pakketjes). Die kan de Pi niet betrouwbaar lezen: elk lettertype is anders.
+Vul de locator dan zelf in, onder de kaart bij **Locator per station**: roepnaam (de keuzelijst geeft de
+stations die je de laatste 24 uur hoorde zonder positie), locator, **Opslaan**. Het station staat er meteen op.
+Een zelf ingevulde locator gaat voor die uit het baken, en blijft staan tot je op **Verwijderen** tikt (ook als
+het station een tijd niet gehoord is: dan wordt hij grijs). Je kunt ook op het vierkantje tikken en
+**Locator wijzigen** kiezen. Tip: vraag de beheerder van de node om de locator ook als gewone tekst in het baken
+te zetten (bij BPQ in de `BTEXT` of `IDMSG`), dan gaat het voortaan vanzelf.
+
+**Een echte APRS-positie gaat altijd voor.** Hoort de Pi van hetzelfde station (zelfde roepnaam met SSID) een
+APRS-positie, dan staat het op die precieze plek en verdwijnt het vierkantje. Let op: PD4R-12 en PD4R-9 zijn voor
+de kaart twee verschillende stations.
 
 ## Android-app
 
