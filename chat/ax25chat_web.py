@@ -119,6 +119,13 @@ SEGMENTEN = {i for lijst in MENU.values() for i, _, _ in lijst}
 PAGINA_JS = """(function () {
   var nav = document.querySelector('nav'), menus = nav.querySelectorAll('details.navmenu');
   var over = document.getElementById('over');
+  // Eigen venster op de PC (pywebview): links naar buiten (e-mail, GitHub) via het systeem openen
+  document.querySelectorAll('a[data-extern]').forEach(function (a) {
+    a.addEventListener('click', function (ev) {
+      var api = window.pywebview && window.pywebview.api;
+      if (api && api.extern) { ev.preventDefault(); api.extern(a.href); }
+    });
+  });
   nav.querySelectorAll('[data-over]').forEach(function (a) {
     a.addEventListener('click', function (ev) {
       ev.preventDefault();
