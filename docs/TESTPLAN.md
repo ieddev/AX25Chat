@@ -45,6 +45,9 @@ en een tweede ontvanger op dezelfde frequentie.
 | C1c | Mode zelf kiezen | Station: Mode USB-D, opslaan | Set gaat naar USB-D en blijft daar | ☐ |
 | C5 | Mijn frequenties | Radio → Mijn frequenties: 144,775 USB-D toevoegen, bij Station kiezen, opslaan (IC-9700) | Set naar 144,775 in USB-D | ☐ |
 | C6 | 9600 baud | 438,175 FM-D 9600 toevoegen en kiezen | Direwolf herstart met MODEM 9600 (Status-log) | ☐ |
+| C7 | Voorkeuzelijst HF | IC-7300, Station: *10,1476 · USB-D · 300 baud · 30 m HF-APRS* kiezen, opslaan | Set naar 10,1476 in USB-D, Direwolf met MODEM 300; Mode-keuzelijst grijs | ☐ |
+| C8 | Voorkeuzelijst aanpassen | Radio → Mijn frequenties → Voorkeuzelijst: een regel toevoegen, Opslaan; daarna een komma weghalen en Opslaan | Nieuwe frequentie staat bij Station; met de fout komt er een melding en blijft de oude lijst | ☐ |
+| C9 | Terug naar standaard | Voorkeuzelijst → Terug naar standaard | De lijst van AX25Chat staat er weer | ☐ |
 | C4 | Zelf instellen | Station: *Zelf instellen op de set* | Pi laat de frequentie met rust | ☐ |
 
 ## D. Luistertest en testuitzending

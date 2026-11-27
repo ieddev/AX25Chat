@@ -6,7 +6,7 @@ AX25Chat is geen BBS: het is een terminal naar een BBS. Er is steeds één verbi
 - Sessie: verbinden, verbreken, tekst sturen en ontvangen. De stand (verbroken, verbinden, verbonden,
   verbreken) en elke nieuwe regel gaan live naar de pagina (server-sent event 'bbs').
 - Mijn BBS'en: een eigen lijst (roepnaam, frequentie uit de frequentielijst, naam) in station.json.
-  Mode en snelheid komen van de frequentie (Mijn frequenties), net als bij Station.
+  Mode en snelheid komen van de frequentie (Mijn frequenties of de voorkeuzelijst), net als bij Station.
 """
 
 import os
@@ -62,7 +62,7 @@ def lijst():
             uit.append({"call": call, "hz": hz, "naam": str(x.get("naam") or "")[:30]})
     for x in uit:
         x["id"] = f'{x["call"]}@{x["hz"]}'           # dezelfde roepnaam kan op meer frequenties staan (node op 2 m en 70 cm)
-        e = rig.eigen(x["hz"]) if x["hz"] else None
+        e = rig.instelling(x["hz"]) if x["hz"] else None
         x["tekst"] = (rig.eigen_tekst(dict(e, naam="")) if e else rig.mhz(x["hz"])) if x["hz"] else "huidige frequentie"
     return uit
 

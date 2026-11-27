@@ -32,8 +32,10 @@ RADIO_FILE = os.path.join(MAP, "radio_instellingen.json")
 RIGCTL = systeem.programma("rigctl")
 HOST, POORT = "127.0.0.1", int(os.environ.get("AX25CHAT_RIGCTLD_POORT", "4532"))
 
-# 2 m: 144,850 - 144,950 MHz op het 12,5 kHz-raster (afgesproken 25-11-2026). 70 cm en HF volgen later.
+# 2 m: 144,850 - 144,950 MHz op het 12,5 kHz-raster (afgesproken 25-11-2026). Staan, met HF en 70 cm, in de
+# voorkeuzelijst (voorkeuze.json, zelf aan te passen); dit is de standaard daarvan.
 FREQ_2M = list(range(144850000, 144950001, 12500))
+VOORKEUZE_FILE = os.path.join(MAP, "voorkeuze.json")
 APRS_FREQ = 144800000                     # APRS: om te luisteren en APRS-berichten (bijv. met APRSdroid)
 STANDAARD_FREQ = 144900000
 PAKKET_MODES = {"PKTFM", "FM-D", "FMD", "DATA-FM", "FM-DATA", "PKTUSB", "PKTLSB", "USB-D", "LSB-D"}
@@ -155,8 +157,125 @@ def in_band(hz):
     return any(a <= hz <= b for a, b in BANDEN)
 
 
+# ---------------------------------------------------------------------------
+# Voorkeuzelijst: bekende packetfrequenties, in voorkeuze.json zodat je ze zelf kunt aanpassen
+# ---------------------------------------------------------------------------
+
+# HF-dials (USB-D, tonen 1600/1800 Hz, signaal op dial + 1,7 kHz), nagezocht 27-11-2026:
+#  30 m 10,1476: HF-APRS, wereldwijd (G6GVI, M1GEO, SA7SKY). 20 m 14,1025: PD3PAM werkend met het station op
+#  14,103 (M1GEO noemt 14,1023 USB). 40 m 7,0476: Europa (SA7SKY). 80 m 3,6103: Duitsland (SA7SKY).
+STANDAARD_VOORKEUZE = {
+    "uitleg": ("Voorkeuzelijst van AX25Chat. Pas dit bestand gerust aan: frequenties weghalen, toevoegen of "
+               "een groep erbij. 'mhz' met komma of punt, hoogstens 4 cijfers achter de komma. 'mode': FM-D, "
+               "USB-D, LSB-D, FM of leeg (automatisch). 'baud': 300, 1200, 9600 of leeg (automatisch: HF 300, "
+               "anders 1200). Weg met dit bestand = weer de standaardlijst."),
+    "groepen": [
+        {"naam": "2 m", "frequenties": [{"mhz": "144,800", "mode": "", "baud": "1200", "naam": "APRS"}] + [
+            {"mhz": mhz(hz).replace(" MHz", ""), "mode": "", "baud": "",
+             "naam": "standaard" if hz == STANDAARD_FREQ else ""} for hz in FREQ_2M]},
+        {"naam": "70 cm", "frequenties": [{"mhz": "438,175", "mode": "FM-D", "baud": "9600", "naam": ""}]},
+        {"naam": "HF (300 baud, USB-D)", "frequenties": [
+            {"mhz": "14,1025", "mode": "USB-D", "baud": "300", "naam": "20 m packet"},
+            {"mhz": "10,1476", "mode": "USB-D", "baud": "300", "naam": "30 m HF-APRS"},
+            {"mhz": "7,0476", "mode": "USB-D", "baud": "300", "naam": "40 m packet"},
+            {"mhz": "3,6103", "mode": "USB-D", "baud": "300", "naam": "80 m packet"}]},
+    ],
+}
+_MODE_CODE = {v: k for k, v in MODE_NAAM.items()}
+VOORKEUZE_FOUT = ""          # tekst als voorkeuze.json niet te lezen is (dan geldt de standaardlijst)
+
+
+def lees_voorkeuze(data):
+    """Controleert een voorkeuzelijst (dict zoals in voorkeuze.json). Geeft (groepen, fouten);
+    groepen = [(naam, [{'hz', 'mode', 'baud', 'naam'}])]. Foute regels vallen weg en staan in fouten."""
+    fouten, groepen, gezien = [], [], set()
+    if not isinstance(data, dict) or not isinstance(data.get("groepen"), list):
+        return [], ["Het bestand moet een 'groepen'-lijst hebben."]
+    for g in data["groepen"]:
+        if not isinstance(g, dict) or not isinstance(g.get("frequenties"), list):
+            fouten.append("Een groep zonder 'frequenties'-lijst is overgeslagen.")
+            continue
+        naam = str(g.get("naam") or "Voorkeuze")[:40]
+        lijst = []
+        for x in g["frequenties"]:
+            if not isinstance(x, dict):
+                continue
+            hz = lees_mhz(str(x.get("mhz") or ""))
+            mode = str(x.get("mode") or "").strip().upper()
+            mode = _MODE_CODE.get(mode, mode)
+            baud = str(x.get("baud") or "auto").strip().lower()
+            if not hz or not in_band(hz):
+                fouten.append(f"{naam}: '{x.get('mhz')}' is geen frequentie in een amateurband.")
+            elif mode and mode not in MODE_NAAM:
+                fouten.append(f"{naam}: mode '{x.get('mode')}' bij {mhz(hz)} ken ik niet (FM-D, USB-D, LSB-D, FM of leeg).")
+            elif baud not in dict(SNELHEDEN):
+                fouten.append(f"{naam}: baud '{x.get('baud')}' bij {mhz(hz)} kan niet (300, 1200, 9600 of leeg).")
+            elif hz in gezien:
+                fouten.append(f"{mhz(hz)} staat twee keer in de lijst; de tweede is overgeslagen.")
+            else:
+                gezien.add(hz)
+                lijst.append({"hz": hz, "mode": mode, "baud": baud, "naam": str(x.get("naam") or "")[:30]})
+        if lijst:
+            groepen.append((naam, lijst))
+    return groepen, fouten
+
+
+def voorkeuze_groepen():
+    """De voorkeuzelijst uit voorkeuze.json. Bestaat het bestand nog niet, dan wordt de standaard daar neergezet
+    (zodat je hem zelf kunt aanpassen). Is het stuk, dan geldt de standaard en staat de fout in VOORKEUZE_FOUT."""
+    global VOORKEUZE_FOUT
+    if not os.path.exists(VOORKEUZE_FILE):
+        schrijf_voorkeuze(STANDAARD_VOORKEUZE)
+    try:
+        with open(VOORKEUZE_FILE, encoding="utf-8") as f:
+            data = json.load(f)
+    except OSError:
+        data = STANDAARD_VOORKEUZE
+    except ValueError as fout:
+        VOORKEUZE_FOUT = f"voorkeuze.json is geen geldige JSON ({fout}); de standaardlijst wordt gebruikt."
+        return lees_voorkeuze(STANDAARD_VOORKEUZE)[0]
+    groepen, fouten = lees_voorkeuze(data)
+    VOORKEUZE_FOUT = " ".join(fouten)
+    return groepen
+
+
+def schrijf_voorkeuze(data):
+    try:
+        tmp = VOORKEUZE_FILE + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            f.write(voorkeuze_tekst(data))
+        os.replace(tmp, VOORKEUZE_FILE)
+    except OSError:
+        pass
+
+
+def voorkeuze_tekst(data):
+    """JSON met één frequentie per regel, zodat het bestand met een teksteditor goed te lezen is."""
+    d = lambda x: json.dumps(x, ensure_ascii=False)
+    if not (isinstance(data, dict) and isinstance(data.get("groepen"), list)
+            and all(isinstance(g, dict) and isinstance(g.get("frequenties"), list) for g in data["groepen"])):
+        return json.dumps(data, ensure_ascii=False, indent=2) + "\n"
+    rest = [f'  {d(k)}: {d(v)},' for k, v in data.items() if k != "groepen"]
+    groepen = []
+    for g in data["groepen"]:
+        extra = "".join(f' {d(k)}: {d(v)},' for k, v in g.items() if k not in ("naam", "frequenties"))
+        regels = ",\n".join(f"      {d(x)}" for x in g["frequenties"])
+        groepen.append(f'    {{"naam": {d(g.get("naam", ""))},{extra} "frequenties": [\n{regels}\n    ]}}')
+    return "{\n" + "\n".join(rest) + ('\n' if rest else '') + '  "groepen": [\n' + ",\n".join(groepen) + "\n  ]\n}\n"
+
+
+def voorkeuzes():
+    return [x for _, lijst in voorkeuze_groepen() for x in lijst]
+
+
+def instelling(hz):
+    """Mode, snelheid en naam bij deze frequentie: uit Mijn frequenties, anders uit de voorkeuzelijst, of None."""
+    return eigen(hz) or next((x for x in voorkeuzes() if x["hz"] == hz), None)
+
+
 def frequentie_keuzes():
-    return [APRS_FREQ] + list(FREQ_2M) + [x["hz"] for x in eigen_frequenties()]
+    lijst = [APRS_FREQ] + [x["hz"] for x in voorkeuzes()] + [x["hz"] for x in eigen_frequenties()]
+    return list(dict.fromkeys(lijst))
 
 
 def eigen_tekst(x):
@@ -177,13 +296,17 @@ def html_frequentie_keuze(huidig, naam="frequentie"):
               f'(geen CAT, of een andere band)</option>')
     mijn = eigen_frequenties()
     eigen_hz = {x["hz"] for x in mijn}
-    opties += '<optgroup label="2 m">'
-    for k in [APRS_FREQ] + list(FREQ_2M):
-        if k in eigen_hz:                          # staat bij Mijn frequenties, met mode, snelheid en naam
+    groepen = voorkeuze_groepen()
+    if not any(x["hz"] == APRS_FREQ for _, lijst in groepen for x in lijst):     # het baken heeft 144,800 nodig
+        groepen = [("2 m", [{"hz": APRS_FREQ, "mode": "", "baud": "1200", "naam": "APRS"}])] + groepen
+    for groep, lijst in groepen:
+        lijst = [x for x in lijst if x["hz"] not in eigen_hz]   # staat bij Mijn frequenties: die gaat voor
+        if not lijst:
             continue
-        opties += (f'<option value="{k}"{" selected" if k == huidig else ""}>'
-                   f'{_html.escape(mhz(k))}{" (standaard)" if k == STANDAARD_FREQ else " (APRS)" if k == APRS_FREQ else ""}</option>')
-    opties += '</optgroup>'
+        opties += f'<optgroup label="{_html.escape(groep)}">' + "".join(
+            f'<option value="{x["hz"]}" data-mode="{_html.escape(MODE_NAAM.get(x["mode"], ""))}"'
+            f'{" selected" if x["hz"] == huidig else ""}>{_html.escape(eigen_tekst(x))}</option>'
+            for x in lijst) + '</optgroup>'
     if mijn:
         opties += '<optgroup label="Mijn frequenties">' + "".join(
             f'<option value="{x["hz"]}" data-mode="{_html.escape(MODE_NAAM.get(x["mode"], ""))}"'
@@ -202,12 +325,12 @@ def is_hf(hz):
 
 
 def doelmode(r):
-    """De mode waarin de set moet staan: die van de eigen frequentie (Mijn frequenties), anders de keuze bij
+    """De mode waarin de set moet staan: die van de frequentie (Mijn frequenties of voorkeuzelijst), anders de keuze bij
     Station, anders automatisch op basis van de frequentie."""
     if TIJDELIJK:
         return "PKTFM"
     doel = doelfrequentie()
-    x = eigen(doel) if doel else None
+    x = instelling(doel) if doel else None
     if x and x["mode"]:
         return x["mode"]
     d = _lees(STATION_FILE)

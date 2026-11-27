@@ -119,7 +119,7 @@ def modem(r, doel=None):
     if str(r.get("modem")) in ("1200", "300", "9600"):
         return int(r["modem"])
     doel = rig.doelfrequentie() if doel is None else doel
-    x = rig.eigen(doel) if doel else None
+    x = rig.instelling(doel) if doel else None
     if x and x["baud"] != "auto":
         return int(x["baud"])
     return 300 if rig.is_hf(doel) or int(r.get("cat_model") or 0) in rig.ALLEEN_HF else 1200
@@ -677,6 +677,8 @@ MAX_EIGEN = 20
 
 def verwerk_eigen(f):
     """Mijn frequenties: toevoegen of weghalen. Geeft (fouten, melding)."""
+    if f.get("actie") in ("voorkeuze", "voorkeuze_standaard"):
+        return verwerk_voorkeuze(f)
     s = station()
     lijst = rig.eigen_frequenties()
     if f.get("actie") == "weg":
@@ -706,6 +708,47 @@ def verwerk_eigen(f):
     return [], f"{rig.mhz(hz)} toegevoegd. Kies hem bij Station en sla op."
 
 
+def verwerk_voorkeuze(f):
+    """Voorkeuzelijst (voorkeuze.json) opslaan vanuit de webpagina, of terug naar de standaard."""
+    if f.get("actie") == "voorkeuze_standaard":
+        rig.schrijf_voorkeuze(rig.STANDAARD_VOORKEUZE)
+        return [], "De standaard-voorkeuzelijst staat er weer."
+    try:
+        data = json.loads(f.get("tekst") or "")
+    except ValueError as fout:
+        return [f"Niet opgeslagen: geen geldige JSON ({fout}). Let op komma's, aanhalingstekens en haakjes."], None
+    groepen, fouten = rig.lees_voorkeuze(data)
+    if not groepen:
+        return ["Niet opgeslagen: er staat geen enkele goede frequentie in."] + fouten, None
+    rig.schrijf_voorkeuze(data)
+    if fouten:
+        return ["Opgeslagen, maar deze regels worden overgeslagen: " + " ".join(fouten)], None
+    return [], f"Voorkeuzelijst opgeslagen ({sum(len(x) for _, x in groepen)} frequenties)."
+
+
+def html_voorkeuze(verborgen):
+    groepen = rig.voorkeuze_groepen()
+    try:
+        with open(rig.VOORKEUZE_FILE, encoding="utf-8") as f:
+            tekst = f.read()
+    except OSError:
+        tekst = json.dumps(rig.STANDAARD_VOORKEUZE, ensure_ascii=False, indent=2)
+    fout = f'<p class="melding fout">{e(rig.VOORKEUZE_FOUT)}</p>' if rig.VOORKEUZE_FOUT else ""
+    regels = "".join(f"<li>{e(g)}: {e(', '.join(rig.eigen_tekst(dict(x, naam='')).replace(' MHz', '') for x in lijst))}</li>"
+                     for g, lijst in groepen)
+    return f"""<details><summary>Voorkeuzelijst (bekende packetfrequenties)</summary>{fout}
+<p class="uitleg">Deze frequenties staan altijd in de lijst bij Station, met hun mode en snelheid. Ze komen uit het bestand
+<code>{e(rig.VOORKEUZE_FILE)}</code>; dat mag je hier of met een teksteditor aanpassen. Op HF is de dial een richtwaarde:
+stem de eerste keer af tot de tonen rond 1600/1800 Hz staan, en zet de goede waarde bij Mijn frequenties.</p>
+<ul class="uitleg">{regels}</ul>
+<form method="post" action="/frequentie">{verborgen}
+<textarea name="tekst" wrap="off" rows="{min(30, tekst.count(chr(10)) + 2)}" spellcheck="false" style="width:100%;font-family:monospace;font-size:13px">{e(tekst)}</textarea>
+<div class="balk"><button type="submit" name="actie" value="voorkeuze">Opslaan</button>
+<button class="licht" type="submit" name="actie" value="voorkeuze_standaard"
+ onclick="return confirm('Je eigen wijzigingen in de voorkeuzelijst gaan verloren. Doorgaan?')">Terug naar standaard</button></div>
+</form></details>"""
+
+
 def html_eigen(verborgen):
     lijst = rig.eigen_frequenties()
     rijen = "".join(
@@ -726,7 +769,7 @@ in de buurt, elk met de mode en snelheid die daar gebruikt worden. Ze komen in d
 <div><label>Naam <small>optioneel</small></label><input type="text" name="naam" maxlength="30" placeholder="bijv. PD4R BBS"></div></div>
 <div class="rij"><div><label>Mode</label><select name="mode">{_opties(rig.MODES, '')}</select></div>
 <div><label>Snelheid</label><select name="baud">{_opties(rig.SNELHEDEN, 'auto')}</select></div></div>
-<div class="balk"><button type="submit">Toevoegen</button></div></form></details></section>"""
+<div class="balk"><button type="submit">Toevoegen</button></div></form></details>{html_voorkeuze(verborgen)}</section>"""
 
 
 def html_station(verborgen, s=None):
@@ -737,8 +780,8 @@ Met CAT zet AX25Chat de set zelf op deze frequentie; zonder CAT zet je de set (h
 <form method="post" action="/station">{verborgen}
 <div class="rij"><div><label>Roepnaam</label><input type="text" name="roepnaam" value="{e(rn)}" placeholder="PD3PAM-7"
 autocapitalize="characters" required></div>
-<div><label>Frequentie <small>2 m, of uit Mijn frequenties</small></label>{rig.html_frequentie_keuze(s.get('frequentie'))}</div></div>
-<label>Mode <small>alleen met CAT; bij Mijn frequenties geldt hun eigen mode</small></label>
+<div><label>Frequentie <small>uit de voorkeuzelijst of Mijn frequenties</small></label>{rig.html_frequentie_keuze(s.get('frequentie'))}</div></div>
+<label>Mode <small>alleen met CAT; heeft de frequentie een eigen mode, dan geldt die</small></label>
 <select name="mode" id="st_mode">{_opties(rig.MODES, s.get('mode') or '')}</select>
 <p class="uitleg" id="st_mode_uitleg" style="margin:4px 0 0"></p>
 <script>
@@ -748,7 +791,7 @@ autocapitalize="characters" required></div>
   function kijk() {{
     var o = f.options[f.selectedIndex], v = o && o.getAttribute('data-mode');
     m.disabled = !!v;
-    u.textContent = v ? 'Mode komt van Mijn frequenties: ' + v + '.' : '';
+    u.textContent = v ? 'Deze frequentie heeft een eigen mode: ' + v + '.' : '';
   }}
   f.addEventListener('change', kijk); kijk();
 }})();
