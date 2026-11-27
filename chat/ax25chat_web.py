@@ -77,9 +77,66 @@ th{color:var(--zacht);font-weight:600;font-size:13px}
 .mono{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;word-break:break-all}
 pre{background:var(--bg);border:1px solid var(--lijn);border-radius:8px;padding:10px;overflow:auto;max-height:420px;font-size:12.5px;white-space:pre-wrap}
 details summary{cursor:pointer;color:var(--blauw);font-weight:600;margin:8px 0}
+html{scroll-padding-top:72px}
+nav details.menu{position:relative}
+nav summary{list-style:none;margin:0;padding:8px 12px;border-radius:8px;color:var(--tekst);font-weight:500;user-select:none}
+nav summary::-webkit-details-marker{display:none}
+nav summary::after{content:"";display:inline-block;margin-left:7px;border:5px solid transparent;border-top-color:currentColor;
+border-bottom:0;vertical-align:2px}
+nav summary.actief{background:var(--blauw-z);color:var(--blauw)}nav details[open]>summary{background:var(--lijn)}
+nav .lijst{position:absolute;top:calc(100% + 6px);left:0;min-width:240px;background:var(--kaart);border:1px solid var(--lijn);
+border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.2);padding:6px;z-index:20}
+nav .lijst a{display:block;padding:10px 12px;font-weight:600}nav .lijst a.sub{padding-left:30px;font-weight:400}
+nav .lijst a:hover,nav .lijst a:focus{background:var(--blauw-z);color:var(--blauw)}
+@media(max-width:560px){nav{padding:8px}nav a,nav summary{padding:8px 10px}nav details.menu{position:static}
+nav .lijst{left:8px;right:8px;top:100%;min-width:0}}
+.laden p.uitleg{font-style:italic}
 """
 
 PAGINAS = [("chat", "Chat"), ("bbs", "BBS"), ("kaart", "Kaart"), ("radio", "Radio"), ("status", "Status")]
+# Dropdownmenu's in de balk: (id van het segment, naam, ingesprongen onder Set)
+MENU = {"radio": [("station", "Station", 0), ("frequenties", "Mijn frequenties", 0), ("baken", "APRS-baken", 0),
+                  ("kaarten", "Offline kaart", 0), ("set", "Set", 0), ("zoek", "Zoek mijn set", 1), ("sets", "Mijn sets", 1),
+                  ("luister", "Luistertest", 1), ("test", "Testuitzending", 1), ("handmatig", "Handmatig instellen", 1)],
+        "status": [("diensten", "Diensten", 0), ("hotspot", "Wifi-hotspot", 0), ("bijwerken", "Bijwerken", 0),
+                   ("log", "Log van Direwolf", 0), ("pi", "Raspberry Pi", 0)]}
+SEGMENTEN = {i for lijst in MENU.values() for i, _, _ in lijst}
+
+# Voor elke pagina: menu's open/dicht, melding naar het segment waar je op Opslaan tikte, trage delen later laden
+PAGINA_JS = """(function () {
+  var nav = document.querySelector('nav'), menus = nav.querySelectorAll('details.menu');
+  function ruimte() { document.documentElement.style.scrollPaddingTop = (nav.offsetHeight + 8) + 'px'; }
+  ruimte(); addEventListener('resize', ruimte);
+  function sluit(behalve) { menus.forEach(function (d) { if (d !== behalve) d.open = false; }); }
+  menus.forEach(function (d) { d.addEventListener('toggle', function () { if (d.open) sluit(d); }); });
+  document.addEventListener('click', function (ev) { if (!ev.target.closest('nav details.menu')) sluit(); });
+  document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') sluit(); });
+  function open(id) { var el = id && document.getElementById(id); if (el && el.tagName === 'DETAILS') el.open = true; return el; }
+  nav.querySelectorAll('.lijst a').forEach(function (a) {
+    a.addEventListener('click', function () { sluit(); if (a.pathname === location.pathname) open(a.hash.slice(1)); });
+  });
+  var bij = document.body.getAttribute('data-bij'), doel = open(bij || location.hash.slice(1)), m = document.getElementById('meld');
+  if (bij && doel) {
+    if (m && m.children.length) {
+      var h = doel.querySelector('h2');
+      if (h) h.after(m); else (doel.querySelector('section') || doel).prepend(m);
+    }
+    doel.scrollIntoView();
+    if (history.replaceState) history.replaceState(null, '', location.pathname + '#' + bij);
+  }
+  var begin = Date.now();
+  document.querySelectorAll('[data-deel]').forEach(function (el) {
+    fetch('/deel/' + el.getAttribute('data-deel'), {credentials: 'same-origin'})
+      .then(function (r) { if (!r.ok) throw r.status; return r.text(); })
+      .then(function (t) {
+        var d = document.getElementById(location.hash.slice(1));
+        var na = d && (el.compareDocumentPosition(d) & 4), y = d && d.getBoundingClientRect().top;
+        el.innerHTML = t; el.style.minHeight = '';
+        if (na && Date.now() - begin < 5000) scrollBy(0, d.getBoundingClientRect().top - y);   // segment blijft staan
+      })
+      .catch(function () { el.innerHTML = "<p class='uitleg'>Laden lukte niet. Ververs de pagina.</p>"; });
+  });
+})();"""
 STATISCH = {"leaflet/leaflet.js": "application/javascript; charset=utf-8", "leaflet/leaflet.css": "text/css; charset=utf-8"}
 
 
@@ -98,6 +155,34 @@ def wachtwoord_ok(gebruiker, ww):
         return hmac.compare_digest(poging, verwacht) and gebruiker == data.get("gebruiker", "beheer")
     except Exception:
         return False
+
+
+# Het wachtwoord controleren (200.000 rondes PBKDF2) kost op een Pi Zero bijna een seconde, en de browser stuurt het
+# bij elke pagina en elk formulier opnieuw mee. Een goedgekeurde inlog onthouden we daarom 12 uur, alleen in het
+# geheugen en alleen als hash. Wordt het wachtwoord gewijzigd, dan vervalt alles.
+INLOG_DUUR = 12 * 3600
+_INLOGS = {}
+
+
+def _ww_stempel():
+    try:
+        return os.path.getmtime(WW_FILE)
+    except OSError:
+        return None
+
+
+def inlog_bekend(kop):
+    h = hashlib.sha256(kop.encode()).hexdigest()
+    x = _INLOGS.get(h)
+    return bool(x and x[0] > time.time() and x[1] == _ww_stempel())
+
+
+def onthoud_inlog(kop):
+    nu = time.time()
+    for h in [h for h, x in _INLOGS.items() if x[0] < nu]:
+        _INLOGS.pop(h, None)
+    if len(_INLOGS) < 50:
+        _INLOGS[hashlib.sha256(kop.encode()).hexdigest()] = (nu + INLOG_DUUR, _ww_stempel())
 
 
 def stel_wachtwoord_in():
@@ -126,15 +211,29 @@ def versie():
         return ""
 
 
-def pagina(actief, inhoud, melding=""):
+def html_nav(actief):
+    uit = ""
+    for p, t in PAGINAS:
+        kl = "actief" if p == actief else ""
+        if p in MENU:
+            items = "".join(f'<a href="/{p}#{i}"{" class=sub" if sub else ""}>{e(n)}</a>' for i, n, sub in MENU[p])
+            uit += f'<details class="menu"><summary class="{kl}">{t}</summary><div class="lijst">{items}</div></details>'
+        else:
+            uit += f'<a href="/{"" if p == "chat" else p}" class="{kl}">{t}</a>'
+    return uit
+
+
+def pagina(actief, inhoud, melding="", bij=""):
+    """bij = id van het segment (bijv. 'baken'): de melding komt daar te staan en de pagina springt erheen."""
     s = radio.station()
-    nav = "".join(f'<a href="/{"" if p == "chat" else p}" class="{"actief" if p == actief else ""}">{t}</a>' for p, t in PAGINAS)
+    nav = html_nav(actief)
+    bij = bij if bij in SEGMENTEN else ""
     rn = "" if str(s.get("roepnaam")).startswith("N0CALL") else s.get("roepnaam")
     return f"""<!doctype html><html lang="nl"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>AX25Chat {e(rn or '')}</title>
-<style>{CSS}</style></head><body data-mij="{e(rn or '')}">
+<style>{CSS}</style></head><body data-mij="{e(rn or '')}"{f' data-bij="{bij}"' if bij else ''}>
 <header><b>AX25Chat</b><span>{e(rn or 'roepnaam nog niet ingesteld')}{' · versie ' + e(versie()) if versie() else ''}</span></header>
-<nav>{nav}</nav><main>{melding}{inhoud}</main></body></html>"""
+<nav>{nav}</nav><main><div id="meld">{melding}</div>{inhoud}</main><script>{PAGINA_JS}</script></body></html>"""
 
 
 def meldingen(ok=None, fouten=(), let=()):
@@ -176,17 +275,28 @@ def html_status():
                f"<div><label>Wachtwoord</label><div class='mono'>{e(h['wachtwoord'] or '-')}</div></div></div>"
                f"<p class='uitleg' style='margin-top:10px'>Adres: http://10.42.0.1 · Android meldt \"geen internet\": "
                f"kies <i>Verbonden blijven</i>.</p>")
-    log = radio._uit([radio.JOURNALCTL, "-u", radio.DW, "-n", "40", "--no-pager", "-o", "cat"], timeout=10).strip()
-    log = log.replace("<0x0d><0x0a>", "\n").replace("<0x0d>", "\n").replace("<0x0a>", "\n")   # regeleinden in banners
-    return f"""<section><h2>Diensten</h2><table>{rijen}{radio.html_set_kort()}</table></section>
-<section><h2>Wifi-hotspot</h2>{hotspot}</section>
+    laden = radio.LADEN.format
+    return f"""<section id="diensten"><h2>Diensten</h2><table>{rijen}</table>
+{laden(deel="setkort", tekst="De set wordt uitgelezen…", hoog=40)}</section>
+<section id="hotspot"><h2>Wifi-hotspot</h2>{hotspot}</section>
 {bijwerken.html_sectie(verborgen())}
-<section><h2>Log van Direwolf</h2><pre>{e(log or '(geen logregels)')}</pre></section>
-<section><h2>Raspberry Pi</h2><p class="uitleg">Haal nooit zomaar de stroom eraf: dan kan de SD-kaart beschadigen.
+<section id="log"><h2>Log van Direwolf</h2>{laden(deel="log", tekst="Het log wordt opgehaald…", hoog=200)}</section>
+<section id="pi"><h2>Raspberry Pi</h2><p class="uitleg">Haal nooit zomaar de stroom eraf: dan kan de SD-kaart beschadigen.
 Schakel de Pi hier uit en wacht tot het groene lampje niet meer knippert (± 20 seconden).</p>
 <form method="post" action="/pi" class="balk" style="margin-top:0">{verborgen()}
 <button type="submit" name="actie" value="uit" class="gevaar" onclick="return confirm('Pi uitschakelen?')">Pi uitschakelen</button>
 <button type="submit" name="actie" value="herstart" class="licht" onclick="return confirm('Pi herstarten? Duurt ongeveer 2 minuten.')">Pi herstarten</button></form></section>"""
+
+
+def html_log():
+    log = radio._uit([radio.JOURNALCTL, "-u", radio.DW, "-n", "40", "--no-pager", "-o", "cat"], timeout=10).strip()
+    log = log.replace("<0x0d><0x0a>", "\n").replace("<0x0d>", "\n").replace("<0x0a>", "\n")   # regeleinden in banners
+    return f"<pre>{e(log or '(geen logregels)')}</pre>"
+
+
+# Trage delen van Radio en Status: de pagina haalt ze los op (GET /deel/<naam>), zodat hij zelf meteen verschijnt
+DELEN = {"set": lambda: radio.html_set_live(), "gehoord": radio.html_gehoord, "log": html_log,
+         "setkort": lambda: "<table>" + radio.html_set_kort() + "</table>"}
 
 
 def station_opslaan(f):
@@ -242,9 +352,9 @@ def pi_actie(actie):
                        capture_output=True, timeout=30)
     threading.Thread(target=later, daemon=True).start()
     if actie == "uit":
-        return pagina("status", meldingen(ok="De Pi wordt uitgeschakeld. Wacht tot het groene lampje niet meer knippert "
+        return pagina("status", bij="pi", melding=meldingen(ok="De Pi wordt uitgeschakeld. Wacht tot het groene lampje niet meer knippert "
                                              "(ongeveer 20 seconden); daarna mag de stroom eraf."))
-    return pagina("status", meldingen(ok="De Pi wordt herstart. Over ongeveer 2 minuten is alles weer actief; verbind "
+    return pagina("status", bij="pi", melding=meldingen(ok="De Pi wordt herstart. Over ongeveer 2 minuten is alles weer actief; verbind "
                                          "dan opnieuw met de hotspot."))
 
 
@@ -261,9 +371,12 @@ class Handler(BaseHTTPRequestHandler):
     def _auth(self):
         kop = self.headers.get("Authorization", "")
         if kop.startswith("Basic "):
+            if inlog_bekend(kop):
+                return True
             try:
                 g, w = base64.b64decode(kop[6:]).decode().split(":", 1)
                 if wachtwoord_ok(g, w):
+                    onthoud_inlog(kop)
                     return True
             except Exception:
                 pass
@@ -298,15 +411,18 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
-    def _terug(self, waar, melding=""):
+    def _terug(self, waar, melding="", bij=""):
+        """Terug naar de pagina; met bij komt de melding bij dat segment te staan."""
+        q = "&".join(x for x in (("m=" + quote(melding)) if melding else "", ("bij=" + bij) if bij else "") if x)
         self.send_response(303)
-        self.send_header("Location", waar + (("?m=" + quote(melding)) if melding else ""))
+        self.send_header("Location", waar + ("?" + q if q else ""))
         self.end_headers()
 
     def do_GET(self):
         url = urlparse(self.path)
         pad = url.path.strip("/")
         m = parse_qs(url.query).get("m", [""])[0]
+        bij = parse_qs(url.query).get("bij", [""])[0]
         meld = ""
         if m.startswith("fout:"):
             meld = meldingen(fouten=[m[5:]])
@@ -333,17 +449,25 @@ class Handler(BaseHTTPRequestHandler):
             return self._stuur(json.dumps({"roepnaam": s.get("roepnaam"), "frequentie": rig.doelfrequentie(),
                                            "set": r.get("set_naam"), "direwolf": radio.dienst_status(radio.DW)}),
                                soort="application/json; charset=utf-8")
-        if pad not in ("radio", "status", "bijwerken", "bijwerken.json"):
+        if pad not in ("radio", "status", "bijwerken", "bijwerken.json") and not pad.startswith("deel/"):
             return self._stuur("Niet gevonden", 404, "text/plain; charset=utf-8")
         if not self._auth():
             return
+        if pad.startswith("deel/"):
+            maak = DELEN.get(pad[5:])
+            if not maak:
+                return self._stuur("Niet gevonden", 404, "text/plain; charset=utf-8")
+            try:
+                return self._stuur(maak())
+            except Exception as fout:                  # bijv. journalctl of de set antwoordt niet op tijd
+                return self._stuur(f"<div class='melding fout'>Ophalen lukte niet: {e(str(fout))}</div>")
         if pad == "bijwerken":
             return self._stuur(pagina("status", bijwerken.html_voortgang(), meld))
         if pad == "bijwerken.json":
             return self._stuur(bijwerken.als_json(), soort="application/json; charset=utf-8")
         if pad == "radio":
-            return self._stuur(pagina("radio", radio.html_radio(verborgen()), meld))
-        return self._stuur(pagina("status", html_status(), meld))
+            return self._stuur(pagina("radio", radio.html_radio(verborgen()), meld, bij))
+        return self._stuur(pagina("status", html_status(), meld, bij))
 
     def _formulier(self):
         lengte = min(int(self.headers.get("Content-Length", 0) or 0), 100000)
@@ -503,35 +627,35 @@ class Handler(BaseHTTPRequestHandler):
         if pad == "station":
             fouten, mis = station_opslaan(f)
             if fouten:
-                return self._stuur(pagina("radio", radio.html_radio(verborgen()), meldingen(fouten=fouten)))
-            return self._terug("/radio", ("fout:" + "; ".join(mis)) if mis else "ok:Station opgeslagen.")
+                return self._stuur(pagina("radio", radio.html_radio(verborgen()), meldingen(fouten=fouten), "station"))
+            return self._terug("/radio", ("fout:" + "; ".join(mis)) if mis else "ok:Station opgeslagen.", "station")
         if pad == "baken":
             if f.get("actie") == "zoek":
                 gevonden = baken.zoek_gps()
                 if not gevonden:
-                    return self._terug("/radio", "fout:Geen GPS gevonden. Zit hij in de USB, en is het een GPS met NMEA (bijv. u-blox)?")
+                    return self._terug("/radio", "fout:Geen GPS gevonden. Zit hij in de USB, en is het een GPS met NMEA (bijv. u-blox)?", "baken")
                 b = baken.instellingen()
                 b.update(gps_poort=gevonden, bron="gps")
                 s["baken"] = b
                 radio.schrijf(radio.STATION_FILE, s)
-                return self._terug("/radio", "ok:GPS gevonden: " + radio.usb.korte_naam(gevonden) + ". Zet het baken aan en sla op.")
+                return self._terug("/radio", "ok:GPS gevonden: " + radio.usb.korte_naam(gevonden) + ". Zet het baken aan en sla op.", "baken")
             fouten, melding = baken.verwerk(f)
             if fouten:
-                return self._terug("/radio", "fout:" + "; ".join(fouten))
+                return self._terug("/radio", "fout:" + "; ".join(fouten), "baken")
             if f.get("actie") == "nu" and BAKEN:
                 info = BAKEN.nu()
                 melding = ("Baken verzonden: " + info) if info else BAKEN.stand
-                return self._terug("/radio", ("ok:" if info else "fout:") + melding)
-            return self._terug("/radio", "ok:" + melding)
+                return self._terug("/radio", ("ok:" if info else "fout:") + melding, "baken")
+            return self._terug("/radio", "ok:" + melding, "baken")
         if pad == "kaart":
             fout = kaart.start_download(f.get("plaats"), f.get("straal"), f.get("zoom"), _vaste_positie())
-            return self._terug("/radio", ("fout:" + fout) if fout else "ok:Download gestart. Dit duurt een paar minuten.")
+            return self._terug("/radio", ("fout:" + fout) if fout else "ok:Download gestart. Dit duurt een paar minuten.", "kaarten")
         if pad == "frequentie":
             fouten, melding = radio.verwerk_eigen(f)
-            return self._terug("/radio", ("fout:" + "; ".join(fouten)) if fouten else "ok:" + melding)
+            return self._terug("/radio", ("fout:" + "; ".join(fouten)) if fouten else "ok:" + melding, "frequenties")
         if pad == "set_zoek":
             if not ZOEK_LOCK.acquire(blocking=False):
-                return self._terug("/radio", "fout:Er wordt al gezocht; wacht even.")
+                return self._terug("/radio", "fout:Er wordt al gezocht; wacht even.", "zoek")
             try:
                 vs, meld = radio.zoek_mijn_set(s["roepnaam"])
             finally:
@@ -540,49 +664,50 @@ class Handler(BaseHTTPRequestHandler):
         if pad == "set_kies":
             fouten, let = radio.kies_voorstel(f)
             if fouten:
-                return self._stuur(pagina("radio", radio.html_radio(verborgen()), meldingen(fouten=fouten, let=let)))
-            return self._terug("/radio", "ok:Set ingesteld en bewaard. Doe nu de luistertest en een testuitzending.")
+                return self._stuur(pagina("radio", radio.html_radio(verborgen()), meldingen(fouten=fouten, let=let), "zoek"))
+            return self._terug("/radio", "ok:Set ingesteld en bewaard. Doe nu de luistertest en een testuitzending.", "set")
         if pad == "profiel":
             actie, naam = f.get("actie"), f.get("naam", "")
             if actie == "gebruik":
                 fouten, let = radio.gebruik_profiel(naam)
                 return self._stuur(pagina("radio", radio.html_radio(verborgen()),
-                                          meldingen(ok=None if fouten else f"{naam} in gebruik.", fouten=fouten, let=let)))
+                                          meldingen(ok=None if fouten else f"{naam} in gebruik.", fouten=fouten, let=let), "sets"))
             if actie == "weg":
                 radio.verwijder_profiel(naam)
-                return self._terug("/radio", "ok:Profiel verwijderd.")
+                return self._terug("/radio", "ok:Profiel verwijderd.", "sets")
             fout = radio.bewaar_profiel(naam, radio.instellingen())
             if not fout:
                 r = radio.instellingen()
                 r["set_naam"] = naam.strip()[:40]
                 radio.schrijf(radio.RADIO_FILE, r)
-            return self._terug("/radio", ("fout:" + fout) if fout else "ok:Profiel bewaard.")
+            return self._terug("/radio", ("fout:" + fout) if fout else "ok:Profiel bewaard.", "sets")
         if pad == "radio":
             fouten, r = radio.verwerk_handmatig(f)
             if fouten:
-                return self._stuur(pagina("radio", radio.html_radio(verborgen()), meldingen(fouten=fouten)))
+                return self._stuur(pagina("radio", radio.html_radio(verborgen()), meldingen(fouten=fouten), "handmatig"))
             mis = radio.pas_toe(r)
-            return self._terug("/radio", ("fout:Opgeslagen, maar " + "; ".join(mis)) if mis else "ok:Opgeslagen; Direwolf is herstart.")
+            return self._terug("/radio", ("fout:Opgeslagen, maar " + "; ".join(mis)) if mis else "ok:Opgeslagen; Direwolf is herstart.",
+                               "handmatig")
         if pad == "luistertest":
             uitslag = radio.luistertest()
-            return self._stuur(pagina("radio", radio.html_radio(verborgen(), luister=uitslag)))
+            return self._stuur(pagina("radio", radio.html_radio(verborgen(), luister=uitslag), bij="luister"))
         if pad == "radiotest":
-            return self._stuur(pagina("radio", radio.html_radio(verborgen(), radio.verwerk_test(s["roepnaam"], f))))
+            return self._stuur(pagina("radio", radio.html_radio(verborgen(), test=radio.verwerk_test(s["roepnaam"], f)), bij="test"))
         if pad == "set_nu":
             meld = rig.zet_set(radio.instellingen())
             rig.log("Set ingesteld via de webpagina" + (": " + "; ".join(meld) if meld else ""))
-            return self._terug("/radio", ("fout:" + "; ".join(meld)) if meld else "ok:Set ingesteld.")
+            return self._terug("/radio", ("fout:" + "; ".join(meld)) if meld else "ok:Set ingesteld.", "set")
         if pad == "herstart":
             ok, fout = radio.dienst("restart", f.get("dienst", ""))
-            return self._terug("/status", "ok:Dienst herstart." if ok else "fout:Herstart lukte niet: " + fout)
+            return self._terug("/status", "ok:Dienst herstart." if ok else "fout:Herstart lukte niet: " + fout, "diensten")
         if pad == "bijwerken":
             uit = bijwerken.verwerk(f, verborgen())
             if uit[0] == "naar":
-                return self._terug(uit[1], uit[2])
+                return self._terug(uit[1], uit[2], "bijwerken" if uit[1] == "/status" else "")
             return self._stuur(pagina("status", uit[1]))
         if pad == "pi":
             uit = pi_actie(f.get("actie", ""))
-            return self._stuur(uit) if uit else self._terug("/status", "fout:Ongeldige opdracht.")
+            return self._stuur(uit) if uit else self._terug("/status", "fout:Ongeldige opdracht.", "pi")
         self._stuur("Niet gevonden", 404, "text/plain; charset=utf-8")
 
 

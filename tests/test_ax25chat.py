@@ -274,6 +274,29 @@ class TestRadio(unittest.TestCase):
             self.assertIn(woord, tekst)
 
 
+class TestWebpagina(unittest.TestCase):
+    def test_menu_en_segmenten(self):
+        import ax25chat_web as web
+        tekst = radio.html_radio("<input type=hidden name=csrf value=x>")
+        for i, _, _ in web.MENU["radio"]:
+            if i not in ("baken", "kaarten"):             # die voegt de webserver zelf toe
+                self.assertIn(f'id="{i}"', tekst.replace("id='set'", 'id="set"'))
+        self.assertIn("data-deel='gehoord'", tekst)
+        self.assertIn('<option value="115200" >115200 baud</option>', tekst)     # CAT-snelheid bij Handmatig instellen
+        nav = web.html_nav("radio")
+        self.assertIn('href="/radio#baken"', nav)
+        self.assertIn('href="/status#bijwerken"', nav)
+
+    def test_inlog_onthouden(self):
+        import ax25chat_web as web
+        kop = "Basic " + "YmVoZWVyOmdlaGVpbQ=="
+        self.assertFalse(web.inlog_bekend(kop))
+        web.onthoud_inlog(kop)
+        self.assertTrue(web.inlog_bekend(kop))
+        self.assertFalse(web.inlog_bekend(kop + "x"))
+        web._INLOGS.clear()
+
+
 class TestAx25(unittest.TestCase):
     def test_ui_frame_met_pad(self):
         f = ax25.ax25_ui("PD3PAM-7", "CQ", "Hallo allemaal", ["WIDE1-1"])

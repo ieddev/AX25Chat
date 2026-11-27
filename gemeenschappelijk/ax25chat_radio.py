@@ -303,11 +303,19 @@ def zet_niveaus(r=None):
     return fouten
 
 
+_GEHOORD = {}          # uren -> (tijd, uitkomst): journalctl over 24 uur duurt op een Pi Zero seconden
+
+
 def gehoorde_stations(uren=24, log=None):
     """Stations die Direwolf de laatste uren hoorde, uit 'CALL audio level = N(...)'.
-    Geeft [{call, laatst (epoch), niveau, niveaus, aantal}], nieuwste eerst."""
+    Geeft [{call, laatst (epoch), niveau, niveaus, aantal}], nieuwste eerst. Een halve minuut onthouden."""
     if log is None:
-        log = _uit([JOURNALCTL, "-u", DW, "--no-pager", "-o", "short-iso", "--since", f"-{int(uren)}h"], timeout=10)
+        oud = _GEHOORD.get(uren)
+        if oud and time.time() - oud[0] < 30:
+            return oud[1]
+        uit = gehoorde_stations(uren, _uit([JOURNALCTL, "-u", DW, "--no-pager", "-o", "short-iso", "--since", f"-{int(uren)}h"], timeout=10))
+        _GEHOORD[uren] = (time.time(), uit)
+        return uit
     st = {}
     for regel in log.splitlines():
         kop, _, bericht = regel.partition(": ")
@@ -662,7 +670,7 @@ def html_eigen(verborgen):
         f"<button class='licht' type='submit'>Weg</button></form></td></tr>" for x in lijst)
     tabel = (f"<table><tr><th>MHz</th><th>Mode</th><th>Baud</th><th>Naam</th><th></th></tr>{rijen}</table>"
              if lijst else "")
-    return f"""<section><h2>Mijn frequenties</h2><p class="uitleg">Frequenties van stations, bakens en BBS'en bij jou
+    return f"""<section id="frequenties"><h2>Mijn frequenties</h2><p class="uitleg">Frequenties van stations, bakens en BBS'en bij jou
 in de buurt, elk met de mode en snelheid die daar gebruikt worden. Ze komen in de lijst bij Station.</p>{tabel}
 <details{'' if lijst else ' open'}><summary>Frequentie toevoegen</summary>
 <form method="post" action="/frequentie">{verborgen}<input type="hidden" name="actie" value="toe">
@@ -677,7 +685,7 @@ in de buurt, elk met de mode en snelheid die daar gebruikt worden. Ze komen in d
 def html_station(verborgen, s=None):
     s = s or station()
     rn = "" if str(s.get("roepnaam", "")).startswith("N0CALL") else s.get("roepnaam", "")
-    return f"""<section><h2>Station</h2><p class="uitleg">Je roepnaam (met SSID, bijv. PD3PAM-7) en de frequentie.
+    return f"""<section id="station"><h2>Station</h2><p class="uitleg">Je roepnaam (met SSID, bijv. PD3PAM-7) en de frequentie.
 Met CAT zet de Pi de set zelf op deze frequentie; zonder CAT zet je de set (het kanaal) zelf goed.</p>
 <form method="post" action="/station">{verborgen}
 <div class="rij"><div><label>Roepnaam</label><input type="text" name="roepnaam" value="{e(rn)}" placeholder="PD3PAM-7"
@@ -703,16 +711,29 @@ autocapitalize="characters" required></div>
 <div class="balk"><button type="submit">Opslaan</button></div></form></section>"""
 
 
-def html_set(verborgen, r):
-    """Live gegevens van de set (CAT) of een duidelijke opdracht zonder CAT."""
+def html_set(verborgen, r, live=False):
+    """Live gegevens van de set (CAT) of een duidelijke opdracht zonder CAT.
+    De CAT-uitlezing kost op een Pi Zero tijd: zonder live=True komt er een plekhouder die de pagina zelf vult."""
     doel = rig.doelfrequentie()
     naam = r.get("set_naam") or "Set"
     if not rig.cat_actief(r):
         wat = (f"Zet je set op <b>{rig.mhz(doel)}</b>, FM (datamode als je set dat heeft)." if doel else
                "Zet je set zelf op de packetfrequentie, in FM (of USB-D op HF).")
-        return (f"<section><h2>{e(naam)}</h2><div class='melding let' style='font-size:18px'>{wat}</div>"
+        return (f"<section id='set'><h2>{e(naam)}</h2><div class='melding let' style='font-size:18px'>{wat}</div>"
                 f"<p class='uitleg'>Deze set heeft geen CAT-besturing via de Pi; PTT: "
                 f"{e(dict(METHODES).get(r.get('ptt_methode'), '-'))}. Modem {modem(r)} baud.</p></section>")
+    live = html_set_live(r) if live else LADEN.format(deel="set", tekst="De set wordt uitgelezen…", hoog=190)
+    log = "".join(f"<tr><td class='mono'>{e(t)}</td><td>{e(x)}</td></tr>" for t, x in rig.logregels())
+    return f"""<section id="set"><h2>{e(naam)} (CAT)</h2><p class="uitleg">{e(rig.MODEL_NAAM.get(int(r.get('cat_model') or 0), ''))}
+· ingesteld: <b>{rig.mhz(doel)}</b> · modem {modem(r)} baud. Draait iemand aan de set, dan zet de Pi hem terug.</p>{live}
+<form method="post" action="/set_nu" class="balk">{verborgen}<button type="submit">Set nu instellen</button></form>
+{('<details style="margin-top:10px"><summary>Laatste acties</summary><table>' + log + '</table></details>') if log else ''}</section>"""
+
+
+def html_set_live(r=None):
+    """Frequentie, mode, S-meter enz. via CAT (een stuk of zes vragen aan rigctld)."""
+    r = r or instellingen()
+    doel = rig.doelfrequentie()
     st = rig.status()
     if "fout" in st:
         live = f"<div class='melding fout'>Geen verbinding met de set via CAT: {e(st['fout'])}. Staat de set aan en klopt de CAT-poort?</div>"
@@ -726,15 +747,11 @@ def html_set(verborgen, r):
                 f"<tr><td>S-meter</td><td>{rig.s_meter(st.get('s'))}</td></tr>"
                 f"<tr><td>Vermogen</td><td>{rig.watt_tekst(st)}</td></tr>"
                 f"<tr><td>Zenden</td><td>{'ja' if st.get('ptt') else 'nee'}</td></tr></table>")
-    log = "".join(f"<tr><td class='mono'>{e(t)}</td><td>{e(x)}</td></tr>" for t, x in rig.logregels())
-    return f"""<section><h2>{e(naam)} (CAT)</h2><p class="uitleg">{e(rig.MODEL_NAAM.get(int(r.get('cat_model') or 0), ''))}
-· ingesteld: <b>{rig.mhz(doel)}</b> · modem {modem(r)} baud. Draait iemand aan de set, dan zet de Pi hem terug.</p>{live}
-<form method="post" action="/set_nu" class="balk">{verborgen}<button type="submit">Set nu instellen</button></form>
-{('<details style="margin-top:10px"><summary>Laatste acties</summary><table>' + log + '</table></details>') if log else ''}</section>"""
+    return live
 
 
 def html_zoek(verborgen):
-    return f"""<form method="post" action="/set_zoek">{verborgen}<section><h2>Zoek mijn set</h2>
+    return f"""<form method="post" action="/set_zoek">{verborgen}<section id="zoek"><h2>Zoek mijn set</h2>
 <p class="uitleg">De Pi kijkt welke sets er via USB aan hangen: Icom en Yaesu (CAT), DigiRig en losse USB-geluidskaarten.
 Bij CAT-sets probeert hij de bekende modellen en snelheden. Zet de set aan. Dit duurt tot anderhalve minuut;
 Direwolf is zolang even uit.</p>
@@ -758,7 +775,7 @@ def html_profielen(verborgen, r):
                   f"onclick=\"return confirm('Profiel verwijderen?')\">Weg</button></form></td></tr>")
     lijst = (f"<table>{rijen}</table>" if rijen else
              "<p class='uitleg'>Nog geen profielen. Gebruik <b>Zoek mijn set</b>: elke gekozen set wordt een profiel.</p>")
-    return f"""<section><h2>Mijn sets</h2><p class="uitleg">Wissel van set met één tik. Sluit de set eerst aan.</p>{lijst}
+    return f"""<section id="sets"><h2>Mijn sets</h2><p class="uitleg">Wissel van set met één tik. Sluit de set eerst aan.</p>{lijst}
 <form method="post" action="/profiel" class="balk" style="align-items:end">{verborgen}<input type="hidden" name="actie" value="bewaar">
 <div style="flex:1;min-width:200px"><label style="margin-top:0">Huidige instellingen bewaren als</label>
 <input type="text" name="naam" value="{e(r.get('set_naam') or '')}" maxlength="40" placeholder="bijv. IC-9700 shack"></div>
@@ -769,7 +786,7 @@ def html_handmatig(verborgen, r):
     kaarten = [(k, f"{k} - {t}") for _, k, t in usb.geluidskaarten()]
     poorten = [(p, usb.korte_naam(p)) for p in usb.seriele_poorten()]
     verm = "" if r.get("cat_watt") in (None, "") else f"{float(r['cat_watt']):g}"
-    return f"""<details><summary>Handmatig instellen</summary><form method="post" action="/radio">{verborgen}
+    return f"""<details id="handmatig"><summary>Handmatig instellen</summary><form method="post" action="/radio">{verborgen}
 <section style="margin-top:10px"><p class="uitleg">Meestal niet nodig: Zoek mijn set vult dit in. Na opslaan worden Direwolf
 en rigctld opnieuw gestart.</p>
 <label>Geluidskaart van de set</label><select name="geluidskaart">{_opties(kaarten, r.get('geluidskaart'), '- kies -')}</select>
@@ -777,7 +794,7 @@ en rigctld opnieuw gestart.</p>
 <div id="cat_deel">
 <label>Set</label><select name="cat_model">{_opties([(m, f"{merk} {naam}") for m, merk, naam, _ in rig.MODELLEN], r.get('cat_model') or '', '- kies je set -')}</select>
 <div class="rij"><div><label>CAT-poort</label><select name="cat_poort">{_opties(poorten, r.get('cat_poort') or '', '- kies -')}</select></div>
-<div><label>Snelheid</label><select name="cat_baud">{_opties([(b, f"{b} baud") for b in rig.SNELHEDEN], r.get('cat_baud') or '', 'standaard van het model')}</select></div></div>
+<div><label>Snelheid</label><select name="cat_baud">{_opties([(b, f"{b} baud") for b in rig.CAT_SNELHEDEN], r.get('cat_baud') or '', 'standaard van het model')}</select></div></div>
 <label>Zendvermogen <small>in watt; leeg = niet aanpassen. Blijf binnen je vergunning.</small></label>
 <input type="text" name="cat_watt" value="{e(verm)}" inputmode="decimal" placeholder="leeg = zoals de set staat"></div>
 <div id="rts_deel"><label>PTT-poort</label><select name="ptt_poort">{_opties(poorten, r.get('ptt_poort') or '', '- kies -')}</select>
@@ -802,7 +819,7 @@ Werkt ook bij sets zonder CAT.</p>{meting}
 <form method="post" action="/luistertest">{verborgen}<button type="submit" class="licht">Luister 5 seconden</button></form></section>"""
 
 
-def html_test(verborgen, r):
+def html_test(verborgen, r, uitslag=""):
     m = mixer(r.get("geluidskaart"))
     ptt = "Geen PTT-aansluiting gekozen: de set moet op VOX staan." if r.get("ptt_methode") == "VOX" else ""
 
@@ -816,15 +833,7 @@ def html_test(verborgen, r):
                 f'value="{int(waarde)}" style="flex:1" oninput="this.nextElementSibling.textContent=this.value+\'%\'">'
                 f'<b style="min-width:3em">{int(waarde)}%</b></div>')
 
-    rijen = ""
-    for x in gehoorde_stations():
-        wanneer = time.strftime("%d-%m %H:%M", time.localtime(x["laatst"])) if x["laatst"] else "?"
-        rijen += (f"<tr><td class='mono'><b>{e(x['call'])}</b></td><td class='mono'>{wanneer}</td>"
-                  f"<td><b>{x['niveau']}</b></td><td>{e(advies_kort(x['niveau']))}</td><td>{x['aantal']}</td></tr>")
-    gehoord = ("<table><tr><th>Station</th><th>Laatst</th><th>Niveau</th><th>Advies</th><th>Aantal</th></tr>" + rijen +
-               "</table><p class='uitleg'>Niveau zoals Direwolf het meet; ideaal rond 50 (30-70).</p>") if rijen else \
-        "<p class='uitleg'>De laatste 24 uur nog niemand gehoord.</p>"
-    return f"""<section id="test"><h2>Geluidsniveau en testuitzending</h2>
+    return f"""<section id="test"><h2>Geluidsniveau en testuitzending</h2>{uitslag}
 <form method="post" action="/radiotest">{verborgen}
 {balk("zend", "Zendniveau", "Pi naar de set: bepaalt de zwaai")}
 {balk("ontvang", "Ontvangstniveau", "set naar de Pi")}
@@ -835,7 +844,20 @@ niet vervormd. <b>Lang</b> houdt de zender ongeveer 6 seconden aan (vermogen en 
 <div class="balk"><button type="submit" name="duur" value="kort">Opslaan + testuitzending</button>
 <button type="submit" name="duur" value="lang" class="licht">Lang (6 s)</button>
 <button type="submit" name="duur" value="opslaan" class="licht">Alleen opslaan</button></div></form>
-<h3 style="margin-top:16px">Gehoorde stations (laatste 24 uur)</h3>{gehoord}</section>"""
+<h3 style="margin-top:16px">Gehoorde stations (laatste 24 uur)</h3>
+{LADEN.format(deel="gehoord", tekst="Het log van Direwolf wordt doorzocht…", hoog=60)}</section>"""
+
+
+def html_gehoord():
+    """Tabel met de gehoorde stations en hun audioniveau (uit het log van Direwolf; dat kost op een Pi Zero even)."""
+    rijen = ""
+    for x in gehoorde_stations():
+        wanneer = time.strftime("%d-%m %H:%M", time.localtime(x["laatst"])) if x["laatst"] else "?"
+        rijen += (f"<tr><td class='mono'><b>{e(x['call'])}</b></td><td class='mono'>{wanneer}</td>"
+                  f"<td><b>{x['niveau']}</b></td><td>{e(advies_kort(x['niveau']))}</td><td>{x['aantal']}</td></tr>")
+    return ("<table><tr><th>Station</th><th>Laatst</th><th>Niveau</th><th>Advies</th><th>Aantal</th></tr>" + rijen +
+            "</table><p class='uitleg'>Niveau zoals Direwolf het meet; ideaal rond 50 (30-70).</p>") if rijen else \
+        "<p class='uitleg'>De laatste 24 uur nog niemand gehoord.</p>"
 
 
 def verwerk_test(roepnaam, f):
@@ -867,14 +889,15 @@ def verwerk_test(roepnaam, f):
 NA_EIGEN = []          # extra secties na Mijn frequenties (het APRS-baken), gezet door de webserver
 
 
-def html_radio(verborgen, bovenaan="", luister=None):
+# Plekhouder voor een traag deel: de pagina verschijnt meteen en haalt dit deel daarna op via /deel/<naam>
+LADEN = "<div class='laden' data-deel='{deel}' style='min-height:{hoog}px'><p class='uitleg'>{tekst}</p></div>"
+
+
+def html_radio(verborgen, bovenaan="", luister=None, test=""):
     r = instellingen()
-    if luister:                                   # uitslag van de luistertest bovenaan, waar je hem ziet
-        return (bovenaan + html_luister(verborgen, luister) + html_station(verborgen) + html_set(verborgen, r) +
-                html_zoek(verborgen) + html_profielen(verborgen, r) + html_test(verborgen, r) + html_handmatig(verborgen, r))
     return (bovenaan + html_station(verborgen) + html_eigen(verborgen) + "".join(f(verborgen) for f in NA_EIGEN) +
-            html_set(verborgen, r) + html_zoek(verborgen) +
-            html_profielen(verborgen, r) + html_luister(verborgen) + html_test(verborgen, r) + html_handmatig(verborgen, r))
+            html_set(verborgen, r) + html_zoek(verborgen) + html_profielen(verborgen, r) +
+            html_luister(verborgen, luister) + html_test(verborgen, r, test) + html_handmatig(verborgen, r))
 
 
 def html_set_kort(r=None):

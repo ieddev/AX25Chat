@@ -505,7 +505,7 @@ def html(verborgen, baken=None):
     bronnen = "".join(f'<option value="{k}"{" selected" if k == b["bron"] else ""}>{e(t)}</option>' for k, t in BRONNEN)
     lat = "" if b["lat"] is None else f'{b["lat"]:.5f}'.replace(".", ",")
     lon = "" if b["lon"] is None else f'{b["lon"]:.5f}'.replace(".", ",")
-    return f"""<section><h2>APRS-baken</h2><p class="uitleg">Zendt je positie op {rig.mhz(rig.APRS_FREQ)} (FM-D, 1200 baud),
+    return f"""<section id="baken"><h2>APRS-baken</h2><p class="uitleg">Zendt je positie op {rig.mhz(rig.APRS_FREQ)} (FM-D, 1200 baud),
 zodat je op kaarten als aprs.fi verschijnt. Alleen als je positie verandert, en niet tijdens een BBS-verbinding. Staat
 de set op een andere frequentie, dan gaat hij even naar {rig.mhz(rig.APRS_FREQ)} en daarna terug (met CAT).</p>
 <p class="melding {'ok' if b['aan'] and 'aan' in stand else 'let'}" style="margin:0 0 8px">{e(stand.strip() or ('Baken staat aan.' if b['aan'] else 'Baken staat uit.'))}</p>{laatst}
