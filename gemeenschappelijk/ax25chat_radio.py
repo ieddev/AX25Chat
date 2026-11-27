@@ -127,7 +127,14 @@ def modem(r, doel=None):
 
 def direwolf_tekst(roepnaam, r):
     kaart = r.get("geluidskaart") or "Device"
-    if rig.cat_actief(r):
+    if rig.cat_actief(r) and usb.WINDOWS:
+        # Direwolf voor Windows is zonder Hamlib gebouwd: PTT RIG kan niet. IC-9700: PTT via RTS op de andere poort
+        # (B; zet USB SEND op USB(B) RTS). Anders VOX.
+        if r.get("ptt_poort") and r.get("ptt_poort") != r.get("cat_poort"):
+            ptt = f"# Windows: PTT via RTS (Direwolf heeft hier geen Hamlib)\nPTT {r['ptt_poort']} RTS"
+        else:
+            ptt = "# Windows: PTT via CAT kan niet (Direwolf zonder Hamlib); zet de set op VOX"
+    elif rig.cat_actief(r):
         ptt = "# PTT via CAT: rigctld (dienst ax25chat-rigctld)\nPTT RIG 2 localhost:4532"
     elif r.get("ptt_poort") and r.get("ptt_methode") in ("RTS", "DTR"):
         ptt = f"PTT {r['ptt_poort']} {r['ptt_methode']}"
@@ -460,6 +467,12 @@ def voorstellen(groepen, gevonden):
             v = dict(basis, set_naam=rig.MODEL_NAAM.get(model, g["naam"]), ptt_methode="CAT", cat_model=model,
                      cat_poort=pad, cat_baud=baud, cat_mode="PKTUSB" if hf else "PKTFM", modem="300" if hf else "1200",
                      _uitleg=f"CAT gevonden op {baud} baud, de set staat op {rig.mhz(hz)}.")
+            if usb.WINDOWS:                          # Direwolf voor Windows: geen PTT via CAT
+                ander = next((p for p, _ in g["poorten"] if p != pad), "")
+                v["ptt_poort"] = ander
+                v["_uitleg"] += (f" Op Windows gaat zenden via RTS op {ander}: zet in het menu van de set USB SEND op "
+                                 f"de tweede USB-poort (RTS)." if ander else
+                                 " Op Windows kan zenden via CAT nog niet: zet de set op VOX (DATA VOX).")
         elif g["soort"] == "digirig":
             v = dict(basis, set_naam="DigiRig", ptt_methode="RTS", ptt_poort=usb.ptt_poort(g), modem="1200",
                      _uitleg="DigiRig: PTT via RTS, geen CAT. Stel de frequentie (het kanaal) op de set zelf in.")

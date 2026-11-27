@@ -628,8 +628,11 @@ Wat anders is dan op de Pi en op Linux:
 - **Luistertest:** AX25Chat vraagt Direwolf om het ontvangstniveau (0 tot 100). Rond 50 is goed. Open even de
   ruisonderdrukking (squelch) van de set en tik op de knop; het duurt hooguit 10 seconden.
 - **GPS-muis** voor het baken werkt op Windows nog niet. Gebruik een vaste positie of de GPS van je telefoon (app).
-- **PTT via CAT** (IC-9700, IC-7300) moet nog getest worden op Windows. Lukt het zenden niet, kies dan bij
-  *Handmatig instellen* PTT via RTS op poort A en zet in het menu van de set *USB SEND* op *RTS*.
+- **Zenden met een Icom via USB:** Direwolf voor Windows kan de set niet via CAT laten zenden (er zit geen Hamlib
+  in). Frequentie en mode zet AX25Chat wel via CAT. Voor het zenden:
+  - **IC-9700** (twee USB-poorten): AX25Chat gebruikt RTS op de tweede poort (B). Zet in het menu van de set
+    *USB SEND* op *USB (B) RTS*.
+  - **IC-7300** (één USB-poort): zet de set op *DATA VOX*, of gebruik een DigiRig.
 - Het logboek van AX25Chat zelf staat in `%APPDATA%\AX25Chat\logboek\ax25chat.log`, dat van Direwolf ernaast.
 - Het eigen venster gebruikt Microsoft Edge WebView2 (zit in Windows 10 en 11). Ontbreekt dat, dan opent AX25Chat
   in je browser op `http://localhost:8080`.

@@ -105,6 +105,15 @@ class TestWindowsUsb(unittest.TestCase):
         self.assertEqual([k for _, k, _ in self.usb.geluidskaarten()],
                          ["USB Audio CODEC", "2- USB PnP Sound Device", "3- USB Audio CODEC"])
 
+    def test_icom_cat_zendt_via_rts_op_poort_b(self):
+        import ax25chat_radio as radio
+        v = radio.voorstellen(self.usb.inventaris(), [("COM5", 3081, 19200, 144900000)])
+        icom = next(x for x in v if x["set_naam"].startswith("Icom"))
+        self.assertEqual((icom["ptt_methode"], icom["cat_poort"], icom["ptt_poort"]), ("CAT", "COM5", "COM6"))
+        conf = radio.direwolf_tekst("PD3PAM", icom)
+        self.assertIn("PTT COM6 RTS", conf)
+        self.assertNotIn("PTT RIG", conf)                         # Direwolf voor Windows heeft geen Hamlib
+
     def test_hub(self):
         self.assertEqual(self.usb.win_hub(R + "#USB(3)#USB(2)"), R + "#USB(3)")
         self.assertEqual(self.usb.win_hub(R + "#USB(3)"), "")        # direct aan de PC: geen hubje

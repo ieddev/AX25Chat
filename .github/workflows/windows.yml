@@ -99,6 +99,8 @@ jobs:
           ./dist/AX25Chat/direwolf/direwolf.exe -h 2>&1 | head -5 || true
 
       - name: Installer maken (Inno Setup)
+        env:
+          MSYS2_ARG_CONV_EXCL: "*"            # Git Bash mag /DVersie=... niet in een pad veranderen
         run: |
           iscc="/c/Program Files (x86)/Inno Setup 6/ISCC.exe"
           if [ ! -f "$iscc" ]; then choco install innosetup -y --no-progress; fi
