@@ -159,7 +159,7 @@ class TestRadio(unittest.TestCase):
         cat = radio.direwolf_tekst("PD3PAM", dict(radio.STANDAARD, geluidskaart="CODEC_1", ptt_methode="CAT",
                                                   cat_model=3073, cat_poort="/dev/x", modem="auto"))
         self.assertIn("PTT RIG 2 localhost:4532", cat)
-        self.assertIn("MODEM 300", cat)                     # IC-7300: HF, dus 300 baud
+        self.assertIn("\nMODEM 300 1600:1800 9@30 A\n", cat)   # IC-7300: HF, 300 baud met 9 decoders (zonder +)
         self.assertIn("# geen PTT", radio.direwolf_tekst("PD3PAM", dict(radio.STANDAARD, ptt_methode="VOX")))
 
     def test_voorstellen(self):
