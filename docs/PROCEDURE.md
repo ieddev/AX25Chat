@@ -636,6 +636,12 @@ Wat anders is dan op de Pi en op Linux:
 - Het logboek van AX25Chat zelf staat in `%APPDATA%\AX25Chat\logboek\ax25chat.log`, dat van Direwolf ernaast.
 - Het eigen venster gebruikt Microsoft Edge WebView2 (zit in Windows 10 en 11). Ontbreekt dat, dan opent AX25Chat
   in je browser op `http://localhost:8080`.
+- **Windows Firewall** vraagt de eerste keer of Direwolf het netwerk mag gebruiken. Direwolf opent de poorten
+  8000 en 8001 voor AX25Chat zelf. Je mag *Annuleren* kiezen: AX25Chat praat met Direwolf op dezelfde PC, en
+  dat houdt de firewall niet tegen. Alleen als een ander programma op een andere computer Direwolf wil gebruiken,
+  kies je *Toegang toestaan* (alleen privénetwerken). rigctld luistert alleen op de PC zelf en vraagt niets.
+- De Radio-pagina zoekt bij de eerste keer openen de USB-apparaten op via Windows. Dat kan een paar seconden
+  duren; daarna onthoudt AX25Chat het een halve minuut. **Zoek mijn set** kijkt altijd opnieuw.
 - In het Startmenu staat ook **AX25Chat (in de browser)**: dat opent AX25Chat zonder eigen venster in je gewone
   browser (`AX25Chat.exe --browser`). Handig als het eigen venster niet wil.
 - Is poort 8080 al in gebruik door een ander programma, dan kiest het venster vanzelf een andere vrije poort. Met
