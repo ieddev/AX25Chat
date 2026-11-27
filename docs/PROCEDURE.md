@@ -141,6 +141,14 @@ Getest door PD3PAM (26-11-2026, HF packet 300 baud).
 beetje uitslaan, niet tot het einde: dan wordt je signaal vervormd. Te weinig, ook met USB MOD Level hoog?
 Zet dan op de Pi het afspeelvolume van de geluidskaart hoger: `alsamixer`, F6, kies *USB Audio CODEC*.
 
+**Afstemmen bij 300 baud (HF)**: AX25Chat werkt met de tonen 1600 en 1800 Hz. Met de set op USB-D komt een
+station dus binnen op dial + 1,7 kHz (dial 14,103,0 → signaal op 14,104,7). Op HF zit lang niet iedereen precies
+goed, daarom luistert Direwolf met 9 decoders, 30 Hz uit elkaar: een station dat tot ongeveer 120 Hz naast
+1600/1800 zit, wordt toch gelezen. In direwolf.conf staat dat als `MODEM 300 1600:1800 9@30 A`.
+Hoor je packet maar verschijnt er niets in de Monitor, kijk dan op de audioscope (MENU > AUDIO) waar de tonen
+zitten. Liggen ze verder weg dan ±120 Hz, schuif dan de dial bij tot ze rond 1600/1800 Hz staan. Het
+ontvangstniveau (*receive audio level* in Status → Log) is goed tussen ongeveer 30 en 70.
+
 ### Instellingen op de IC-9700
 
 Getest door PD3PAM: CAT, frequentie en mode (FM-D en USB-D op 2 m). De geluidsinstellingen zijn

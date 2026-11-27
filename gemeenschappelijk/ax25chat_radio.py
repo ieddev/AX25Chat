@@ -125,6 +125,15 @@ def modem(r, doel=None):
     return 300 if rig.is_hf(doel) or int(r.get("cat_model") or 0) in rig.ALLEEN_HF else 1200
 
 
+def modem_regel(baud):
+    """MODEM-regel voor direwolf.conf. 300 baud (HF): 9 decoders 30 Hz uit elkaar (±120 Hz), zodat een station
+    dat niet precies op 1600/1800 Hz zit toch gelezen wordt. Profiel A moet erbij: met de standaard (A+) negeert
+    Direwolf de extra decoders ("+ option can't be combined with multiple frequencies")."""
+    if baud == 300:
+        return "# HF: 9 decoders 30 Hz uit elkaar, vangt ±120 Hz verkeerd afstemmen op\nMODEM 300 1600:1800 9@30 A"
+    return f"MODEM {baud}"
+
+
 def direwolf_tekst(roepnaam, r):
     kaart = r.get("geluidskaart") or "Device"
     if rig.cat_actief(r) and usb.WINDOWS:
@@ -151,7 +160,7 @@ def direwolf_tekst(roepnaam, r):
 ACHANNELS 1
 CHANNEL 0
 MYCALL {schoon_call(roepnaam) or 'N0CALL'}
-MODEM {modem(r)}
+{modem_regel(modem(r))}
 {ptt}
 TXDELAY {txdelay}
 TXTAIL 10
@@ -167,11 +176,13 @@ MAXV22 0
 
 
 def direwolf_met_agw():
-    """Is direwolf.conf bij de tijd: AGW-poort (voor BBS'en, connected mode) aan en verbinden met AX.25 v2.0?"""
+    """Is direwolf.conf bij de tijd: AGW-poort (voor BBS'en, connected mode) aan, verbinden met AX.25 v2.0, en
+    300 baud met meerdere decoders (een oude kale 'MODEM 300' wordt bij het starten vervangen)?"""
     try:
         with open(DIREWOLF_CONF, encoding="utf-8") as f:
             t = f.read()
-        return "\nAGWPORT 8000" in t and "\nMAXV22 0" in t and not re.search(r"\nMYCALL \S+-0\n", t)
+        return ("\nAGWPORT 8000" in t and "\nMAXV22 0" in t and not re.search(r"\nMYCALL \S+-0\n", t)
+                and "\nMODEM 300\n" not in t)
     except OSError:
         return True                    # nog geen direwolf.conf: die wordt straks met AGW gemaakt
 
