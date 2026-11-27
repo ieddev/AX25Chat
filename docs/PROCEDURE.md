@@ -193,7 +193,7 @@ PD4R-1. AX25Chat is zelf geen BBS: het is je terminal. Er is steeds één verbin
 3. **Terminal**: wat de BBS stuurt verschijnt in het tekstvak; wat jij stuurt staat er blauw tussen.
    Snelknoppen: **L** (lijst) en **B** (afmelden) gaan meteen; **R** (lezen), **K** (wissen) en **S** (sturen)
    zetten het commando in de invoerregel, zodat je het nummer of de roepnaam erachter typt. Een lege regel
-   versturen (alleen Zenden) stuurt een Enter. **Leeg** maakt alleen het vak leeg.
+   versturen (alleen Zenden) stuurt een Enter. **Scherm wissen** maakt alleen het vak leeg (het BBS-commando K wist een bericht op de BBS).
    De snelknoppen passen zich aan aan wat er aan de andere kant zit:
    - **Node** (bijv. PD4R-12, een BPQ-node): de knoppen komen uit het menu van de node zelf, de regel met
      de commando's achter de `}`. Bijvoorbeeld **BBS** (naar de BBS), **MHEARD** (welke stations de node
@@ -227,7 +227,7 @@ PD4R-1. AX25Chat is zelf geen BBS: het is je terminal. Er is steeds één verbin
 Antwoordt de BBS niet, dan staat er na ongeveer een halve minuut *Geen antwoord van…*. Controleer dan de
 frequentie, de mode en de snelheid. Je kunt ook een roepnaam invullen die niet in je lijst staat
 (**Andere roepnaam…** onderaan de keuzelijst); dan blijft de set op de huidige frequentie. Die roepnaam wordt
-na het verbinden in de lijst bewaard, zodat je hem de volgende keer kunt kiezen. Met **Weg** haal je de
+na het verbinden in de lijst bewaard, zodat je hem de volgende keer kunt kiezen. Met **Verwijderen** haal je de
 gekozen BBS uit de lijst.
 
 **AX.25 v2.0.** AX25Chat laat Direwolf altijd verbinden met AX.25 versie 2.0 (in direwolf.conf: `MAXV22 0`).
@@ -410,7 +410,10 @@ Noodnet. Die dekt **alleen Nederland**: stations over de grens staan er wel op, 
 | 🚗 🏠 📡 🚶 🌤 ... | Het APRS-symbool van het station (auto, huis, digipeater, lopend, weer ...) |
 
 Tik op een station voor de tijd, snelheid en koers, het commentaar en de positie, en **Bericht sturen** (dan opent
-de chat met dat station). Met de keuzelijst bovenaan kies je hoe ver terug: het laatste uur tot de laatste week.
+de chat met dat station). Met de keuzelijst bovenaan (*Toon stations van de ...*) kies je hoe ver terug: het laatste uur tot de
+laatste week. De kaart past zich meteen aan en zoomt in op de stations die je dan ziet; **Toepassen** doet hetzelfde
+nog een keer (handig als je intussen weggeschoven bent). Onder de keuzelijst staat wat de kleuren van de rondjes
+betekenen.
 Nieuwe posities komen er vanzelf bij. Een station dat langer dan een week niet gehoord is, verdwijnt.
 
 De kaart leest de drie gangbare APRS-posities: gewone (zoals AX25Chat en APRSdroid ze zenden), gecomprimeerde

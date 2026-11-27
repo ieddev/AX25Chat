@@ -15,6 +15,11 @@ CSS = """
 #kaart{height:calc(100vh - 190px);min-height:360px;border-radius:12px;border:1px solid var(--lijn);background:#e8ecef}
 .kaartbalk{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
 .kaartbalk select{width:auto;padding:6px 8px;font-size:14px}.kaartbalk .uitleg{margin:0}
+.kaartbalk button{padding:6px 12px;font-size:14px}
+.legenda{display:flex;flex-wrap:wrap;gap:4px 14px;margin:0 0 8px;font-size:14px;color:var(--zacht)}
+.legenda span{display:inline-flex;align-items:center;gap:5px}
+.legenda i{display:inline-block;width:14px;height:14px;border-radius:50%;background:#fff;border:3px solid #1d4f91}
+.legenda i.via{border-color:#a85d00}.legenda i.oud{border-color:#777;opacity:.55}.legenda i.mij{border-color:#1e7a3a;background:#e6f4ea}
 .stn{font:600 12px/1 system-ui,sans-serif;white-space:nowrap}
 .stn .s{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;
  background:#fff;border:2px solid #1d4f91;font-size:14px;box-shadow:0 1px 3px rgba(0,0,0,.35)}
@@ -95,7 +100,9 @@ function laad() {
     teken();
   }).catch(function () {});
 }
-document.getElementById('kaart_uren').addEventListener('change', teken);
+function toepassen() { eerste = true; teken(); }                    // nieuwe periode: tekenen en inzoomen op wat je ziet
+document.getElementById('kaart_uren').addEventListener('change', toepassen);
+document.getElementById('kaart_toepassen').addEventListener('click', toepassen);
 laad();
 setInterval(teken, 60000);                                         // "x min geleden" en vervagen bijwerken
 setInterval(laad, 300000);                                         // eigen positie (GPS) bijwerken
@@ -115,10 +122,14 @@ def html_pagina(kaart_info):
         "(met internet). De stations staan er wel al op, maar zonder ondergrond.</div>")
     return f"""<style>{CSS}</style><link rel="stylesheet" href="/leaflet/leaflet.css">{leeg}
 <div class="kaartbalk"><b id="kaart_aantal">0 stations</b>
-<select id="kaart_uren" aria-label="Hoe lang terug"><option value="1">laatste uur</option>
+<label for="kaart_uren" style="margin:0;font-weight:400">Toon stations van de</label>
+<select id="kaart_uren"><option value="1">laatste uur</option>
 <option value="3">laatste 3 uur</option><option value="24" selected>laatste 24 uur</option>
 <option value="168">laatste week</option></select>
-<span class="uitleg">rand blauw: direct · oranje: via digi · grijs: &gt; 1 uur · groen: jij</span></div>
+<button type="button" id="kaart_toepassen" class="licht">Toepassen</button></div>
+<div class="legenda"><span>Kleur van het rondje:</span><span><i></i>rechtstreeks gehoord</span>
+<span><i class="via"></i>gehoord via een digipeater</span><span><i class="oud"></i>langer dan 1 uur geleden</span>
+<span><i class="mij"></i>jouw eigen positie</span></div>
 <div id="kaart"></div>
 <script src="/leaflet/leaflet.js"></script>
 <script>window.KAART = {json.dumps(kaart_info, ensure_ascii=False).replace("</", "<\\/")};</script>
