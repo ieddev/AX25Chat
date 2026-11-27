@@ -34,6 +34,13 @@ PD3PAM-7>APZAXC::CQ       :CQ CQ de PD3PAM           aan iedereen, zonder bevest
 Een bericht aan een station wordt herhaald tot de bevestiging binnen is (hoogstens 5 keer, in ongeveer
 6 minuten). Met **Stop** breek je dat eerder af. Langer dan 67 tekens wordt opgesplitst. Alles wat de Pi verder hoort, staat in de **Monitor**.
 
+**APRS-baken alleen met CAT:** het baken zendt altijd op 144,800. Staat je set op een andere frequentie (bijv.
+144,925 om te chatten), dan zet de Pi hem even op 144,800 en daarna terug. Dat kan alleen als de Pi de set via **CAT**
+kan bedienen. Een set zonder CAT, zoals de **Baofeng UV-5R** of de **Motorola GM-340** met een DigiRig, stel je met
+de hand in: daarmee kun je het baken niet naast het chatten aanzetten. Het baken zendt dan alleen als je de set zelf
+op 144,800 zet en bij Station ook 144,800 kiest (je chat dan ook op 144,800). Zie
+[docs/PROCEDURE.md](docs/PROCEDURE.md#aprs-baken-je-positie-op-de-kaart).
+
 Op het tabblad **Kaart** staan de stations die je hoort met een APRS-positie, op een offline kaart van
 Nederland (PDOK). Die download je eenmalig met internet op het tabblad Radio; daarna werkt hij zonder internet.
 
