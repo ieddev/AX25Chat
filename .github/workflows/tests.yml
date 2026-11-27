@@ -20,8 +20,6 @@ jobs:
   windows:
     runs-on: windows-latest
     continue-on-error: true
-    env:
-      AX25CHAT_MAP: ${{ runner.temp }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -29,6 +27,8 @@ jobs:
           python-version: "3.11"
       - run: python -m unittest discover -s tests -p test_systeem.py -v
       - name: Onderdelen laden
+        env:
+          AX25CHAT_MAP: ${{ runner.temp }}     # runner-gegevens kunnen niet in de env van de job
         run: |
           cd chat
           python -c "import sys; sys.path.insert(0, '../gemeenschappelijk'); import ax25chat_web, ax25chat_baken, ax25chat_bbs; print('alles geladen')"
