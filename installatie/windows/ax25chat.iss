@@ -51,6 +51,7 @@ Source: "..\..\dist\AX25Chat\*"; DestDir: "{app}"; Flags: recursesubdirs createa
 
 [Icons]
 Name: "{group}\AX25Chat"; Filename: "{app}\AX25Chat.exe"
+Name: "{group}\AX25Chat (in de browser)"; Filename: "{app}\AX25Chat.exe"; Parameters: "--browser"
 Name: "{group}\AX25Chat verwijderen"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\AX25Chat"; Filename: "{app}\AX25Chat.exe"; Tasks: bureaublad
 

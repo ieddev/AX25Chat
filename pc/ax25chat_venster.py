@@ -8,7 +8,8 @@ gebruikt het pywebview (Linux: GTK-WebKit of Qt, Windows: Edge WebView2).
 
     python3 pc/ax25chat_venster.py
 
-Is pywebview niet geïnstalleerd, dan opent AX25Chat gewoon in de browser (zoals ax25chat_pc.py).
+Is pywebview niet geïnstalleerd, of start je met --browser, dan opent AX25Chat gewoon in de browser (zoals
+ax25chat_pc.py).
 Draait AX25Chat al (bijvoorbeeld twee keer op het pictogram geklikt), dan opent alleen een tweede venster
 naar het programma dat al draait.
 Sluit je het venster, dan stopt AX25Chat, en daarmee ook Direwolf en rigctld.
@@ -16,8 +17,10 @@ Sluit je het venster, dan stopt AX25Chat, en daarmee ook Direwolf en rigctld.
 
 import json
 import os
+import socket
 import sys
 import threading
+import time
 import urllib.request
 
 os.environ.setdefault("AX25CHAT_SOORT", "pc")
@@ -28,9 +31,14 @@ for deel in ("chat", "gemeenschappelijk"):
 PICTOGRAM = os.path.join(HIER, "ax25chat.png")
 
 
+LOGBOEK = ""                                       # pad van logboek/ax25chat.log (Windows-programma)
+
+
 def uitvoer_naar_logboek():
     """Windows-programma zonder consolevenster: sys.stdout/stderr zijn er niet. Schrijf dan naar logboek/ax25chat.log
-    in de map met instellingen, zodat er bij problemen iets na te lezen is."""
+    in de map met instellingen, zodat er bij problemen iets na te lezen is. Ook een harde crash (bijvoorbeeld in
+    WebView2) komt erin, via faulthandler."""
+    global LOGBOEK
     if sys.stdout is not None and sys.stderr is not None:
         return
     import ax25chat_systeem as systeem
@@ -40,10 +48,43 @@ def uitvoer_naar_logboek():
         if os.path.exists(pad) and os.path.getsize(pad) > systeem.LOG_MAX:
             os.replace(pad, pad + ".1")
         f = open(pad, "a", encoding="utf-8", buffering=1)
+        LOGBOEK = pad
     except OSError:
         f = open(os.devnull, "w")
     sys.stdout = sys.stdout or f
     sys.stderr = sys.stderr or f
+    try:
+        import faulthandler
+        faulthandler.enable(file=f)
+    except Exception:
+        pass
+
+
+def meld(tekst):
+    """Regel in het logboek met de tijd ervoor, zodat te zien is hoe ver het opstarten kwam."""
+    print(f"{time.strftime('%Y-%m-%d %H:%M:%S')} {tekst}", flush=True)
+
+
+def beheerder():
+    try:
+        import ctypes
+        return bool(ctypes.windll.shell32.IsUserAnAdmin())
+    except Exception:
+        return False
+
+
+def toon_fout(tekst):
+    """Melding in beeld als AX25Chat niet kan starten (op Windows is er geen console waar het anders staat)."""
+    meld("FOUT: " + tekst)
+    if LOGBOEK:
+        tekst += f"\n\nMeer staat in het logboek:\n{LOGBOEK}"
+    try:
+        import ctypes
+        ctypes.windll.user32.MessageBoxW(None, tekst, TITEL, 0x10)
+    except Exception:
+        pass
+
+
 TITEL = "AX25Chat"
 
 
@@ -63,6 +104,33 @@ def poort_uit(args):
         except (IndexError, ValueError):
             pass
     return 8080
+
+
+def poort_vrij(poort):
+    with socket.socket() as s:
+        try:
+            s.bind(("127.0.0.1", poort))
+            return True
+        except OSError:
+            return False
+
+
+def vrije_poort():
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        return s.getsockname()[1]
+
+
+def kies_poort(args):
+    """(poort, args). Is 8080 al bezet door een ander programma (en niet door AX25Chat), dan neemt het venster een
+    andere vrije poort; het venster maakt het niet uit welke. Bij --poort of --thuisnetwerk blijft de poort vast,
+    want de telefoon of app rekent erop."""
+    poort = poort_uit(args)
+    if draait_al(poort) or poort_vrij(poort) or "--poort" in args or "--thuisnetwerk" in args:
+        return poort, args
+    nieuw = vrije_poort()
+    meld(f"Poort {poort} is bezet door een ander programma; AX25Chat gebruikt nu poort {nieuw}.")
+    return nieuw, [*args, "--poort", str(nieuw)]
 
 
 def zelftest(args, adres):
@@ -98,24 +166,98 @@ def zelftest(args, adres):
     return 1 if any(x.startswith("FOUT") for x in uitslag) else 0
 
 
+def pakketversie(naam):
+    try:
+        from importlib.metadata import version
+        return version(naam)
+    except Exception:
+        return "?"
+
+
+def lees_versie():
+    import ax25chat_systeem as systeem
+    for map_ in (systeem.CODE, getattr(sys, "_MEIPASS", ""), HIER):
+        try:
+            with open(os.path.join(map_, "versie.txt"), encoding="utf-8") as f:
+                return f.read().strip()
+        except OSError:
+            pass
+    return "onbekend"
+
+
+def start_opties(webview):
+    """Opties voor webview.start. De gegevens van het venster (WebView2/WebKit) komen in de map met instellingen,
+    waar de gebruiker altijd mag schrijven, en niet naast het programma. icon= alleen als deze pywebview dat kent,
+    en niet op Windows: daar moet het een .ico zijn (een .png laat WinForms crashen) en neemt pywebview vanzelf het
+    pictogram van AX25Chat.exe."""
+    import inspect
+    import ax25chat_systeem as systeem
+    kent = inspect.signature(webview.start).parameters
+    opties = {}
+    if "storage_path" in kent:
+        opties["storage_path"] = os.path.join(systeem.MAP, "webview")
+    if "icon" in kent and sys.platform != "win32":
+        opties["icon"] = PICTOGRAM
+    return opties
+
+
+def venstertest(venster):
+    """Voor GitHub Actions (AX25CHAT_VENSTERTEST=<bestand>): opent het echte venster, wacht tot de pagina geladen is,
+    schrijft 'ok venster' en sluit. Lukt dat niet binnen 90 seconden, dan 'FOUT venster' en stoppen."""
+    uit = os.environ["AX25CHAT_VENSTERTEST"]
+
+    def schrijf(tekst):
+        with open(uit, "w", encoding="utf-8") as f:
+            f.write(tekst + "\n")
+
+    def geladen():
+        try:
+            titel = venster.evaluate_js("document.title")
+        except Exception as fout:
+            titel = f"? ({fout})"
+        meld(f"Venstertest: pagina geladen, titel {titel!r}")
+        schrijf(f"ok   venster: {titel}")
+        threading.Timer(2, venster.destroy).start()
+
+    def te_laat():
+        schrijf("FOUT venster: na 90 seconden geen pagina")
+        meld("Venstertest: te laat")
+        os._exit(1)
+
+    venster.events.loaded += geladen
+    t = threading.Timer(90, te_laat)
+    t.daemon = True
+    t.start()
+
+
 def main():
     uitvoer_naar_logboek()
     args = sys.argv[1:]
+    meld(f"AX25Chat start (versie {lees_versie()}, Python {sys.version.split()[0]}"
+         f"{', beheerder' if beheerder() else ''}) {' '.join(args)}")
     if "--wachtwoord" in args or "-h" in args or "--help" in args:
         import ax25chat_web as web
         return web.main(args)
+    if "--browser" in args:                       # zonder eigen venster, in de gewone browser
+        sys.argv = [sys.argv[0], *[a for a in args if a != "--browser"]]
+        import ax25chat_pc
+        return ax25chat_pc.main()
     try:
         import webview
-    except ImportError:
-        print("pywebview is niet geïnstalleerd: AX25Chat opent in de browser.", flush=True)
+    except Exception as fout:
+        meld(f"pywebview is niet te laden ({fout}): AX25Chat opent in de browser.")
         import ax25chat_pc
         return ax25chat_pc.main()
 
-    poort = poort_uit(args)
-    adres = f"http://localhost:{poort}/"
     if os.environ.get("AX25CHAT_ZELFTEST"):
-        return zelftest(args, adres)
-    if not draait_al(poort):
+        poort = poort_uit(args)
+        return zelftest(args, f"http://localhost:{poort}/")
+    poort, args = kies_poort(args)
+    adres = f"http://localhost:{poort}/"
+    draad = None
+    if draait_al(poort):
+        meld(f"AX25Chat draait al op poort {poort}: alleen een venster erbij.")
+    else:
         import ax25chat_web as web
         klaar = threading.Event()
         web.KLAAR = lambda _: klaar.set()
@@ -132,20 +274,25 @@ def main():
 
         draad = threading.Thread(target=server, daemon=True)
         draad.start()
-        klaar.wait(60)
+        if not klaar.wait(60):
+            meld("Let op: de webserver is na 60 seconden nog niet klaar; het venster opent toch.")
         if fout:
-            print("AX25Chat starten lukte niet: " + " ".join(fout), file=sys.stderr)
+            toon_fout("AX25Chat starten lukte niet: " + " ".join(fout))
             return 1
-    else:
-        draad = None
+        meld(f"Webserver klaar op {adres}")
     try:
-        webview.create_window(TITEL, adres, width=1000, height=820, min_size=(360, 480), text_select=True)
-        try:
-            webview.start(icon=PICTOGRAM)        # blijft hier tot het venster dicht is
-        except TypeError:
-            webview.start()                      # oudere pywebview zonder icon=
+        venster = webview.create_window(TITEL, adres, width=1000, height=820, min_size=(360, 480), text_select=True)
+        if os.environ.get("AX25CHAT_VENSTERTEST"):
+            venstertest(venster)
+        else:
+            venster.events.loaded += lambda: meld("Venster geladen.")
+        meld(f"Venster openen (pywebview {pakketversie('pywebview')})")
+        webview.start(**start_opties(webview))   # blijft hier tot het venster dicht is
+        meld("Venster gesloten.")
     except Exception as fout:                    # geen venster mogelijk (bijv. WebKit/WebView2 ontbreekt): browser
-        print(f"Eigen venster lukte niet ({fout}); AX25Chat opent in de browser: {adres}", flush=True)
+        import traceback
+        traceback.print_exc()
+        meld(f"Eigen venster lukte niet ({fout}); AX25Chat opent in de browser: {adres}")
         import webbrowser
         webbrowser.open(adres)
         try:
