@@ -166,7 +166,7 @@ def voortgang():
     v = _lees(VOORTGANG_FILE)
     if v and v.get("bezig") and time.time() - v.get("bijgewerkt", 0) > 120:
         v["bezig"] = False
-        v["fout"] = v.get("fout") or "De download is onderbroken (AX25Chat herstart?). Start hem opnieuw."
+        v["onderbroken"] = True                   # geen fout: alleen niet afgemaakt (bijv. AX25Chat herstart)
     return v
 
 
@@ -365,7 +365,7 @@ def start_download(plaats, straal, zoom, positie=None):
                               "bijgewerkt": time.time(), "fout": ""})
     waar = ["--plaats", plaats] if plaats else ["--midden", f"{positie[0]:.5f},{positie[1]:.5f}"]
     if getattr(sys, "frozen", False):         # Windows-programma (één .exe): downloaden in een draad, niet als los proces
-        threading.Thread(target=main, args=([*waar, "--straal", str(straal), "--zoom", str(zoom), "--niet-wisselen"],),
+        threading.Thread(target=_in_draad, args=([*waar, "--straal", str(straal), "--zoom", str(zoom), "--niet-wisselen"],),
                          daemon=True).start()
         return ""
     with open(os.path.join(KAART_DIR, "download.log"), "w") as logf:
@@ -382,6 +382,17 @@ def stand_json():
             "stap": v.get("stap", "")}
 
 
+def _in_draad(argv):
+    """Download in een draad (Windows-programma). Gaat er iets mis, dan komt dat als melding op de pagina en in het
+    logboek, in plaats van dat de download stil blijft hangen."""
+    try:
+        main(argv)
+    except BaseException as fout:                 # ook SystemExit van argparse
+        import traceback
+        traceback.print_exc()
+        _schrijf(VOORTGANG_FILE, {"bezig": False, "fout": f"Downloaden lukte niet: {fout}", "bijgewerkt": time.time()})
+
+
 def html_beheer(verborgen, positie=None):
     """Sectie op het tabblad Radio: huidige offline kaart, voortgang en het formulier om (opnieuw) te downloaden."""
     k = info()
@@ -395,14 +406,18 @@ def html_beheer(verborgen, positie=None):
                   + ("maar zonder ondergrond.</p>" if kaartbron() == "offline" else
                      "met de kaart van internet als die er is.</p>"))
     melding = ""
-    if v and (bezig or v.get("fout") or time.time() - v.get("bijgewerkt", 0) < 600):
-        if bezig:
-            melding = ("<div class='melding let' id='kaart_stand'>" + _e(v.get("stap") or "Bezig met downloaden...") +
-                       "</div>")
-        elif v.get("fout"):
-            melding = f"<div class='melding fout'>{_e(v['fout'])}</div>"
-        else:
-            melding = f"<div class='melding ok'>Kaart gedownload: {v.get('klaar', 0)} tegels.</div>"
+    online = kaartbron() == "online"
+    recent = v and time.time() - v.get("bijgewerkt", 0) < 600
+    if v and bezig:
+        melding = ("<div class='melding let' id='kaart_stand'>" + _e(v.get("stap") or "Bezig met downloaden...") +
+                   "</div>")
+    elif v and v.get("onderbroken") and not online:  # alleen van belang als je de offline kaart gebruikt
+        melding = ("<div class='melding let'>Een eerdere download van de offline kaart is niet afgemaakt. "
+                   "Start hem opnieuw als je de offline kaart wilt gebruiken.</div>")
+    elif v and v.get("fout") and (recent or not online):
+        melding = f"<div class='melding fout'>{_e(v['fout'])}</div>"
+    elif recent and not v.get("onderbroken") and not v.get("fout"):
+        melding = f"<div class='melding ok'>Kaart gedownload: {v.get('klaar', 0)} tegels.</div>"
     plaats = (k or {}).get("plaats", "")
     if plaats[:1].isdigit() or plaats.startswith("-"):
         plaats = ""                                  # was rond een positie
@@ -535,8 +550,10 @@ def main(argv=None):
     if not a.schat and not internet():
         naam, hotspot = thuiswifi()
         if a.niet_wisselen or not naam or not hotspot:
-            fout = ("Geen internet. " + ("Er is geen thuis-wifi bekend op deze Pi (Raspberry Pi Imager of nmtui). " if not naam
-                    else "") + "Sluit een netwerkkabel aan, of zet op het tabblad Status de thuis-wifi aan.")
+            fout = (("Geen internet. " + ("Er is geen thuis-wifi bekend op deze Pi (Raspberry Pi Imager of nmtui). "
+                                         if not naam else "")
+                     + "Sluit een netwerkkabel aan, of zet op het tabblad Status de thuis-wifi aan.")
+                    if systeem.kan("hotspot") else "Geen internet: de kaartserver (PDOK) is niet te bereiken vanaf deze PC.")
             _schrijf(VOORTGANG_FILE, {"bezig": False, "fout": fout, "bijgewerkt": time.time()})
             print(fout); return 1
         return start_met_thuiswifi(naam)
