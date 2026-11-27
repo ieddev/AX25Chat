@@ -150,9 +150,14 @@ dezelfde als bij de IC-7300, maar zijn op de IC-9700 nog niet apart nagelopen.
 |---|---|---|
 | MENU > SET > Connectors > MOD Input > **DATA MOD** | **USB** | Anders zoekt de set het geluid bij de microfoon |
 | MENU > SET > Connectors > MOD Input > **USB MOD Level** | **50%** als begin | Afstellen zoals hieronder |
-| MENU > SET > Connectors > **USB SEND** | **OFF** | PTT gaat via CAT |
+| MENU > SET > Connectors > **USB SEND** | **OFF** (Pi en Linux) of **USB (B) RTS** (Windows) | Pi/Linux: PTT gaat via CAT. Windows: Direwolf kan daar niet via CAT zenden en gebruikt RTS op de tweede USB-poort (B) |
 | MENU > SET > Connectors > CI-V > **CI-V USB Port** | **Unlink from [REMOTE]** | Anders vindt Zoek mijn set de CAT niet |
 | MENU > SET > Connectors > CI-V > **CI-V Address** | **A2h** (standaard) | AX25Chat gaat uit van het standaardadres |
+
+**Eén preset voor Pi en Windows?** Dat kan, met *USB SEND* op **USB (B) RTS**: op de Pi en Linux opent AX25Chat
+poort B normaal nooit, dus daar verandert er niets. Eén uitzondering: **Zoek mijn set** probeert alle poorten, ook
+B. Bij het openen van een poort kan RTS kort hoog worden en zendt de set even. Zet *USB SEND* dus even op OFF
+voordat je op Zoek mijn set tikt (of zorg voor een antenne of dummyload), en daarna weer terug.
 
 **Afstellen**: in FM-D let je niet op de ALC, maar op de zwaai (deviatie): stel USB MOD Level zo in dat het
 tegenstation (of een tweede ontvanger) je zonder vervorming hoort; begin rond 50%. In USB-D geldt hetzelfde
