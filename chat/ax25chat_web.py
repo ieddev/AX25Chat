@@ -209,11 +209,13 @@ def stel_wachtwoord_in():
 # ---------------------------------------------------------------------------
 
 def versie():
-    try:
-        with open(os.path.join(MAP, "versie.txt"), encoding="utf-8") as f:
-            return f.read().strip()[:40]
-    except OSError:
-        return ""
+    for map_ in (MAP, systeem.CODE):          # Pi en Linux-PC: in de map met instellingen; Windows: bij het programma
+        try:
+            with open(os.path.join(map_, "versie.txt"), encoding="utf-8") as f:
+                return f.read().strip()[:40]
+        except OSError:
+            pass
+    return ""
 
 
 def html_nav(actief):

@@ -50,6 +50,23 @@ AMIXER = os.environ.get("AX25CHAT_AMIXER", "amixer")
 ARECORD = os.environ.get("AX25CHAT_ARECORD", "arecord")
 
 
+def programma(naam):
+    """Pad naar direwolf, rigctl of rigctld. Eerst AX25CHAT_<NAAM>, dan naast AX25Chat (de Windows-installer zet ze in
+    direwolf\\ en hamlib\\), anders gewoon de naam (dan moet het programma in het PATH staan, zoals na apt install)."""
+    env = os.environ.get("AX25CHAT_" + naam.upper())
+    if env:
+        return env
+    bestand = naam + (".exe" if sys.platform == "win32" else "")
+    basis = [os.path.dirname(sys.executable)] if getattr(sys, "frozen", False) else []
+    basis += [CODE, os.path.dirname(CODE)]
+    for b in basis:
+        for sub in ("", "direwolf", "hamlib", os.path.join("hamlib", "bin")):
+            pad = os.path.join(b, sub, bestand)
+            if os.path.isfile(pad):
+                return pad
+    return naam
+
+
 def uit(cmd, timeout=5):
     """Uitvoer van een opdracht als tekst, of "" als het niet lukt."""
     try:
@@ -153,6 +170,8 @@ def neem_op(kaart, seconden):
 
 def open_serieel(pad, baud=9600):
     """Open een seriële poort om te lezen, niet-blokkerend. Geeft een bestandsnummer (os.read/os.close)."""
+    if sys.platform == "win32":
+        raise OSError("een GPS-muis werkt op Windows nog niet; gebruik een vaste positie of de GPS van de telefoon")
     import termios                                     # bestaat niet op Windows
     fd = os.open(pad, os.O_RDONLY | os.O_NOCTTY | os.O_NONBLOCK)
     a = termios.tcgetattr(fd)

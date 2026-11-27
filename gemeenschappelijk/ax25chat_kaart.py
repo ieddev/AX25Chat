@@ -335,6 +335,10 @@ def start_download(plaats, straal, zoom, positie=None):
     _schrijf(VOORTGANG_FILE, {"bezig": True, "plaats": plaats or "mijn positie", "klaar": 0, "mislukt": 0, "totaal": 0,
                               "bijgewerkt": time.time(), "fout": ""})
     waar = ["--plaats", plaats] if plaats else ["--midden", f"{positie[0]:.5f},{positie[1]:.5f}"]
+    if getattr(sys, "frozen", False):         # Windows-programma (één .exe): downloaden in een draad, niet als los proces
+        threading.Thread(target=main, args=([*waar, "--straal", str(straal), "--zoom", str(zoom), "--niet-wisselen"],),
+                         daemon=True).start()
+        return ""
     with open(os.path.join(KAART_DIR, "download.log"), "w") as logf:
         subprocess.Popen([sys.executable, os.path.abspath(__file__), *waar, "--straal", str(straal),
                           "--zoom", str(zoom)], stdout=logf, stderr=subprocess.STDOUT, start_new_session=True, cwd=MAP)
@@ -454,7 +458,7 @@ def vaste_positie():
     return float(b["lat"]), float(b["lon"])
 
 
-def main():
+def main(argv=None):
     ap = argparse.ArgumentParser(
         prog="ax25chat-kaart",
         description="Offline kaart (PDOK) voor AX25Chat downloaden. Zonder plaats: rond de vaste positie van het baken.")
@@ -470,7 +474,7 @@ def main():
     ap.add_argument("--niet-wisselen", action="store_true",
                     help="zonder internet niet zelf naar de thuis-wifi gaan")
     ap.add_argument("--wissel", action="store_true", help=argparse.SUPPRESS)   # intern: draait al op de achtergrond
-    a = ap.parse_args()
+    a = ap.parse_args(argv)
     a.plaats = a.plaats or a.plaats_los
     if a.status:
         return toon_status()
@@ -482,7 +486,7 @@ def main():
             print("Geef een plaats (bijv.  ax25chat-kaart Deventer ) of vul bij het APRS-baken een vaste positie in."); return 1
         a.midden = f"{pos[0]:.5f},{pos[1]:.5f}"
     v = voortgang()
-    if v and v.get("bezig") and sys.stdin.isatty() and time.time() - v.get("bijgewerkt", 0) < 120:
+    if v and v.get("bezig") and sys.stdin and sys.stdin.isatty() and time.time() - v.get("bijgewerkt", 0) < 120:
         print("Er loopt al een download. Volg hem met:  ax25chat-kaart --status"); return 1
 
     if a.wissel:

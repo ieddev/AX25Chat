@@ -13,23 +13,34 @@ Door te kijken welke geluidskaart en welke poort aan hetzelfde hubje hangen (via
 welke geluidskaart bij welke poort hoort, en kan hij een DigiRig herkennen: een CP2102 naast een
 C-Media-geluidskaart, zonder sets-naam. Die hoeft dan niet op alle CAT-modellen te worden geprobeerd.
 
+Op Windows komen dezelfde gegevens uit PowerShell (Get-PnpDevice): de geluidskaarten (AudioEndpoint), de
+COM-poorten en per apparaat het USB-pad (LocationPaths), zodat ook daar per hubje gegroepeerd wordt.
+Een COM-poort krijgt een naam zoals onder /dev/serial/by-id, zodat de herkenning hetzelfde blijft.
+
 Alleen standaard-Python. Paden zijn via omgevingsvariabelen te vervangen (voor de tests).
 """
 
 import glob
+import json
 import os
 import re
+import subprocess
+import sys
 
 ASOUND_CARDS = os.environ.get("AX25CHAT_ASOUND_CARDS", "/proc/asound/cards")
 SERIAL_BY_ID = os.environ.get("AX25CHAT_SERIAL_BY_ID", "/dev/serial/by-id")
 SYS = os.environ.get("AX25CHAT_SYS", "/sys")
+WIN_JSON = os.environ.get("AX25CHAT_WIN_USB_JSON", "")     # tests: nagebootste PowerShell-uitvoer
+WINDOWS = sys.platform == "win32" or bool(WIN_JSON)
 
 USB_APPARAAT = re.compile(r"^\d+-\d+(\.\d+)*$")          # 1-1.3 (een apparaat; 1-1.3:1.0 is een interface)
 CMEDIA = ("c-media", "cm108", "cm119", "usb audio device", "usb pnp sound")
 
 
 def geluidskaarten():
-    """[(nummer, id, beschrijving)] uit /proc/asound/cards."""
+    """[(nummer, id, beschrijving)] uit /proc/asound/cards (Windows: de USB-geluidskaarten)."""
+    if WINDOWS:
+        return [(nr, kid, tekst) for nr, kid, tekst, _ in _windows()[0]]
     uit = []
     try:
         with open(ASOUND_CARDS, encoding="utf-8") as f:
@@ -45,7 +56,9 @@ def geluidskaarten():
 
 
 def seriele_poorten():
-    """[pad] uit /dev/serial/by-id (blijft gelijk na herstart, anders dan ttyUSB0)."""
+    """[pad] uit /dev/serial/by-id (blijft gelijk na herstart, anders dan ttyUSB0). Windows: COM-poorten via USB."""
+    if WINDOWS:
+        return [p for p, _ in _windows()[1]]
     return sorted(glob.glob(os.path.join(SERIAL_BY_ID, "*")))
 
 
@@ -63,13 +76,22 @@ def poortletter(naam):
     return ""
 
 
+_NAMEN = {}          # Windows: "COM5" -> naam zoals onder /dev/serial/by-id
+
+
+def naam(pad):
+    """De herkenbare naam van een poort (Linux: de by-id-naam; Windows: een nagemaakte by-id-naam)."""
+    return _NAMEN.get(pad) or os.path.basename(pad)
+
+
 def korte_naam(pad):
-    naam = os.path.basename(pad)
-    kort = re.sub(r"^usb-", "", naam)
+    n = naam(pad)
+    kort = re.sub(r"^usb-", "", n)
     kort = re.sub(r"_[0-9A-Fa-f]{6,}", "", kort)
     kort = re.sub(r"(-if0\d)?-port0$", "", kort)
-    letter = poortletter(naam)
-    return kort + (f" [poort {letter}]" if letter else "")
+    letter = poortletter(n)
+    kort = kort + (f" [poort {letter}]" if letter else "")
+    return f"{pad} · {kort}" if pad in _NAMEN else kort
 
 
 def _usb_apparaat(sysfs_pad):
@@ -103,7 +125,7 @@ def usb_poort(pad):
 
 def soort_poort(pad, kaartbeschrijving=""):
     """Wat voor poort is dit? 'icom', 'yaesu', 'ptt' (SCU-17 poort B), 'digirig' of 'serieel'."""
-    n = os.path.basename(pad).lower()
+    n = naam(pad).lower()
     if re.search(r"ic-?\d{3,4}|id-?\d{3,4}", n):
         return "icom"
     if "cp2105" in n:
@@ -115,7 +137,7 @@ def soort_poort(pad, kaartbeschrijving=""):
 
 def setnaam(pad):
     """'Icom IC-9700' uit de poortnaam, of ''."""
-    m = re.search(r"(I[CD])-?(\d{3,4}[A-Z]?)", os.path.basename(pad), re.I)
+    m = re.search(r"(I[CD])-?(\d{3,4}[A-Z]?)", naam(pad), re.I)
     return f"Icom {m.group(1).upper()}-{m.group(2).upper()}" if m else ""
 
 
@@ -124,19 +146,23 @@ def inventaris():
 
     soort van de groep: 'icom', 'yaesu', 'digirig', 'geluid' (alleen geluidskaart: VOX) of 'serieel' (alleen poort).
     """
-    kaarten = [(nr, kid, tekst, usb_kaart(nr)) for nr, kid, tekst in geluidskaarten()]
-    kaarten = [k for k in kaarten if k[3]]                    # alleen USB (niet de HDMI-/koptelefoonuitgang)
-    poorten = [(p, usb_poort(p)) for p in seriele_poorten()]
+    if WINDOWS:
+        kaarten, poorten, hub = _windows()
+    else:
+        kaarten = [(nr, kid, tekst, usb_kaart(nr)) for nr, kid, tekst in geluidskaarten()]
+        kaarten = [k for k in kaarten if k[3]]                # alleen USB (niet de HDMI-/koptelefoonuitgang)
+        poorten = [(p, usb_poort(p)) for p in seriele_poorten()]
+        hub = hub_van
     groepen, gebruikt = [], set()
     for nr, kid, tekst, app in kaarten:
-        hub = hub_van(app)
-        eigen = [p for p, pa in poorten if hub and hub_van(pa) == hub]
+        h = hub(app)
+        eigen = [p for p, pa in poorten if h and hub(pa) == h]
         gebruikt.update(eigen)
-        groepen.append({"hub": hub, "kaart": kid, "kaart_tekst": tekst,
+        groepen.append({"hub": h, "kaart": kid, "kaart_tekst": tekst,
                         "poorten": [(p, soort_poort(p, tekst)) for p in eigen]})
     for p, pa in poorten:
         if p not in gebruikt:
-            groepen.append({"hub": hub_van(pa), "kaart": "", "kaart_tekst": "", "poorten": [(p, soort_poort(p))]})
+            groepen.append({"hub": hub(pa), "kaart": "", "kaart_tekst": "", "poorten": [(p, soort_poort(p))]})
     for g in groepen:
         soorten = [s for _, s in g["poorten"]]
         g["soort"] = next((s for s in ("icom", "yaesu", "digirig") if s in soorten),
@@ -147,6 +173,115 @@ def inventaris():
     return groepen
 
 
+# ---------------------------------------------------------------------------
+# Windows
+# ---------------------------------------------------------------------------
+
+# Per apparaat (geluidskaart-ingang/-uitgang en COM-poort): naam, InstanceId, het USB-apparaat erboven en zijn
+# USB-pad, bijv. PCIROOT(0)#PCI(1400)#USBROOT(0)#USB(3)#USB(2). Alles in één keer, als JSON.
+PS_SCRIPT = r"""
+$ErrorActionPreference = 'SilentlyContinue'
+function Ouder($id) {
+  for ($i = 0; $i -lt 8 -and $id; $i++) {
+    if ($id -match '^USB\\VID_[0-9A-F]{4}&PID_[0-9A-F]{4}\\') {
+      $lp = (Get-PnpDeviceProperty -InstanceId $id -KeyName DEVPKEY_Device_LocationPaths).Data
+      return @($id, ($lp | Select-Object -First 1))
+    }
+    $id = (Get-PnpDeviceProperty -InstanceId $id -KeyName DEVPKEY_Device_Parent).Data
+  }
+  return @('', '')
+}
+$uit = @()
+foreach ($d in (Get-PnpDevice -PresentOnly -Class AudioEndpoint, Ports)) {
+  $o = Ouder $d.InstanceId
+  $uit += [pscustomobject]@{ klasse = [string]$d.Class; naam = [string]$d.FriendlyName; id = [string]$d.InstanceId;
+                             usb = [string]$o[0]; pad = [string]$o[1] }
+}
+ConvertTo-Json -InputObject @($uit) -Compress
+"""
+
+_WIN_KAARTEN = {}     # geluidskaart (tekst tussen haakjes) -> {"in": volledige naam, "uit": volledige naam}
+
+
+def _windows_ruw():
+    if WIN_JSON:
+        with open(WIN_JSON, encoding="utf-8") as f:
+            return json.load(f)
+    try:
+        r = subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", PS_SCRIPT],
+                           capture_output=True, text=True, timeout=30,
+                           creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        data = json.loads(r.stdout or "[]")
+    except (OSError, subprocess.SubprocessError, ValueError):
+        return []
+    return data if isinstance(data, list) else [data]
+
+
+def win_hub(pad):
+    """Het hubje boven een USB-pad, of '' als het apparaat direct aan de PC hangt (net als hub_van op Linux)."""
+    if "#" not in (pad or ""):
+        return ""
+    ouder = pad.rsplit("#", 1)[0]
+    return ouder if ouder.rsplit("#", 1)[-1].startswith("USB(") else ""
+
+
+def _tussen_haakjes(naam_):
+    m = re.search(r"\((.+)\)\s*$", naam_ or "")
+    return m.group(1).strip() if m else (naam_ or "").strip()
+
+
+def _byid_naam(x, usb_id):
+    """Een naam zoals onder /dev/serial/by-id, zodat soort_poort, poortletter en setnaam hetzelfde werken.
+    USB\\VID_10C4&PID_EA60\\IC-9700 12345678 A  ->  usb-Silicon_Labs_CP2102_IC-9700_12345678_A-if00-port0"""
+    eigen = x.get("id", "")
+    m = re.search(r"VID_([0-9A-F]{4})&PID_([0-9A-F]{4})", eigen + usb_id, re.I)
+    vidpid = (m.group(1) + ":" + m.group(2)).upper() if m else ""
+    chip = {"10C4:EA60": "Silicon_Labs_CP2102", "10C4:EA70": "Silicon_Labs_CP2105", "10C4:EA71": "Silicon_Labs_CP2108",
+            "0403:6001": "FTDI_FT232R", "0403:6015": "FTDI_FT231X", "067B:2303": "Prolific_PL2303"}.get(vidpid)
+    if not chip:
+        chip = re.sub(r"\W+", "_", re.sub(r"\s*\(COM\d+\)\s*$", "", x.get("naam", ""))).strip("_") or "Serieel"
+    serie = (usb_id or eigen).split("\\")[-1]
+    serie = "" if "&" in serie else re.sub(r"\s+", "_", serie.strip())   # met & = door Windows verzonnen
+    mi = re.search(r"&MI_(\d\d)", eigen, re.I)
+    return f"usb-{chip}{'_' + serie if serie else ''}-if{mi.group(1) if mi else '00'}-port0"
+
+
+def _windows():
+    """(kaarten [(nr, id, tekst, usb-pad)], poorten [(COMx, usb-pad)], hub-functie) voor inventaris()."""
+    kaarten, poorten = {}, []
+    _NAMEN.clear()
+    _WIN_KAARTEN.clear()
+    for x in _windows_ruw():
+        if not x.get("usb"):
+            continue                                        # niet via USB (ingebouwde geluidskaart, COM1)
+        if x.get("klasse") == "Ports":
+            m = re.search(r"\((COM\d+)\)", x.get("naam", ""))
+            if m:
+                _NAMEN[m.group(1)] = _byid_naam(x, x["usb"])
+                poorten.append((m.group(1), x.get("pad", "")))
+        elif x.get("klasse") == "AudioEndpoint":
+            kid = _tussen_haakjes(x.get("naam"))
+            richting = "in" if re.search(r"\{0\.0\.1\.", x.get("id", "")) else "uit"
+            kaarten.setdefault(x["usb"], {"id": kid, "pad": x.get("pad", "")})
+            _WIN_KAARTEN.setdefault(kid, {})[richting] = x.get("naam", "")
+    lijst = [(i, k["id"], k["id"], k["pad"]) for i, k in enumerate(kaarten.values())]
+    return lijst, sorted(poorten, key=lambda p: int(p[0][3:])), win_hub
+
+
+def win_adevice(kaart):
+    """ADEVICE-regel voor Direwolf op Windows. Direwolf zoekt een stukje tekst in de naam van het geluidsapparaat
+    (max. 31 tekens), apart voor ingang en uitgang. Zonder gegevens: de tekst tussen haakjes."""
+    if not _WIN_KAARTEN and kaart:
+        try:
+            _windows()
+        except Exception:
+            pass
+    k = _WIN_KAARTEN.get(kaart, {})
+    ingang = (k.get("in") or kaart or "0")[:31].rstrip()
+    uitgang = (k.get("uit") or kaart or "0")[:31].rstrip()
+    return f'ADEVICE "{ingang}" "{uitgang}"'
+
+
 def ptt_poort(groep):
     """De poort voor PTT via RTS: DigiRig = zijn CP2102; SCU-17 = poort B; Icom = poort A (USB SEND)."""
     poorten = groep["poorten"]
@@ -155,7 +290,7 @@ def ptt_poort(groep):
             if s == soort:
                 return p
     for p, s in poorten:
-        if s == "icom" and poortletter(os.path.basename(p)) in ("A", ""):
+        if s == "icom" and poortletter(naam(p)) in ("A", ""):
             return p
     return poorten[0][0] if poorten else ""
 

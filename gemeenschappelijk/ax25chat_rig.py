@@ -22,13 +22,14 @@ import threading
 import time
 
 import ax25chat_systeem as systeem
+import ax25chat_usb as usb
 
 MAP = systeem.MAP
 ENV_FILE = os.path.join(MAP, "rigctld.env")
 LOG_FILE = os.path.join(MAP, "rig_log.json")
 STATION_FILE = os.path.join(MAP, "station.json")
 RADIO_FILE = os.path.join(MAP, "radio_instellingen.json")
-RIGCTL = os.environ.get("AX25CHAT_RIGCTL", "rigctl")
+RIGCTL = systeem.programma("rigctl")
 HOST, POORT = "127.0.0.1", int(os.environ.get("AX25CHAT_RIGCTLD_POORT", "4532"))
 
 # 2 m: 144,850 - 144,950 MHz op het 12,5 kHz-raster (afgesproken 25-11-2026). 70 cm en HF volgen later.
@@ -484,10 +485,15 @@ def kandidaten(poortnaam, soort=""):
     return [m for m, *_ in MODELLEN]
 
 
+def hamlib_poort(poort):
+    """Windows: COM10 en hoger moeten voor Hamlib als \\\\.\\COM10."""
+    return "\\\\.\\" + poort if re.fullmatch(r"COM\d{2,}", poort or "") else poort
+
+
 def probeer(model, poort, baud, timeout=4):
     """rigctl -m model -r poort -s baud f -> frequentie in Hz of None."""
     try:
-        r = subprocess.run([RIGCTL, "-m", str(model), "-r", poort, "-s", str(baud),
+        r = subprocess.run([RIGCTL, "-m", str(model), "-r", hamlib_poort(poort), "-s", str(baud),
                             "-C", "timeout=500,retry=0,rts_state=OFF,dtr_state=OFF", "f"],
                            capture_output=True, text=True, timeout=timeout)
     except (OSError, subprocess.TimeoutExpired):
@@ -506,7 +512,7 @@ def zoek(poorten, max_seconden=90):
     gevonden, meld, begin = [], [], time.time()
     snelheden = {m: b for m, _, _, b in MODELLEN}
     for pad, soort in poorten:
-        for model in kandidaten(os.path.basename(pad), soort):
+        for model in kandidaten(usb.naam(pad), soort):
             for baud in snelheden.get(model, [19200, 9600]):
                 if time.time() - begin > max_seconden:
                     meld.append("Zoeken gestopt na anderhalve minuut; kies de set eventueel zelf in de lijst.")
