@@ -224,7 +224,7 @@ def html_sectie(verborgen):
                  '<span class="mono">sudo nmtui</span>, of gebruik een netwerkkabel.</p>')
         wifi = ('<p class="uitleg">Bijwerken heeft internet nodig: je thuis-wifi of een netwerkkabel.</p>'
                 + controleer + thuis)
-    return (f'<section><h2>AX25Chat bijwerken</h2><p class="uitleg">Geïnstalleerd: <b>versie {e(v)}</b>. '
+    return (f'<section id="bijwerken"><h2>AX25Chat bijwerken</h2><p class="uitleg">Geïnstalleerd: <b>versie {e(v)}</b>. '
             f'Instellingen, sets en berichten blijven bewaard.</p>{laatst}{wifi}</section>')
 
 

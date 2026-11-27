@@ -69,6 +69,22 @@ de Pi zit dan niet meer op je thuis-wifi.
    tweede ontvanger: schoon packet-geluid, niet vervormd. Pas het zendniveau aan en test opnieuw.
 7. Optioneel: **APRS-baken** (je positie op de kaart), zie [APRS-baken](#aprs-baken-je-positie-op-de-kaart).
 
+### De webpagina gebruiken: menu, meldingen en laden
+
+- **Menu**: tik in de balk op **Radio** of **Status**. Er klapt een lijstje open met de onderdelen van die pagina
+  (Radio: Station, Mijn frequenties, APRS-baken, Offline kaart, Set met daaronder Zoek mijn set, Mijn sets,
+  Luistertest, Testuitzending en Handmatig instellen; Status: Diensten, Wifi-hotspot, Bijwerken, Log van Direwolf,
+  Raspberry Pi). Tik op een onderdeel en de pagina springt er meteen naartoe. Tik ergens anders of druk op Esc om
+  het lijstje te sluiten. Dit werkt op de PC en op de telefoon (op de telefoon is het lijstje schermbreed).
+- **Meldingen**: tik je op *Opslaan* (of een andere knop) in een onderdeel, dan verschijnt de groene (gelukt) of rode
+  (fout) melding bovenin **dat onderdeel**, en blijft de pagina daar staan. Je hoeft dus niet meer terug te scrollen.
+- **Sneller laden**: de pagina's Radio en Status verschijnen meteen. Wat op een Pi Zero tijd kost, komt een tel later
+  vanzelf in beeld: de live gegevens van de set via CAT (frequentie, mode, S-meter), de gehoorde stations (het log van
+  Direwolf over 24 uur doorzoeken) en het log op Status. Zolang staat er bijv. *De set wordt uitgelezen…*.
+  Daarnaast onthoudt de Pi je inlog 12 uur (alleen in zijn geheugen); het wachtwoord controleren kost op een Pi Zero
+  bijna een seconde per pagina. Wijzig je het wachtwoord (`ax25chat_web.py --wachtwoord`), dan moet iedereen opnieuw
+  inloggen; na een herstart van de webserver ook.
+
 ## Kabels
 
 De aansluiting op de set verschilt per set, en de Pi Zero 2W heeft een andere aansluiting dan de

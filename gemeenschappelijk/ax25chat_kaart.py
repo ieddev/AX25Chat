@@ -20,6 +20,7 @@ want de ssh-verbinding via de hotspot valt dan weg. Een afgebroken download gaat
 """
 
 import argparse
+import functools
 import json
 import math
 import os
@@ -101,6 +102,7 @@ def alle_tegels(lat, lon, straal_km, max_zoom):
     return sorted(gezien)
 
 
+@functools.lru_cache(maxsize=16)          # het tabblad Radio vraagt steeds dezelfde schatting
 def schatting(lat, lon, straal_km, max_zoom):
     n = len(alle_tegels(lat, lon, straal_km, max_zoom))
     return n, round(n * GEM_KB / 1024)
@@ -265,7 +267,16 @@ def _e(t):
     return _h.escape(str(t), quote=True)
 
 
+_MB = {}                 # pad -> (tijd van kaart.json, MB): alle tegels langslopen duurt op een Pi Zero lang
+
+
 def map_mb(pad=TEGELS):
+    try:
+        sleutel = os.path.getmtime(INFO_FILE)
+    except OSError:
+        sleutel = None
+    if sleutel and _MB.get(pad, (None,))[0] == sleutel:
+        return _MB[pad][1]
     totaal = 0
     for wortel, _, bestanden in os.walk(pad):
         for b in bestanden:
@@ -273,7 +284,10 @@ def map_mb(pad=TEGELS):
                 totaal += os.path.getsize(os.path.join(wortel, b))
             except OSError:
                 pass
-    return round(totaal / 1024 / 1024)
+    mb = round(totaal / 1024 / 1024)
+    if sleutel:
+        _MB[pad] = (sleutel, mb)
+    return mb
 
 
 def tegel_pad(z, x, y):
@@ -372,7 +386,7 @@ if(!s.bezig){location.reload();return}
 el.textContent=(!s.totaal&&s.stap)?s.stap:'Bezig met downloaden voor '+s.plaats+': '+s.klaar+' van '+(s.totaal||'?')+' tegels'+
 (s.totaal?' ('+Math.floor(100*s.klaar/s.totaal)+'%)':'')+'.';setTimeout(kijk,3000)}).catch(function(){setTimeout(kijk,5000)})}
 kijk()})()</script>""" if bezig else ""
-    return f"""<section><h2>Offline kaart</h2>
+    return f"""<section id="kaarten"><h2>Offline kaart</h2>
 <p class="uitleg">Voor het tabblad <b>Kaart</b> en de app: de stations die je hoort, op een kaart die zonder internet
 werkt. Download hem <b>eenmalig met internet</b> (thuis-wifi of netwerkkabel). Kaart: BRT-Achtergrondkaart van het
 Kadaster via PDOK (open data, CC BY 4.0). Die dekt alleen Nederland: stations over de grens staan er wel op, maar

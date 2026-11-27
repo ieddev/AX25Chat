@@ -66,7 +66,7 @@ MODELLEN = [
     (2007, "Kenwood", "TS-790", [4800, 9600]),
 ]
 MODEL_NAAM = {m: f"{merk} {naam}" for m, merk, naam, _ in MODELLEN}
-SNELHEDEN = [4800, 9600, 19200, 38400, 57600, 115200]
+CAT_SNELHEDEN = [4800, 9600, 19200, 38400, 57600, 115200]
 ALLEEN_HF = {3073}
 # Standaard CI-V-adres per Icom (hamlib-nummer). Nodig voor het vangnet in zet_mode().
 ICOM_ADRES = {3081: 0xA2, 3073: 0x94, 3085: 0xA4, 3070: 0x88, 3068: 0x7C, 3044: 0x60, 3071: 0x8C}
