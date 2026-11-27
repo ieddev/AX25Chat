@@ -103,8 +103,8 @@ dan is dat bijna altijd RF in de kabel of de voeding.
 | IC-9700 | CAT op poort A, geluid van de set | *MENU > SET > Connectors > USB SEND* op **OFF** (PTT gaat via CAT) |
 | IC-7300 | CAT, geluid van de set, modem 300 baud | Alleen HF: zet je HF-frequenties bij Mijn frequenties (bijv. 14,105 USB-D 300) |
 | FT-818 + SCU-17 | CAT op poort A, geluid van de SCU-17 | Vermogen is niet uit te lezen; max 6 W |
-| GM-340 + DigiRig | DigiRig, PTT via RTS | Kanaal met de packetfrequentie vooraf programmeren |
-| UV-5R + DigiRig | DigiRig, PTT via RTS | TXDELAY 300-400 ms (Handmatig instellen), lage zendstand, squelch laag |
+| GM-340 + DigiRig | DigiRig, PTT via RTS | Kanaal met de packetfrequentie vooraf programmeren. Geen CAT: APRS-baken alleen als de set zelf op 144,800 staat |
+| UV-5R + DigiRig | DigiRig, PTT via RTS | TXDELAY 300-400 ms (Handmatig instellen), lage zendstand, squelch laag. Geen CAT: APRS-baken alleen als de set zelf op 144,800 staat |
 
 ### Instellingen op de IC-7300
 
@@ -242,12 +242,18 @@ Europa, FM-D 1200 baud), zodat je via digipeaters en iGates op kaarten als aprs.
   de Pi hem voor het baken even op 144,800 FM-D, zendt (Direwolf wacht zelf tot het kanaal vrij is) en zet hem
   na een paar seconden terug op de frequentie en mode van ervoor. Chatberichten die in die seconden verstuurd
   moeten worden, wachten even en gaan daarna op je eigen frequentie de lucht in. Dit kan alleen:
-  - met **CAT** (de Pi moet de set kunnen bedienen; met een DigiRig zonder CAT zet je Station of de set zelf op
-    144,800);
+  - met **CAT** (de Pi moet de set kunnen bedienen). Zie hieronder voor sets zonder CAT;
   - met een set die op **2 m** kan (de IC-7300 niet);
   - als op je eigen frequentie ook **1200 baud** gebruikt wordt. Op 9600 baud (bijv. 438,175) of 300 baud (HF)
     wacht het baken, want dan zou Direwolf twee keer opnieuw moeten starten.
   Kan het niet, dan staat in de status waarom het baken wacht.
+- **Set zonder CAT** (bijv. **Baofeng UV-5R** of **Motorola GM-340** met een DigiRig): de Pi kan de frequentie
+  niet veranderen, die stel je met de hand op de set in (of het kanaal is vooraf geprogrammeerd). Het baken kan dan
+  **niet** aan terwijl je op een andere frequentie chat: het blijft wachten met de melding *heeft geen CAT*. Wil je
+  toch een baken zenden, zet dan de set zelf op 144,800 (FM, squelch laag) en kies bij Station ook **144,800**. Dan
+  zendt het baken gewoon, maar je chat en luistert dan ook op 144,800 (het APRS-kanaal; daar kun je wel
+  APRS-berichten sturen en ontvangen). Een BBS op een andere frequentie bereik je zo niet: zet het baken dan uit, en
+  zet de set en Station op de frequentie van de BBS.
 - **Niet tijdens een BBS-verbinding**: zolang je op het tabblad BBS verbonden bent, pauzeert het baken. Na het
   verbreken gaat het verder.
 - **Symbool** (auto, camper, fiets, huis …), **commentaar** (max. 40 tekens) en **pad** (standaard
