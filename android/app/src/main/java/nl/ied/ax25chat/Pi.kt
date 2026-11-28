@@ -13,7 +13,8 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 /**
- * Praten met de Pi: dezelfde /api als de webpagina (chat/ax25chat_web.py).
+ * Praten met AX25Chat op de Pi of de PC: dezelfde /api als de webpagina (chat/ax25chat_web.py).
+ * (Het object heet nog Pi uit de tijd dat er alleen een Pi was.)
  *
  * De hotspot van de Pi heeft geen internet. Android stuurt verkeer dan liever via mobiele data, en dan is
  * 10.42.0.1 onbereikbaar. Daarom bindt de app zich aan de wifi zodra die er is: dan gaat alles van de app
@@ -33,10 +34,31 @@ object Pi {
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString("adres", STANDAARD_ADRES) ?: STANDAARD_ADRES
 
     fun zetAdres(ctx: Context, adres: String) {
-        val schoon = adres.trim().removePrefix("http://").removePrefix("https://").trimEnd('/')
-        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
-            .putString("adres", schoon.ifEmpty { STANDAARD_ADRES }).apply()
+        val schoon = adres.trim().removePrefix("http://").removePrefix("https://").trimEnd('/').ifEmpty { STANDAARD_ADRES }
+        val p = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val e = p.edit().putString("adres", schoon)
+        if (schoon != p.getString("adres", STANDAARD_ADRES)) e.remove("toestel")   // ander adres: misschien ander toestel
+        e.apply()
     }
+
+    /** "Pi" of "PC", zoals AX25Chat het zelf meldt (veld toestel in /api/berichten); leeg zolang onbekend. */
+    fun toestel(ctx: Context): String =
+        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString("toestel", "") ?: ""
+
+    fun zetToestel(ctx: Context, t: String) {
+        if (t.isNotEmpty() && t != toestel(ctx))
+            ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString("toestel", t).apply()
+    }
+
+    /** Voor in een zin: "de Pi", "de PC", of "AX25Chat" zolang de app nog niet weet waar hij mee praat. */
+    fun naam(ctx: Context): String = when (toestel(ctx)) {
+        "Pi" -> "de Pi"
+        "PC" -> "de PC"
+        else -> "AX25Chat"
+    }
+
+    /** Hetzelfde, met een hoofdletter aan het begin van een zin. */
+    fun naamHoofd(ctx: Context): String = naam(ctx).replaceFirstChar { it.uppercase() }
 
     fun meldingenAan(ctx: Context): Boolean =
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean("meldingen", true)
@@ -45,7 +67,7 @@ object Pi {
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean("meldingen", aan).apply()
     }
 
-    /** GPS van de telefoon naar de Pi sturen, als positie voor het APRS-baken. */
+    /** GPS van de telefoon naar AX25Chat sturen, als positie voor het APRS-baken. */
     fun gpsAan(ctx: Context): Boolean =
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean("gps", false)
 
@@ -120,7 +142,7 @@ object Pi {
 
     /**
      * Server-sent events van /api/live lezen tot de verbinding wegvalt of stop() true geeft.
-     * Per gebeurtenis: opGebeurtenis(soort, data). De Pi stuurt elke 20 s een hartslag.
+     * Per gebeurtenis: opGebeurtenis(soort, data). AX25Chat stuurt elke 20 s een hartslag.
      */
     fun luister(ctx: Context, stop: () -> Boolean, opGebeurtenis: (String, JSONObject) -> Unit) {
         val c = open(ctx, "/api/live", 60000)

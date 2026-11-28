@@ -206,6 +206,7 @@ class TestTelefoon(unittest.TestCase):
         with open(os.path.join(self.map, "telefoon.json")) as f:
             self.assertTrue(json.load(f)["aan"])
         self.assertIn("Diensten", self.haal("127.0.0.1", "/status"))   # op de PC zelf: geen inlog
+        self.assertIn('"toestel": "PC"', self.haal("127.0.0.1", "/api/berichten"))   # de app zegt dan "de PC"
         if ip:
             self.assertEqual(self.haal(ip, "/status"), "HTTP 401")       # telefoon: Status met wachtwoord
             kop = {"Authorization": "Basic " + base64.b64encode(b"beheer:geheim123").decode()}

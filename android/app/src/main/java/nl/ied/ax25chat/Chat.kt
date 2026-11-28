@@ -5,7 +5,7 @@ import android.os.Handler
 import android.os.Looper
 import org.json.JSONObject
 
-/** Eén bericht, zoals de Pi het geeft (tabel berichten in berichten.db). */
+/** Eén bericht, zoals AX25Chat het geeft (tabel berichten in berichten.db). */
 data class Bericht(
     val id: Long, val tijd: Double, val richting: String, val van: String, val aan: String,
     val tekst: String, val nummer: String?, val status: String,
@@ -88,6 +88,7 @@ object Chat {
         val d = Pi.haal(ctx, "/api/berichten?sinds=0")
         synchronized(this) {
             mij = d.optString("mij")
+            Pi.zetToestel(ctx, d.optString("toestel"))
             laatst = d.optDouble("nu", 0.0)
             berichten.clear()
             val lijst = d.optJSONArray("berichten")
