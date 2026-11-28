@@ -78,7 +78,7 @@ of zelf ingevuld), met een eigen symbool op het midden van het locatorvak. Die d
 **Android-app:** voor dagelijks gebruik (chat met meldingen, kaart, BBS), met de Pi of met AX25Chat op een
 Linux- of Windows-PC. Download de APK bij
 [Releases](https://github.com/ieddev/AX25Chat/releases); uitleg in [docs/PROCEDURE.md](docs/PROCEDURE.md#android-app).
-De broncode staat in `android/`.
+Handleiding om te printen: [docs/AX25Chat-App.pdf](docs/AX25Chat-App.pdf). De broncode staat in `android/`.
 
 ## Installeren
 
@@ -114,11 +114,14 @@ Staat er een nieuwe versie op GitHub, dan meldt AX25Chat dat bovenin: **Nieuwe v
 **Op Windows** (testfase): download `AX25Chat-setup-<versie>.exe` bij de nieuwste `win-v`-release. Zie *AX25Chat op Windows* in de procedure.
 
 De volledige procedure, met per set waar je op moet letten, staat in [docs/PROCEDURE.md](docs/PROCEDURE.md).
-Om te printen of offline te lezen: [docs/AX25Chat-handleiding.pdf](docs/AX25Chat-handleiding.pdf) (README, procedure en
-testplan in één PDF, stand 26-11-2026).
-Gebruik je AX25Chat op een PC, zonder Pi? Dan is er een eigen handleiding met alleen wat voor jouw PC geldt:
-[docs/AX25Chat-Linux.pdf](docs/AX25Chat-Linux.pdf) en [docs/AX25Chat-Windows.pdf](docs/AX25Chat-Windows.pdf)
-(stand 27-11-2026).
+Om te printen of offline te lezen is er per variant een handleiding (stand 28-11-2026):
+
+| Handleiding | Voor |
+|---|---|
+| [AX25Chat-handleiding.pdf](docs/AX25Chat-handleiding.pdf) | Raspberry Pi met hotspot: README, procedure en testplan in één PDF |
+| [AX25Chat-Linux.pdf](docs/AX25Chat-Linux.pdf) | AX25Chat als programma op een Linux-PC |
+| [AX25Chat-Windows.pdf](docs/AX25Chat-Windows.pdf) | AX25Chat als programma op een Windows-PC |
+| [AX25Chat-App.pdf](docs/AX25Chat-App.pdf) | de Android-app, met een Pi of een PC |
 
 ## Testen
 

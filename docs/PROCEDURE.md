@@ -554,6 +554,8 @@ op de PC, zoals hierboven. De app werkt met beide: met een Pi (onderweg of thuis
 thuis. Zodra de app verbonden is, weet hij waar hij mee praat en zegt hij *de Pi* of *de PC* (bijv. *geen verbinding
 met de PC*); daarvoor, of met een oudere versie van AX25Chat, zegt hij gewoon *AX25Chat*.
 
+Alles over de app staat ook in een eigen handleiding om te printen: [AX25Chat-App.pdf](AX25Chat-App.pdf).
+
 **Installeren** (de app staat niet in de Play Store, maar op GitHub):
 
 1. Open op je telefoon **github.com/ieddev/AX25Chat/releases** en tik bij de nieuwste versie op
@@ -571,7 +573,7 @@ met de PC*); daarvoor, of met een oudere versie van AX25Chat, zegt hij gewoon *A
 |---|---|
 | Onderweg | Verbind de telefoon met de wifi **AX25Chat-&lt;roepnaam&gt;** van de Pi. Meldt Android *geen internet*, kies dan **Verbonden blijven**. De app praat via de wifi met de Pi; je andere apps houden internet via 4G. Adres in de app: `10.42.0.1` (standaard). |
 | Thuis, Pi | Pi en telefoon op je eigen wifi. Vul bij **Instellingen** in de app het adres in dat je router de Pi geeft (bijv. `192.168.1.50`; je ziet het in je router, of op de Pi met `hostname -I`). |
-| Thuis, PC | Zet op de PC bij **Status → Telefoon en app** *Bereikbaar maken vanaf telefoon* aan (zie [Vanaf je telefoon of de app](#vanaf-je-telefoon-of-de-app) hieronder). Telefoon en PC op dezelfde wifi; vul in de app het adres met poort in dat daar staat (bijv. `192.168.1.20:8080`). |
+| Thuis, PC | Zet op de PC bij **Status → Telefoon en app** *Bereikbaar maken vanaf telefoon* aan (zie [Vanaf je telefoon of de app](#vanaf-je-telefoon-of-de-app) hieronder). Telefoon en PC op dezelfde wifi; vul in de app het adres met poort in dat daar staat (bijv. `192.168.1.50:8080`). |
 
 **In de app:**
 
