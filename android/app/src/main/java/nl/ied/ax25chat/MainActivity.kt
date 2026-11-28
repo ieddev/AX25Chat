@@ -11,9 +11,11 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.text.Editable
+import android.text.Html
 import android.text.InputFilter
 import android.text.InputType
 import android.text.TextWatcher
+import android.text.method.LinkMovementMethod
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
@@ -94,6 +96,7 @@ class MainActivity : Activity() {
         }
         kop.addView(TextView(this).apply {
             text = "AX25Chat"; setTextColor(Color.WHITE); textSize = 19f; typeface = Typeface.DEFAULT_BOLD
+            setOnClickListener { toonOver() }                                   // tik op de naam: Over AX25Chat
         })
         kopStand = TextView(this).apply { setTextColor(0xD9FFFFFF.toInt()); textSize = 14f; setPadding(dp(10), 0, 0, 0) }
         kop.addView(kopStand, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
@@ -281,6 +284,12 @@ class MainActivity : Activity() {
             setOnClickListener { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(Pi.basis(this@MainActivity) + "/radio"))) }
         })
 
+        s.addView(label("Over"))
+        s.addView(Button(this).apply {
+            text = "Over AX25Chat…"; isAllCaps = false
+            setOnClickListener { toonOver() }
+        })
+
         s.addView(label("Stoppen"))
         s.addView(Button(this).apply {
             text = "Stoppen met luisteren"; isAllCaps = false
@@ -288,6 +297,39 @@ class MainActivity : Activity() {
         })
         s.addView(uitleg("Versie " + packageManager.getPackageInfo(packageName, 0).versionName))
         return ScrollView(this).apply { addView(s) }
+    }
+
+    // ------------------------------------------------------------------ over
+
+    /** Venstertje Over AX25Chat, met dezelfde gegevens als de knop Over… op de webpagina (ax25chat_over.py). */
+    private fun toonOver() {
+        val versie = try { packageManager.getPackageInfo(packageName, 0).versionName ?: "" } catch (_: Exception) { "" }
+        val met = when (Pi.toestel(this)) {
+            "Pi" -> "Raspberry Pi"
+            "PC" -> "PC (Linux of Windows)"
+            else -> "nog niet bekend"
+        }
+        val onderdelen = Over.ONDERDELEN.joinToString("") { (n, wat, lic, url) ->
+            "&#8226; <a href=\"$url\">${Html.escapeHtml(n)}</a>: ${Html.escapeHtml(wat)} (${Html.escapeHtml(lic)})<br>"
+        }
+        val tekst = "${Html.escapeHtml(Over.OMSCHRIJVING)}<br><br>" +
+            "<b>Versie app:</b> ${Html.escapeHtml(versie.ifEmpty { "onbekend" })}<br>" +
+            "<b>Verbonden met:</b> ${Html.escapeHtml(met)} (${Html.escapeHtml(Pi.adres(this))})<br>" +
+            "<b>Gemaakt door:</b> ${Html.escapeHtml(Over.MAKERS)}<br>" +
+            "<b>Contact:</b> <a href=\"mailto:${Over.EMAIL}\">${Over.EMAIL}</a><br>" +
+            "<b>Broncode:</b> <a href=\"${Over.GITHUB}\">${Over.GITHUB.removePrefix("https://")}</a><br>" +
+            "<b>Licentie:</b> ${Html.escapeHtml(Over.LICENTIE)}<br><br>" +
+            "<b>Met dank aan</b><br>$onderdelen"
+        val inhoud = TextView(this).apply {
+            text = Html.fromHtml(tekst, Html.FROM_HTML_MODE_LEGACY)
+            movementMethod = LinkMovementMethod.getInstance()
+            textSize = 14f; setPadding(dp(22), dp(12), dp(22), dp(4))
+        }
+        android.app.AlertDialog.Builder(this)
+            .setTitle(Over.NAAM)
+            .setView(ScrollView(this).apply { addView(inhoud) })
+            .setPositiveButton("Sluiten", null)
+            .show()
     }
 
     // ------------------------------------------------------------------ chat

@@ -25,6 +25,16 @@ class TestOver(unittest.TestCase):
                      "github.com/ieddev/AX25Chat", "Sluiten"):
             self.assertIn(moet, h)
 
+    def test_app_gelijk(self):
+        """De Android-app (android/.../Over.kt) toont dezelfde gegevens als de webpagina."""
+        with open(os.path.join(HIER, "..", "android", "app", "src", "main", "java", "nl", "ied", "ax25chat",
+                               "Over.kt"), encoding="utf-8") as f:
+            kt = f.read()
+        for naam in ("NAAM", "OMSCHRIJVING", "MAKERS", "EMAIL", "GITHUB", "LICENTIE"):
+            self.assertIn(f'const val {naam} = "{getattr(over, naam)}"', kt)
+        for n, wat, lic, url in over.ONDERDELEN:
+            self.assertIn(f'Onderdeel("{n}", "{wat}", "{lic}", "{url}")', kt)
+
 
 class TestKaartbron(unittest.TestCase):
     def setUp(self):
