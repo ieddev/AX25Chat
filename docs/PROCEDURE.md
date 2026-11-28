@@ -710,6 +710,8 @@ Thuis vanuit de huiskamer werken terwijl de set in de shack aan de PC hangt: zet
    je telefoon: `http://192.168.1.50:8080`.
 4. Telefoon en PC moeten op hetzelfde netwerk zitten (je eigen wifi; de PC mag met een kabel aan de router).
 
+![Opstelling thuis: basisstation (bijv. IC-7300) met een USB-kabel aan de PC met AX25Chat, de PC aan de router, en de telefoon met de app via het thuis-wifi](opstelling-pc.svg)
+
 Wat je dan hebt:
 
 - **Chat, BBS, Kaart en de app** werken op je telefoon zonder inloggen, net als op de Pi. Iedereen op je thuis-wifi
