@@ -101,6 +101,20 @@ jobs:
             --add-data "versie.txt;." \
             pc/ax25chat_venster.py
 
+      - name: Hamlib ophalen (rigctld, en headers + lib om Direwolf mee te bouwen)
+        run: |
+          mkdir -p ophalen/hl
+          gh release download --repo Hamlib/Hamlib --pattern 'hamlib-w64-*.zip' --dir ophalen/hl
+          ls -l ophalen/hl
+          (cd ophalen/hl && unzip -q *.zip && rm -f *.zip)
+          find ophalen/hl -maxdepth 3 | head -40
+          inc="$(dirname "$(dirname "$(find ophalen/hl -path '*hamlib/rig.h' | head -1)")")"
+          lib="$(find ophalen/hl \( -iname 'libhamlib*.dll.a' -o -iname 'libhamlib*.a' \) | head -1)"
+          [ -n "$inc" ] && [ -n "$lib" ] || { echo "headers of lib van Hamlib niet gevonden"; exit 1; }
+          echo "HL_INC=$PWD/$inc" >> "$GITHUB_ENV"
+          echo "HL_LIB=$PWD/$lib" >> "$GITHUB_ENV"
+          echo "include: $inc  lib: $lib"
+
       # Direwolf zelf bouwen, mét Hamlib: de officiële Direwolf voor Windows heeft geen Hamlib, en zonder kan
       # Direwolf de set niet via CAT laten zenden (PTT RIG). Nodig voor sets met één USB-poort, zoals de IC-7300.
       - uses: msys2/setup-msys2@v2
@@ -112,13 +126,13 @@ jobs:
             mingw-w64-x86_64-gcc
             mingw-w64-x86_64-cmake
             mingw-w64-x86_64-ninja
-            mingw-w64-x86_64-hamlib
 
       - name: Direwolf bouwen met Hamlib (MSYS2)
         shell: msys2 {0}
         run: |
           git clone -q --depth 1 --branch 1.8.1 https://github.com/wb2osz/direwolf.git dw-bron
-          cmake -S dw-bron -B dw-bouw -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$PWD/dw-klaar"
+          cmake -S dw-bron -B dw-bouw -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$PWD/dw-klaar" \
+            -DHAMLIB_INCLUDE_DIR="$(cygpath -m "$HL_INC")" -DHAMLIB_LIBRARY="$(cygpath -m "$HL_LIB")"
           grep -q "USE_HAMLIB" dw-bouw/CMakeCache.txt || { echo "Hamlib niet gevonden door CMake"; exit 1; }
           cmake --build dw-bouw
           cmake --install dw-bouw
@@ -126,15 +140,13 @@ jobs:
           for exe in dw-klaar/*.exe; do
             ldd "$exe" | awk '/mingw64/ {print $3}'
           done | sort -u | while read -r dll; do cp -v "$dll" dw-klaar/; done
+          # libhamlib-4.dll (en wat die nodig heeft) uit de officiële Hamlib-zip
+          cp -nv "$(dirname "$(find ophalen/hl -iname rigctld.exe | head -1)")"/*.dll dw-klaar/
           ls dw-klaar
           ls dw-klaar | grep -qi '^libhamlib.*\.dll$' || { echo "libhamlib ontbreekt naast direwolf.exe"; exit 1; }
 
-      - name: Hamlib (rigctld) ophalen
+      - name: Direwolf en Hamlib in het pakket zetten
         run: |
-          mkdir -p ophalen/hl
-          gh release download --repo Hamlib/Hamlib --pattern 'hamlib-w64-*.zip' --dir ophalen/hl
-          ls -l ophalen/hl
-          (cd ophalen/hl && unzip -q *.zip && rm -f *.zip)
           hl="$(dirname "$(find ophalen/hl -iname rigctld.exe | head -1)")"
           [ -f dw-klaar/direwolf.exe ] && [ -f "$hl/rigctld.exe" ] || { echo "direwolf.exe of rigctld.exe niet gevonden"; exit 1; }
           mkdir -p dist/AX25Chat/direwolf dist/AX25Chat/hamlib
