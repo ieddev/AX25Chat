@@ -40,6 +40,7 @@ import java.util.Locale
  */
 class LiveService : Service() {
     @Volatile private var stoppen = false
+    @Volatile private var verbinding: java.net.HttpURLConnection? = null    // de open /api/live van deze dienst
     private var draad: Thread? = null
     private var volgendeId = 100
     private var gpsLuisteraar: LocationListener? = null
@@ -49,8 +50,7 @@ class LiveService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == STOP) {
-            stoppen = true
-            wekker.wek()
+            stopDraad()
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
             return START_NOT_STICKY
@@ -72,38 +72,56 @@ class LiveService : Service() {
             startForeground(VAST_ID, vast)
         }
         if (gps) startGps() else stopGps()
-        if (draad?.isAlive != true) {
+        if (draad?.isAlive != true || stoppen) {        // ook na een STOP vlak hiervoor (zelfde dienst)
             stoppen = false
-            draad = Thread({ lus() }, "ax25chat-live").also { it.start() }
+            val gen = ++generatie
+            draad = Thread({ lus(gen) }, "ax25chat-live").also { it.start() }
         }
         return START_STICKY
     }
 
     override fun onDestroy() {
-        stoppen = true
-        wekker.wek()
+        stopDraad()
         stopGps()
         super.onDestroy()
     }
 
-    private fun lus() {
+    /**
+     * De draad van deze dienst stoppen. Ook de open verbinding meteen dichtdoen: anders blijft de oude draad tot de
+     * volgende hartslag (20 s) hangen en zet hij daarna "geen verbinding", terwijl de nieuwe dienst (na Opslaan en
+     * opnieuw verbinden in Instellingen) al lang verbonden is.
+     */
+    private fun stopDraad() {
+        stoppen = true
+        generatie++
+        wekker.wek()
+        verbinding?.let { c -> Thread { try { c.disconnect() } catch (_: Exception) {} }.start() }
+        verbinding = null
+    }
+
+    /** Deze draad is nog de huidige (niet gestopt, en geen nieuwere draad gestart). */
+    private fun actief(gen: Long) = !stoppen && gen == generatie
+
+    private fun lus(gen: Long) {
         var mislukt = 0
-        Pi.bijWifi = { wekker.wek() }
-        while (!stoppen) {
+        val wek = { wekker.wek() }
+        Pi.bijWifi = wek
+        while (actief(gen)) {
             var reden: String
             try {
                 Chat.laad(this)
+                if (!actief(gen)) break
                 mislukt = 0
                 Chat.zetFout("")
                 Chat.zetVerbonden(true)
                 werkVastBij("Verbonden met " + Pi.naam(this) + " (" + Pi.adres(this) + ")")
-                Pi.luister(this, { stoppen }) { soort, data -> gebeurtenis(soort, data) }
+                Pi.luister(this, { !actief(gen) }, { verbinding = it }) { soort, data -> if (actief(gen)) gebeurtenis(soort, data) }
                 reden = Pi.naamHoofd(this) + " heeft de verbinding verbroken (herstart AX25Chat?)"
             } catch (e: Exception) {
                 reden = reden(e)
             }
+            if (!actief(gen)) break                 // gestopt: de stand is nu van de nieuwe draad, niet aankomen
             Chat.zetVerbonden(false)
-            if (stoppen) break
             mislukt++
             val wacht = if (mislukt <= 5) 3 else 10
             Chat.zetFout(reden + ". Opnieuw proberen om " + SimpleDateFormat("HH:mm:ss", Locale("nl", "NL"))
@@ -111,7 +129,7 @@ class LiveService : Service() {
             werkVastBij("Geen verbinding met " + Pi.adres(this) + ": " + reden)
             wekker.slaap(wacht * 1000L)
         }
-        Pi.bijWifi = null
+        if (Pi.bijWifi === wek) Pi.bijWifi = null
     }
 
     /** Een foutmelding van Java in gewone woorden. */
@@ -236,6 +254,8 @@ class LiveService : Service() {
     }
 
     companion object {
+        /** Telt elke gestarte en gestopte draad: een oude draad die nog naloopt, ziet zo dat hij niet meer de huidige is. */
+        @Volatile private var generatie = 0L
         const val STOP = "nl.ied.ax25chat.STOP"
         private const val VAST_ID = 1
         private const val KANAAL_VAST = "verbinding"

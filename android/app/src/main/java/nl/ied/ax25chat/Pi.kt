@@ -142,10 +142,12 @@ object Pi {
 
     /**
      * Server-sent events van /api/live lezen tot de verbinding wegvalt of stop() true geeft.
-     * Per gebeurtenis: opGebeurtenis(soort, data). AX25Chat stuurt elke 20 s een hartslag.
+     * Per gebeurtenis: opGebeurtenis(soort, data). AX25Chat stuurt elke 20 s een hartslag. bijOpen(c) krijgt de verbinding.
      */
-    fun luister(ctx: Context, stop: () -> Boolean, opGebeurtenis: (String, JSONObject) -> Unit) {
+    fun luister(ctx: Context, stop: () -> Boolean, bijOpen: (HttpURLConnection) -> Unit = {},
+                opGebeurtenis: (String, JSONObject) -> Unit) {
         val c = open(ctx, "/api/live", 60000)
+        bijOpen(c)                               // zo kan de dienst hem bij stoppen meteen dichtdoen
         try {
             c.setRequestProperty("Accept", "text/event-stream")
             BufferedReader(InputStreamReader(c.inputStream, Charsets.UTF_8)).use { lezer ->
