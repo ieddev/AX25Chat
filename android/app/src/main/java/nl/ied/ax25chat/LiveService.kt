@@ -148,7 +148,7 @@ class LiveService : Service() {
                 }
             }
             "monitor" -> Chat.monitorRegel(data)
-            "frequentie" -> Chat.zetFrequentie(data.optString("tekst"))
+            "frequentie" -> Chat.zetFrequentie(Chat.standVan(data))
         }
     }
 
