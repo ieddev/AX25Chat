@@ -169,3 +169,5 @@ TNC of via geluid), of een set met APRS-berichten. Spreek een frequentie af.
 | K6 | Uitzetten | **Uitzetten** | App: *geen verbinding*; op de PC werkt alles gewoon | ☐ |
 | K7 | Nieuwe versie | Linux: `git -C ~/AX25Chat reset --hard HEAD~1`, AX25Chat opnieuw starten, half minuutje wachten, pagina verversen | Bovenin *Nieuwe versie beschikbaar · Bijwerken*; tik → Status, Bijwerken met **Nu bijwerken** | ☐ |
 | K8 | Zonder internet | Internet uit, AX25Chat starten | Geen balk en geen foutmelding | ☐ |
+| K9 | Windows: firewall | Windows 0.8: Status → Telefoon en app → aanzetten | Windows vraagt toestemming; *Ja*: regel *AX25Chat (telefoon, poort 8080)*, app verbindt. *Nee*: melding in AX25Chat | ☐ |
+| K10 | Windows: bijwerken | Windows 0.7: Status → Bijwerken → Nu bijwerken | Installer 0.8 start; daarna staat Telefoon en app op Status en Over… toont 0.8 | ☐ |

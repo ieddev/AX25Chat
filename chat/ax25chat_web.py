@@ -821,6 +821,7 @@ def telefoon_actie(f):
     """POST /telefoon (PC): Bereikbaar vanaf telefoon aan/uit, wachtwoord. Geeft de melding voor de pagina."""
     actie = f.get("actie", "")
     w1, w2 = f.get("ww1", ""), f.get("ww2", "")
+    firewall = ""
     if actie == "wachtwoord" or (w1 or w2):
         fout = zet_wachtwoord(w1, w2)
         if fout:
@@ -831,6 +832,7 @@ def telefoon_actie(f):
         if not radio.lees(WW_FILE):
             return "fout:Kies eerst een wachtwoord (minstens 8 tekens)."
         telefoon.zet(True)
+        firewall = telefoon.firewall_open(POORT)       # Windows: één keer de firewallregel (vraagt toestemming)
     elif actie == "uit":
         telefoon.zet(False)
     else:
@@ -840,7 +842,7 @@ def telefoon_actie(f):
         return "ok:Uit. AX25Chat is nu alleen nog op deze PC te zien."
     if TELEFOON_FOUT:
         return "fout:" + TELEFOON_FOUT
-    return "ok:Aan. AX25Chat is nu ook bereikbaar vanaf je telefoon."
+    return "ok:Aan. AX25Chat is nu ook bereikbaar vanaf je telefoon." + (" Let op: " + firewall if firewall else "")
 
 
 def herbind(wacht=5):
