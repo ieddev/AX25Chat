@@ -107,6 +107,8 @@ bash <(curl -sL https://raw.githubusercontent.com/ieddev/AX25Chat/main/installat
 Daarna staat **AX25Chat** in het menu. Zie *AX25Chat op een PC* in de procedure.
 Thuis vanuit de huiskamer met je telefoon of de app op die PC werken: tabblad **Status** → **Telefoon en app** →
 *Bereikbaar maken vanaf telefoon*, en vul in de app het adres in dat daar staat (bijv. `192.168.1.50:8080`).
+![Opstelling thuis: basisstation (bijv. IC-7300) met een USB-kabel aan de PC met AX25Chat, de PC aan de router, en de telefoon met de app via het thuis-wifi](docs/opstelling-pc.svg)
+
 Staat er een nieuwe versie op GitHub, dan meldt AX25Chat dat bovenin: **Nieuwe versie beschikbaar · Bijwerken**.
 
 **Op Windows** (testfase): download `AX25Chat-setup-<versie>.exe` bij de nieuwste `win-v`-release. Zie *AX25Chat op Windows* in de procedure.
