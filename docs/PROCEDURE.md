@@ -231,14 +231,15 @@ dezelfde als bij de IC-7300, maar zijn op de IC-9700 nog niet apart nagelopen.
 |---|---|---|
 | MENU > SET > Connectors > MOD Input > **DATA MOD** | **USB** | Anders zoekt de set het geluid bij de microfoon |
 | MENU > SET > Connectors > MOD Input > **USB MOD Level** | **50%** als begin | Afstellen zoals hieronder |
-| MENU > SET > Connectors > **USB SEND** | **OFF** (Pi en Linux) of **USB (B) RTS** (Windows) | Pi/Linux: PTT gaat via CAT. Windows: Direwolf kan daar niet via CAT zenden en gebruikt RTS op de tweede USB-poort (B) |
+| MENU > SET > Connectors > **USB SEND** | **OFF** | PTT gaat via CAT (Pi, Linux en vanaf win-v0.9 ook Windows). Stond hij voor Windows op **USB (B) RTS**: dat blijft werken, AX25Chat gebruikt dan RTS op poort B |
 | MENU > SET > Connectors > CI-V > **CI-V USB Port** | **Unlink from [REMOTE]** | Anders vindt Zoek mijn set de CAT niet |
 | MENU > SET > Connectors > CI-V > **CI-V Address** | **A2h** (standaard) | AX25Chat gaat uit van het standaardadres |
 
-**Eén preset voor Pi en Windows?** Dat kan, met *USB SEND* op **USB (B) RTS**: op de Pi en Linux opent AX25Chat
-poort B normaal nooit, dus daar verandert er niets. Eén uitzondering: **Zoek mijn set** probeert alle poorten, ook
-B. Bij het openen van een poort kan RTS kort hoog worden en zendt de set even. Zet *USB SEND* dus even op OFF
-voordat je op Zoek mijn set tikt (of zorg voor een antenne of dummyload), en daarna weer terug.
+**Eén preset voor Pi en Windows?** Vanaf win-v0.9 zendt AX25Chat ook op Windows via CAT, dus *USB SEND* op
+**OFF** is overal goed. Gebruik je voor Windows nog **USB (B) RTS** (zoals vóór win-v0.9 nodig was), dan werkt dat
+ook. Let dan op bij **Zoek mijn set**: die probeert alle poorten, ook B, en bij het openen van een poort kan RTS kort
+hoog worden zodat de set even zendt. Zet *USB SEND* dan even op OFF voordat je op Zoek mijn set tikt (of zorg voor
+een antenne of dummyload), en daarna weer terug.
 
 **Afstellen**: in FM-D let je niet op de ALC, maar op de zwaai (deviatie): stel USB MOD Level zo in dat het
 tegenstation (of een tweede ontvanger) je zonder vervorming hoort; begin rond 50%. In USB-D geldt hetzelfde
@@ -773,11 +774,16 @@ Wat anders is dan op de Pi en op Linux:
 - **Luistertest:** AX25Chat vraagt Direwolf om het ontvangstniveau (0 tot 100). Rond 50 is goed. Open even de
   ruisonderdrukking (squelch) van de set en tik op de knop; het duurt hooguit 10 seconden.
 - **GPS-muis** voor het baken werkt op Windows nog niet. Gebruik een vaste positie of de GPS van je telefoon (app).
-- **Zenden met een Icom via USB:** Direwolf voor Windows kan de set niet via CAT laten zenden (er zit geen Hamlib
-  in). Frequentie en mode zet AX25Chat wel via CAT. Voor het zenden:
-  - **IC-9700** (twee USB-poorten): AX25Chat gebruikt RTS op de tweede poort (B). Zet in het menu van de set
-    *USB SEND* op *USB (B) RTS*.
-  - **IC-7300** (één USB-poort): zet de set op *DATA VOX*, of gebruik een DigiRig.
+- **Zenden met een Icom via USB:** vanaf win-v0.9 gaat dit net als op Linux via CAT: Direwolf vraagt rigctld de
+  set op zenden te zetten. Daarvoor zit in AX25Chat een eigen Direwolf, gebouwd mét Hamlib (de gewone Direwolf voor
+  Windows heeft dat niet). Zet *USB SEND* op **OFF**; DATA VOX is niet nodig.
+  - **IC-7300** (één USB-poort): Zoek mijn set kiest *CAT*, zenden gaat via CAT. Tot en met win-v0.8 kon dat niet en
+    zond de 7300 op Windows niet (alleen met DATA VOX).
+  - **IC-9700** (twee USB-poorten): ook via CAT. Had je de 9700 vóór win-v0.9 ingesteld met RTS op poort B
+    (*USB SEND* op *USB (B) RTS*), dan houdt AX25Chat dat aan. Wil je over op CAT: doe Zoek mijn set opnieuw en
+    kies het voorstel.
+  - In het log van Direwolf (Status) zie je bij het starten een regel over Hamlib. Staat daar een fout, dan kan
+    Direwolf rigctld niet bereiken: kijk of de set aan staat en CAT werkt (frequentie in de balk).
 - Het logboek van AX25Chat zelf staat in `%APPDATA%\AX25Chat\logboek\ax25chat.log`, dat van Direwolf ernaast.
 - Het eigen venster gebruikt Microsoft Edge WebView2 (zit in Windows 10 en 11). Ontbreekt dat, dan opent AX25Chat
   in je browser op `http://localhost:8080`.

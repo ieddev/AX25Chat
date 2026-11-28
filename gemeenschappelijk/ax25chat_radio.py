@@ -134,17 +134,31 @@ def modem_regel(baud):
     return f"MODEM {baud}"
 
 
+def dw_heeft_hamlib():
+    """Kan Direwolf PTT via CAT (PTT RIG, via rigctld)? Op Linux en de Pi wel. De officiële Direwolf voor Windows is
+    zonder Hamlib gebouwd; vanaf win-v0.9 bouwt AX25Chat Direwolf zelf mét Hamlib (libhamlib-4.dll ernaast)."""
+    if not usb.WINDOWS:
+        return True
+    if os.environ.get("AX25CHAT_DW_HAMLIB"):
+        return os.environ["AX25CHAT_DW_HAMLIB"] == "1"
+    map_ = os.path.dirname(DIREWOLF)
+    try:
+        return bool(map_) and any(x.lower().startswith("libhamlib") and x.lower().endswith(".dll")
+                                  for x in os.listdir(map_))
+    except OSError:
+        return False
+
+
 def direwolf_tekst(roepnaam, r):
     kaart = r.get("geluidskaart") or "Device"
-    if rig.cat_actief(r) and usb.WINDOWS:
-        # Direwolf voor Windows is zonder Hamlib gebouwd: PTT RIG kan niet. IC-9700: PTT via RTS op de andere poort
-        # (B; zet USB SEND op USB(B) RTS). Anders VOX.
-        if r.get("ptt_poort") and r.get("ptt_poort") != r.get("cat_poort"):
-            ptt = f"# Windows: PTT via RTS (Direwolf heeft hier geen Hamlib)\nPTT {r['ptt_poort']} RTS"
-        else:
-            ptt = "# Windows: PTT via CAT kan niet (Direwolf zonder Hamlib); zet de set op VOX"
+    if rig.cat_actief(r) and usb.WINDOWS and r.get("ptt_poort") and r.get("ptt_poort") != r.get("cat_poort"):
+        # Windows, aparte PTT-poort gekozen (IC-9700 vóór win-v0.9: USB SEND op USB(B) RTS): dat blijft zo
+        ptt = f"# Windows: PTT via RTS op de tweede poort\nPTT {r['ptt_poort']} RTS"
+    elif rig.cat_actief(r) and usb.WINDOWS and not dw_heeft_hamlib():
+        ptt = "# Windows: deze Direwolf heeft geen Hamlib, PTT via CAT kan niet; zet de set op VOX"
     elif rig.cat_actief(r):
-        ptt = "# PTT via CAT: rigctld (dienst ax25chat-rigctld)\nPTT RIG 2 localhost:4532"
+        # Windows: 127.0.0.1, want localhost kan daar eerst ::1 zijn (rigctld luistert alleen op 127.0.0.1)
+        ptt = f"# PTT via CAT: rigctld (dienst ax25chat-rigctld)\nPTT RIG 2 {'127.0.0.1' if usb.WINDOWS else 'localhost'}:4532"
     elif r.get("ptt_poort") and r.get("ptt_methode") in ("RTS", "DTR"):
         ptt = f"PTT {r['ptt_poort']} {r['ptt_methode']}"
     else:
@@ -482,7 +496,7 @@ def voorstellen(groepen, gevonden):
             v = dict(basis, set_naam=rig.MODEL_NAAM.get(model, g["naam"]), ptt_methode="CAT", cat_model=model,
                      cat_poort=pad, cat_baud=baud, cat_mode="PKTUSB" if hf else "PKTFM", modem="300" if hf else "1200",
                      _uitleg=f"CAT gevonden op {baud} baud, de set staat op {rig.mhz(hz)}.")
-            if usb.WINDOWS:                          # Direwolf voor Windows: geen PTT via CAT
+            if usb.WINDOWS and not dw_heeft_hamlib():     # oude Direwolf voor Windows: geen PTT via CAT
                 ander = next((p for p, _ in g["poorten"] if p != pad), "")
                 v["ptt_poort"] = ander
                 v["_uitleg"] += (f" Op Windows gaat zenden via RTS op {ander}: zet in het menu van de set USB SEND op "
