@@ -155,7 +155,6 @@ def eigen_ip():
         return None
 
 
-@unittest.skipIf(sys.platform == "win32", "zelfde opzet als hierboven")
 class TestTelefoon(unittest.TestCase):
     """Status -> Telefoon en app: aanzetten met een wachtwoord, dan ook op het thuisnetwerk; uit = alleen de PC."""
 
@@ -164,7 +163,8 @@ class TestTelefoon(unittest.TestCase):
         with open(os.path.join(self.map, "station.json"), "w") as f:
             json.dump({"roepnaam": "PD3PAM", "frequentie": 144900000}, f)
         self.poort = vrije_poort()
-        env = dict(os.environ, AX25CHAT_MAP=self.map, AX25CHAT_SOORT="pc", AX25CHAT_DIREWOLF="false")
+        env = dict(os.environ, AX25CHAT_MAP=self.map, AX25CHAT_SOORT="pc", AX25CHAT_DIREWOLF="false",
+                   AX25CHAT_FIREWALL="0")     # Windows: in de test geen firewallregel (en geen UAC-vraag)
         self.p = subprocess.Popen([sys.executable, START, "--geen-browser", "--poort", str(self.poort)], env=env,
                                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         self.assertIn("Telefoon en app", self.haal("127.0.0.1", "/status", wacht=15))
@@ -217,6 +217,41 @@ class TestTelefoon(unittest.TestCase):
         if ip:
             with self.assertRaises(OSError):
                 self.haal(ip, "/status.json")
+
+
+class TestFirewall(unittest.TestCase):
+    """Windows: de netsh-opdracht voor de firewallregel (zonder hem uit te voeren)."""
+
+    def test_opdracht(self):
+        sys.path.insert(0, os.path.join(HIER, "..", "gemeenschappelijk"))
+        import ax25chat_telefoon as tel
+        o = tel.firewall_opdracht(8080)
+        for stuk in ('name="AX25Chat (telefoon, poort 8080)"', "dir=in", "action=allow", "protocol=TCP",
+                     "localport=8080", "profile=private"):
+            self.assertIn(stuk, o)
+        self.assertNotIn("program=", o)                  # alleen in het Windows-programma (frozen)
+        oud = getattr(sys, "frozen", None)
+        sys.frozen = True
+        try:
+            self.assertIn(f'program="{sys.executable}"', tel.firewall_opdracht(8099))
+        finally:
+            if oud is None:
+                del sys.frozen
+            else:
+                sys.frozen = oud
+
+    def test_niet_buiten_windows_of_in_tests(self):
+        import ax25chat_telefoon as tel
+        oud = os.environ.get("AX25CHAT_FIREWALL")
+        os.environ["AX25CHAT_FIREWALL"] = "0"
+        try:
+            self.assertFalse(tel.firewall_nodig())
+            self.assertEqual(tel.firewall_open(8080), "")
+        finally:
+            if oud is None:
+                os.environ.pop("AX25CHAT_FIREWALL")
+            else:
+                os.environ["AX25CHAT_FIREWALL"] = oud
 
 
 if __name__ == "__main__":

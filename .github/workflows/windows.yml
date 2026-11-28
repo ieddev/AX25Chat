@@ -47,7 +47,23 @@ jobs:
           echo "$naam ($(git log -1 --format='%h %cd' --date=format:'%Y-%m-%d'))" > versie.txt
 
       - name: Tests (Windows-delen)
-        run: python -m unittest -v tests.test_systeem tests.test_windows tests.test_venster
+        run: python -m unittest -v tests.test_systeem tests.test_windows tests.test_venster tests.test_pc.TestTelefoon tests.test_pc.TestFirewall
+
+      - name: Firewallregel voor de telefoon (maken, controleren, weghalen)
+        run: |
+          python - <<'PY'
+          import subprocess, sys
+          sys.path.insert(0, "gemeenschappelijk")
+          import ax25chat_telefoon as tel
+          print("opdracht:", tel.firewall_opdracht(8099))
+          assert not tel.firewall_regel_er(8099), "regel bestond al"
+          uit = tel.firewall_open(8099)
+          print("uitkomst:", repr(uit))
+          assert tel.firewall_regel_er(8099), "regel niet gemaakt"
+          print(subprocess.run(["netsh", "advfirewall", "firewall", "show", "rule", "name=" + tel.firewall_regel(8099)],
+                               capture_output=True, text=True).stdout)
+          subprocess.run(["netsh", "advfirewall", "firewall", "delete", "rule", "name=" + tel.firewall_regel(8099)], check=True)
+          PY
 
       - name: USB-apparaten opvragen met PowerShell (snelheid en geldige JSON)
         run: |

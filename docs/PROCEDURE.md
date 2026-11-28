@@ -719,9 +719,7 @@ Wat je dan hebt:
 - Het adres van de PC kan veranderen als de router hem een ander adres geeft. Kijk dan opnieuw bij *Telefoon en
   app*. Wil je dat het vast blijft, geef de PC dan in je router een vast adres (*DHCP-reservering*).
 - **Werkt het niet?** Kijk of er een firewall op de PC aan staat. Op Linux met `ufw`: `sudo ufw allow 8080/tcp`.
-  Op Windows vraagt de Windows Firewall de eerste keer of AX25Chat het netwerk mag gebruiken: kies *Toegang
-  toestaan* bij **privénetwerken**. Heb je toen *Annuleren* gekozen, zet het dan aan bij *Windows Defender
-  Firewall, Een app toestaan*.
+  Windows: zie hieronder bij *AX25Chat op Windows*.
 
 **Opties bij het starten** (achter `ax25chat` of achter `ax25chat_pc.py`):
 
@@ -742,8 +740,8 @@ SCU-17 of de USB-kabel van een Icom.
 onbekend is: kies *Meer informatie* en *Toch uitvoeren*. Direwolf en Hamlib (rigctld) zitten in de installer; je
 hoeft niets anders te installeren. Daarna staat **AX25Chat** in het Startmenu (en eventueel op het bureaublad).
 
-**Bijwerken:** is er een nieuwe versie, dan staat bovenin **Nieuwe versie beschikbaar · Bijwerken** (AX25Chat
-kijkt bij het starten en daarna eens per dag, alleen met internet). Of zelf: tabblad **Status**, blok *Bijwerken*: **Controleren op nieuwe versie**, daarna **Nu bijwerken**. AX25Chat downloadt de nieuwe installer, sluit en start de installer; daarna start AX25Chat vanzelf weer. Met de hand kan ook: download de nieuwe installer en installeer over de oude heen. **Verwijderen:** via Instellingen, Apps. Je
+**Bijwerken:** is er een nieuwe versie, dan staat bovenin **Nieuwe versie beschikbaar · Bijwerken** (vanaf versie
+0.8; AX25Chat kijkt bij het starten en daarna eens per dag, alleen met internet). Of zelf: tabblad **Status**, blok *Bijwerken*: **Controleren op nieuwe versie**, daarna **Nu bijwerken**. AX25Chat downloadt de nieuwe installer, sluit en start de installer; daarna start AX25Chat vanzelf weer. Met de hand kan ook: download de nieuwe installer en installeer over de oude heen. **Verwijderen:** via Instellingen, Apps. Je
 instellingen staan apart in `%APPDATA%\AX25Chat` en blijven bewaard.
 
 Wat anders is dan op de Pi en op Linux:
@@ -773,8 +771,19 @@ Wat anders is dan op de Pi en op Linux:
   duren; daarna onthoudt AX25Chat het een halve minuut. **Zoek mijn set** kijkt altijd opnieuw.
 - In het Startmenu staat ook **AX25Chat (in de browser)**: dat opent AX25Chat zonder eigen venster in je gewone
   browser (`AX25Chat.exe --browser`). Handig als het eigen venster niet wil.
-- **Vanaf je telefoon of de app:** net als op Linux, tabblad Status, blok *Telefoon en app* (zie hierboven). Windows
-  vraagt dan de eerste keer of AX25Chat het netwerk mag gebruiken: kies *Toegang toestaan* bij privénetwerken.
+- **Vanaf je telefoon of de app** (vanaf versie 0.8): net als op Linux, tabblad Status, blok *Telefoon en app* (zie
+  hierboven). De Windows Firewall laat zonder regel niets binnen. Bij **Bereikbaar maken vanaf telefoon** maakt
+  AX25Chat daarom één keer de regel *AX25Chat (telefoon, poort 8080)*: binnenkomend, alleen die poort, alleen
+  **privénetwerken**. Windows vraagt daarvoor toestemming (*Wilt u toestaan dat deze app wijzigingen aanbrengt?*,
+  Windows-opdrachtprocessor of netsh): kies **Ja**. Geen beheerder? Dan vraagt Windows om het wachtwoord van een
+  beheerder. Kies je *Nee*, dan meldt AX25Chat dat, en vraagt Windows het vaak later zelf (*Toegang toestaan* bij
+  privénetwerken).
+  - Je thuisnetwerk moet in Windows op **Privé** staan: *Instellingen, Netwerk en internet*, je wifi of
+    ethernet, *Netwerkprofieltype: Privé*. Op *Openbaar* komt de telefoon er niet in.
+  - Regel bekijken of weghalen: *Windows Defender Firewall met geavanceerde beveiliging, Regels voor binnenkomende
+    verbindingen*, de regel *AX25Chat (telefoon, …)*. Na *Uitzetten* in AX25Chat blijft de regel staan, maar
+    luistert AX25Chat niet meer op het netwerk, dus komt er niets binnen. Bij verwijderen van AX25Chat blijft
+    de regel ook staan; haal hem dan hier weg als je wilt.
 - Is poort 8080 al in gebruik door een ander programma, dan kiest het venster vanzelf een andere vrije poort. Met
   *Bereikbaar vanaf telefoon*, `--thuisnetwerk` of `--poort` blijft de poort vast, want de telefoon en de app
   rekenen erop.

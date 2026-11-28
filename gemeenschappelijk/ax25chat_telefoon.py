@@ -10,6 +10,11 @@ Dan werkt het net als op een Pi in je thuis-wifi:
   - Radio en Status vragen om de gebruiker beheer en het wachtwoord (wie op de PC zelf zit, hoeft dat niet)
 
 De keuze staat in telefoon.json in de map met instellingen en blijft na herstarten bewaard.
+
+Windows: de Windows Firewall laat zonder regel niets binnen. Bij het aanzetten maakt AX25Chat daarom één keer de
+regel "AX25Chat (telefoon, poort 8080)" (binnenkomend, TCP-poort, alleen privénetwerken). Daar zijn beheerdersrechten voor
+nodig, dus Windows vraagt dat één keer (UAC). Weigeren mag: dan vraagt Windows het later zelf, of je zet het aan bij
+Windows Defender Firewall.
 Alleen standaard-Python.
 """
 
@@ -41,6 +46,56 @@ def zet(waarde):
         json.dump({"aan": bool(waarde)}, f)
         f.write("\n")
     os.replace(tmp, BESTAND)
+
+
+def firewall_regel(poort):
+    return f"AX25Chat (telefoon, poort {int(poort)})"
+
+
+def firewall_nodig():
+    """Alleen op Windows (en niet in de tests: AX25CHAT_FIREWALL=0)."""
+    return sys.platform == "win32" and os.environ.get("AX25CHAT_FIREWALL", "1") != "0"
+
+
+def _netsh(*args, timeout=20):
+    return subprocess.run(["netsh", "advfirewall", "firewall", *args], capture_output=True, text=True,
+                          timeout=timeout)
+
+
+def firewall_regel_er(poort):
+    """Bestaat de regel al? (opvragen mag zonder beheerdersrechten; netsh geeft 1 als er geen regel is)"""
+    try:
+        return _netsh("show", "rule", f"name={firewall_regel(poort)}").returncode == 0
+    except (OSError, subprocess.SubprocessError):
+        return False
+
+
+def firewall_opdracht(poort):
+    """De netsh-argumenten voor de regel: deze poort, en in het Windows-programma ook AX25Chat.exe zelf (dan vraagt
+    Windows niet nog een keer)."""
+    args = ["add", "rule", f'name="{firewall_regel(poort)}"', "dir=in", "action=allow", "protocol=TCP",
+            f"localport={int(poort)}", "profile=private"]
+    if getattr(sys, "frozen", False):
+        args.append(f'program="{sys.executable}"')
+    return "advfirewall firewall " + " ".join(args)
+
+
+def firewall_open(poort):
+    """Windows: de firewallregel maken als hij er nog niet is. Geeft '' (gelukt of niet nodig) of een melding."""
+    if not firewall_nodig() or firewall_regel_er(poort):
+        return ""
+    opdracht = firewall_opdracht(poort).replace("'", "''")        # tussen '...' in PowerShell
+    script = ("$ErrorActionPreference='Stop'; "
+              f"Start-Process -FilePath netsh -ArgumentList '{opdracht}' -Verb RunAs -WindowStyle Hidden -Wait")
+    try:
+        subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", script], capture_output=True,
+                       text=True, timeout=180)
+    except (OSError, subprocess.SubprocessError):
+        pass
+    if firewall_regel_er(poort):
+        return ""
+    return ("De Windows Firewall-regel is niet gemaakt (geen toestemming gegeven?). Vraagt Windows het straks zelf, "
+            "kies dan Toegang toestaan bij privénetwerken. Zie de procedure.")
 
 
 def _prive(ip):
@@ -114,8 +169,9 @@ vragen Radio en Status daarom, met de gebruiker <b>beheer</b>.</p>
 </details>"""
     knop = ('<button type="submit" name="actie" value="uit" class="licht">Uitzetten</button>' if staat_aan else
             '<button type="submit" name="actie" value="aan">Bereikbaar maken vanaf telefoon</button>')
-    windows = (" Windows vraagt de eerste keer of AX25Chat het netwerk mag gebruiken: kies <i>Toegang toestaan</i> "
-               "bij privénetwerken." if sys.platform == "win32" else "")
+    windows = (" Windows vraagt bij het aanzetten één keer of AX25Chat een regel in de firewall mag maken (scherm "
+               "<i>Wilt u toestaan…</i>): kies <i>Ja</i>. Je netwerk moet in Windows op <i>Privé</i> staan."
+               if sys.platform == "win32" else "")
     return f"""<section id="telefoon"><h2>Telefoon en app</h2>
 <p class="uitleg">Thuis vanuit de huiskamer werken: met dit aan kun je AX25Chat op deze PC ook gebruiken vanaf je
 telefoon (de Android-app of de browser), via je eigen wifi. Chat, BBS en Kaart werken dan zonder inloggen, zoals
