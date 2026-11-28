@@ -48,6 +48,37 @@ class TestGit(unittest.TestCase):
 
     def test_niets_nieuw(self):
         self.assertFalse(pb.controleer()["nieuw"])
+        self.assertEqual(pb.html_balk(), "")
+
+    def test_stil_zonder_internet(self):
+        """De controle die vanzelf gaat: lukt fetch niet, dan geen foutmelding op de pagina en geen balk."""
+        pb.controleer()
+        oud = pb.GIT
+        pb.GIT = "false"
+        try:
+            uit = pb.controleer(stil=True)
+        finally:
+            pb.GIT = oud
+        self.assertTrue(uit.get("fout"))
+        self.assertNotIn("lukte niet", pb.html_sectie(""))
+        self.assertEqual(pb.html_balk(), "")
+
+    def test_automatisch(self):
+        pathlib.Path(self.bron, "a.txt").write_text("3")
+        git(self.bron, "commit", "-q", "-am", "nieuw")
+        oud = pb.internet
+        pb.internet = lambda *a: True
+        try:
+            t = pb.start_automatisch(eerst=0, elke=3600)
+            for _ in range(100):
+                if pb.nieuw():
+                    break
+                import time
+                time.sleep(0.1)
+        finally:
+            pb.internet = oud
+        self.assertIsNotNone(t)
+        self.assertIn("Bijwerken", pb.html_balk())
 
     def test_nieuwe_versie_ophalen_en_herstarten(self):
         pathlib.Path(self.bron, "a.txt").write_text("2")
@@ -56,6 +87,7 @@ class TestGit(unittest.TestCase):
         self.assertTrue(uit["nieuw"])
         self.assertIn("Kaart: menu boven de kaart", uit["wijzigingen"][0])
         self.assertIn("Nu bijwerken", pb.html_sectie(""))
+        self.assertIn("Nieuwe versie beschikbaar", pb.html_balk())
         ok, tekst = pb.bijwerken()
         self.assertTrue(ok, tekst)
         self.assertEqual(pathlib.Path(self.kopie, "a.txt").read_text(), "2")

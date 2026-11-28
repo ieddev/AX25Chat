@@ -135,10 +135,11 @@ def vrije_poort():
 
 def kies_poort(args):
     """(poort, args). Is 8080 al bezet door een ander programma (en niet door AX25Chat), dan neemt het venster een
-    andere vrije poort; het venster maakt het niet uit welke. Bij --poort of --thuisnetwerk blijft de poort vast,
-    want de telefoon of app rekent erop."""
+    andere vrije poort; het venster maakt het niet uit welke. Bij --poort, --thuisnetwerk of Bereikbaar vanaf telefoon
+    blijft de poort vast, want de telefoon of app rekent erop."""
+    import ax25chat_telefoon as telefoon
     poort = poort_uit(args)
-    if draait_al(poort) or poort_vrij(poort) or "--poort" in args or "--thuisnetwerk" in args:
+    if draait_al(poort) or poort_vrij(poort) or "--poort" in args or "--thuisnetwerk" in args or telefoon.aan():
         return poort, args
     nieuw = vrije_poort()
     meld(f"Poort {poort} is bezet door een ander programma; AX25Chat gebruikt nu poort {nieuw}.")

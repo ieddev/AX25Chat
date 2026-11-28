@@ -43,6 +43,7 @@ import ax25chat_locator as locator
 import ax25chat_over as over
 import ax25chat_radio as radio
 import ax25chat_systeem as systeem
+import ax25chat_telefoon as telefoon
 
 rig = radio.rig
 e = html.escape
@@ -52,6 +53,11 @@ CSRF = secrets.token_urlsafe(24)
 ZOEK_LOCK = threading.Lock()
 KLAAR = None                               # PC: wordt aangeroepen met het adres zodra de webserver luistert
 LOKAAL = False                             # PC zonder thuisnetwerk: alleen bereikbaar vanaf de PC zelf, geen inlog
+POORT = 8080
+SERVER = None                              # de ThreadingHTTPServer; op een PC opnieuw gestart bij Telefoon aan/uit
+HERBIND = threading.Event()                # main(): opnieuw binden in plaats van stoppen
+GEBONDEN = threading.Event()               # main(): de nieuwe server luistert weer
+TELEFOON_FOUT = ""                         # PC: waarom Bereikbaar vanaf telefoon niet lukte
 CHAT = None                                # ax25chat_chat.Chat, gestart in main()
 BBS = None                                 # ax25chat_bbs.Sessie (connected mode), gestart in main()
 BAKEN = None                               # ax25chat_baken.Baken (APRS-positie), gestart in main()
@@ -100,6 +106,8 @@ nav a.overknop{margin-left:auto}
 dialog#over{border:1px solid var(--lijn);border-radius:12px;padding:18px 20px;max-width:min(480px,calc(100vw - 32px));
 background:var(--kaart);color:var(--tekst);box-shadow:0 10px 40px rgba(0,0,0,.25)}
 dialog#over::backdrop{background:rgba(0,0,0,.35)}
+header a.nieuwversie{float:right;background:#fff3e0;color:#a85d00;padding:3px 10px;border-radius:999px;
+font-size:14px;font-weight:600;text-decoration:none;margin-left:8px}
 table.over{border-collapse:collapse;width:100%}table.over th{text-align:left;font-weight:600;padding:3px 12px 3px 0;
 white-space:nowrap;vertical-align:top}table.over td{padding:3px 0}ul.over{margin:0;padding-left:20px}
 """
@@ -111,8 +119,9 @@ MENU = {"radio": [("station", "Station", 0), ("frequenties", "Mijn frequenties",
                   ("luister", "Luistertest", 1), ("test", "Testuitzending", 1), ("handmatig", "Handmatig instellen", 1)],
         "status": [("diensten", "Diensten", 0), ("hotspot", "Wifi-hotspot", 0), ("bijwerken", "Bijwerken", 0),
                    ("log", "Log van Direwolf", 0), ("pi", "Raspberry Pi", 0)]}
-if not systeem.IS_PI:                      # PC: geen hotspot, geen Pi uitzetten; bijwerken gaat anders
+if not systeem.IS_PI:                      # PC: geen hotspot, geen Pi uitzetten; bijwerken gaat anders; wel Telefoon
     MENU["status"] = [x for x in MENU["status"] if x[0] not in ("hotspot", "pi")]
+    MENU["status"].insert(1, ("telefoon", "Telefoon en app", 0))
 SEGMENTEN = {i for lijst in MENU.values() for i, _, _ in lijst}
 
 # Voor elke pagina: menu's open/dicht, melding naar het segment waar je op Opslaan tikte, trage delen later laden
@@ -212,17 +221,31 @@ def onthoud_inlog(kop):
         _INLOGS[hashlib.sha256(kop.encode()).hexdigest()] = (nu + INLOG_DUUR, _ww_stempel())
 
 
-def stel_wachtwoord_in():
-    print("Wachtwoord voor de tabbladen Radio en Status van AX25Chat (gebruiker: beheer)")
-    w1 = getpass.getpass("Nieuw wachtwoord: ")
-    w2 = getpass.getpass("Nog een keer: ")
-    if w1 != w2 or len(w1) < 8:
-        sys.exit("Niet gelijk, of korter dan 8 tekens. Niets gewijzigd.")
+def zet_wachtwoord(w1, w2):
+    """Geeft een foutmelding, of '' als het wachtwoord is opgeslagen."""
+    if w1 != w2:
+        return "De twee wachtwoorden zijn niet gelijk."
+    if len(w1) < 8:
+        return "Het wachtwoord moet minstens 8 tekens hebben."
     zout = os.urandom(16)
     h = hashlib.pbkdf2_hmac("sha256", w1.encode(), zout, 200000)
     radio.schrijf(WW_FILE, {"gebruiker": "beheer", "zout": base64.b64encode(zout).decode(),
                             "hash": base64.b64encode(h).decode(), "rondes": 200000})
-    os.chmod(WW_FILE, 0o600)
+    try:
+        os.chmod(WW_FILE, 0o600)
+    except OSError:
+        pass
+    _INLOGS.clear()
+    return ""
+
+
+def stel_wachtwoord_in():
+    print("Wachtwoord voor de tabbladen Radio en Status van AX25Chat (gebruiker: beheer)")
+    w1 = getpass.getpass("Nieuw wachtwoord: ")
+    w2 = getpass.getpass("Nog een keer: ")
+    fout = zet_wachtwoord(w1, w2)
+    if fout:
+        sys.exit(fout + " Niets gewijzigd.")
     print("Opgeslagen in", WW_FILE)
 
 
@@ -261,7 +284,7 @@ def pagina(actief, inhoud, melding="", bij=""):
     return f"""<!doctype html><html lang="nl"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>AX25Chat {e(rn or '')}</title>
 <style>{CSS}</style></head><body data-mij="{e(rn or '')}"{f' data-bij="{bij}"' if bij else ''}>
-<header><b>AX25Chat</b><span>{e(rn or 'roepnaam nog niet ingesteld')}{' · versie ' + e(versie()) if versie() else ''}</span></header>
+<header>{pcbijwerken.html_balk()}<b>AX25Chat</b><span>{e(rn or 'roepnaam nog niet ingesteld')}{' · versie ' + e(versie()) if versie() else ''}</span></header>
 <nav>{nav}</nav><main><div id="meld">{melding}</div>{inhoud}</main>{over.html_dialoog(versie())}
 <script>{PAGINA_JS}</script></body></html>"""
 
@@ -305,6 +328,7 @@ def html_status():
     if not systeem.IS_PI:
         return f"""<section id="diensten"><h2>Diensten</h2><table>{rijen}</table>
 {laden(deel="setkort", tekst="De set wordt uitgelezen…", hoog=40)}</section>
+{telefoon.html_sectie(verborgen(), POORT, bool(radio.lees(WW_FILE)), not LOKAAL, TELEFOON_FOUT)}
 {pcbijwerken.html_sectie(verborgen())}
 <section id="log"><h2>Log van Direwolf</h2>{laden(deel="log", tekst="Het log wordt opgehaald…", hoog=200)}</section>"""
     h = radio.hotspot_status()
@@ -785,10 +809,68 @@ class Handler(BaseHTTPRequestHandler):
 location.href='/status#bijwerken';else setTimeout(kijk,2000)}).catch(function(){setTimeout(kijk,2000)})},5000)</script>"""
                 return self._stuur(pagina("status", meldingen(ok=tekst) + wacht))
             return self._terug("/status", (soort + ":" + tekst) if tekst else "", "bijwerken")
+        if pad == "telefoon" and not systeem.IS_PI:
+            return self._terug("/status", telefoon_actie(f), "telefoon")
         if pad == "pi":
             uit = pi_actie(f.get("actie", ""))
             return self._stuur(uit) if uit else self._terug("/status", "fout:Ongeldige opdracht.", "pi")
         self._stuur("Niet gevonden", 404, "text/plain; charset=utf-8")
+
+
+def telefoon_actie(f):
+    """POST /telefoon (PC): Bereikbaar vanaf telefoon aan/uit, wachtwoord. Geeft de melding voor de pagina."""
+    actie = f.get("actie", "")
+    w1, w2 = f.get("ww1", ""), f.get("ww2", "")
+    if actie == "wachtwoord" or (w1 or w2):
+        fout = zet_wachtwoord(w1, w2)
+        if fout:
+            return "fout:" + fout
+        if actie == "wachtwoord":
+            return "ok:Wachtwoord opgeslagen."
+    if actie == "aan":
+        if not radio.lees(WW_FILE):
+            return "fout:Kies eerst een wachtwoord (minstens 8 tekens)."
+        telefoon.zet(True)
+    elif actie == "uit":
+        telefoon.zet(False)
+    else:
+        return "fout:Onbekende opdracht."
+    herbind()
+    if actie == "uit":
+        return "ok:Uit. AX25Chat is nu alleen nog op deze PC te zien."
+    if TELEFOON_FOUT:
+        return "fout:" + TELEFOON_FOUT
+    return "ok:Aan. AX25Chat is nu ook bereikbaar vanaf je telefoon."
+
+
+def herbind(wacht=5):
+    """PC: de webserver opnieuw laten luisteren (alleen op de PC, of ook op het thuisnetwerk). Wacht tot dat klaar
+    is, zodat de browser na het antwoord meteen de nieuwe server vindt."""
+    if SERVER is None:
+        return
+    GEBONDEN.clear()
+    HERBIND.set()
+    SERVER.shutdown()                      # serve_forever() in main() stopt; main() bindt opnieuw
+    GEBONDEN.wait(wacht)
+
+
+def _maak_server():
+    """PC: (server, lokaal). Lukt luisteren op het thuisnetwerk niet, dan alleen op de PC, met een melding."""
+    global TELEFOON_FOUT
+    TELEFOON_FOUT = ""
+    if systeem.IS_PI:
+        return ThreadingHTTPServer(("0.0.0.0", POORT), Handler), False
+    wil = telefoon.aan()
+    if wil and not radio.lees(WW_FILE):
+        TELEFOON_FOUT = "Bereikbaar vanaf telefoon staat aan, maar er is nog geen wachtwoord. Kies er een hieronder."
+        wil = False
+    if wil:
+        try:
+            return ThreadingHTTPServer(("0.0.0.0", POORT), Handler), False
+        except OSError as fout:
+            TELEFOON_FOUT = f"Luisteren op het thuisnetwerk lukte niet ({fout}). AX25Chat is nu alleen op de PC te zien."
+            print("Let op: " + TELEFOON_FOUT, flush=True)
+    return ThreadingHTTPServer(("127.0.0.1", POORT), Handler), True
 
 
 def _vaste_positie():
@@ -801,14 +883,15 @@ def main(argv=None):
     ap.add_argument("--poort", type=int, default=80 if systeem.IS_PI else 8080)
     ap.add_argument("--wachtwoord", action="store_true", help="wachtwoord instellen of wijzigen")
     ap.add_argument("--thuisnetwerk", action="store_true",
-                    help="PC: ook bereikbaar voor je telefoon of de app op het thuisnetwerk (met wachtwoord)")
+                    help="PC: zet 'Bereikbaar vanaf telefoon' aan (tabblad Status; Radio en Status met wachtwoord)")
     args = ap.parse_args(argv)
     if args.wachtwoord:
         return stel_wachtwoord_in()
-    global LOKAAL
-    LOKAAL = not systeem.IS_PI and not args.thuisnetwerk
-    adres = "127.0.0.1" if LOKAAL else "0.0.0.0"
-    if not LOKAAL and not radio.lees(WW_FILE):
+    global LOKAAL, POORT, SERVER
+    POORT = args.poort
+    if args.thuisnetwerk and not systeem.IS_PI:   # oude startoptie: zet Bereikbaar vanaf telefoon aan (blijft bewaard)
+        telefoon.zet(True)
+    if (systeem.IS_PI or args.thuisnetwerk) and not radio.lees(WW_FILE):
         sys.exit("Stel eerst een wachtwoord in:  python3 ax25chat_web.py --wachtwoord")
     if not systeem.IS_PI:                       # PC: Direwolf en rigctld zelf starten (op de Pi doet systemd dat)
         import atexit
@@ -835,12 +918,33 @@ def main(argv=None):
                         verbonden=lambda: BBS.tegen if BBS.stand != "verbroken" else "")
     radio.NA_EIGEN.append(lambda verborgen: baken.html(verborgen, BAKEN))
     radio.NA_EIGEN.append(lambda verborgen: kaart.html_beheer(verborgen, _vaste_positie()))
-    server = ThreadingHTTPServer((adres, args.poort), Handler)
-    print(f"AX25Chat op http://{'localhost' if LOKAAL else adres}:{args.poort}", flush=True)
+    SERVER, LOKAAL = _maak_server()
+    if LOKAAL:
+        print(f"AX25Chat op http://localhost:{args.poort}", flush=True)
+    else:
+        print(f"AX25Chat op http://0.0.0.0:{args.poort}" +
+              "".join(f"  (telefoon/app: {ip}:{args.poort})" for ip in ([] if systeem.IS_PI else telefoon.adressen())),
+              flush=True)
+    if not systeem.IS_PI:
+        pcbijwerken.start_automatisch()          # bovenin melden als er een nieuwe versie is
     if KLAAR:
         KLAAR(f"http://localhost:{args.poort}/")
     try:
-        server.serve_forever()
+        while True:
+            SERVER.serve_forever()
+            SERVER.server_close()
+            if not HERBIND.is_set():
+                break
+            HERBIND.clear()                      # Telefoon aan/uit: opnieuw luisteren, nu op het andere adres
+            try:
+                SERVER, LOKAAL = _maak_server()
+            except OSError as fout:
+                print(f"Opnieuw luisteren lukte niet: {fout}", flush=True)
+                break
+            finally:
+                GEBONDEN.set()
+            print(f"AX25Chat nu {'alleen op deze PC' if LOKAAL else 'ook op het thuisnetwerk'} (poort {args.poort})",
+                  flush=True)
     except KeyboardInterrupt:
         pass
     finally:

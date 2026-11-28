@@ -5,6 +5,7 @@ logboek bij en de webpagina werkt zonder inloggen op localhost. Met een nep-Dire
     python3 -m unittest discover -s tests
 """
 
+import base64
 import json
 import os
 import socket
@@ -14,6 +15,8 @@ import sys
 import tempfile
 import time
 import unittest
+import urllib.error
+import urllib.parse
 import urllib.request
 
 HIER = os.path.dirname(os.path.abspath(__file__))
@@ -138,6 +141,82 @@ class TestThuisnetwerk(unittest.TestCase):
         finally:
             p.terminate()
             p.wait(timeout=10)
+
+
+
+def eigen_ip():
+    """Een adres van deze computer dat niet 127.0.0.1 is (om 'van buiten' te testen), of None."""
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.connect(("192.0.2.1", 9))
+            ip = s.getsockname()[0]
+        return None if ip.startswith("127.") else ip
+    except OSError:
+        return None
+
+
+@unittest.skipIf(sys.platform == "win32", "zelfde opzet als hierboven")
+class TestTelefoon(unittest.TestCase):
+    """Status -> Telefoon en app: aanzetten met een wachtwoord, dan ook op het thuisnetwerk; uit = alleen de PC."""
+
+    def setUp(self):
+        self.map = tempfile.mkdtemp(prefix="ax25chat-pc-tel-")
+        with open(os.path.join(self.map, "station.json"), "w") as f:
+            json.dump({"roepnaam": "PD3PAM", "frequentie": 144900000}, f)
+        self.poort = vrije_poort()
+        env = dict(os.environ, AX25CHAT_MAP=self.map, AX25CHAT_SOORT="pc", AX25CHAT_DIREWOLF="false")
+        self.p = subprocess.Popen([sys.executable, START, "--geen-browser", "--poort", str(self.poort)], env=env,
+                                  stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        self.assertIn("Telefoon en app", self.haal("127.0.0.1", "/status", wacht=15))
+
+    def tearDown(self):
+        self.p.terminate()
+        self.p.wait(timeout=10)
+
+    def haal(self, ip, pad, wacht=0, kop=None):
+        eind = time.time() + wacht
+        while True:
+            try:
+                req = urllib.request.Request(f"http://{ip}:{self.poort}{pad}", headers=kop or {})
+                with urllib.request.urlopen(req, timeout=10) as r:
+                    return r.read().decode("utf-8")
+            except urllib.error.HTTPError as fout:
+                return f"HTTP {fout.code}"
+            except OSError:
+                if time.time() > eind:
+                    raise
+                time.sleep(0.2)
+
+    def post(self, velden):
+        html = self.haal("127.0.0.1", "/status")
+        csrf = html.split('name="csrf" value="', 1)[1].split('"', 1)[0]
+        data = urllib.parse.urlencode(dict(velden, csrf=csrf)).encode()
+        with urllib.request.urlopen(f"http://127.0.0.1:{self.poort}/telefoon", data, timeout=15) as r:
+            return r.read().decode("utf-8")
+
+    def test_aan_en_uit(self):
+        ip = eigen_ip()
+        self.assertIn("Uit.", self.haal("127.0.0.1", "/status"))
+        uit = self.post({"actie": "aan"})                      # zonder wachtwoord: weigeren
+        self.assertIn("Kies eerst een wachtwoord", urllib.parse.unquote(uit) + uit)
+        self.assertFalse(os.path.exists(os.path.join(self.map, "telefoon.json")))
+        uit = self.post({"actie": "aan", "ww1": "geheim123", "ww2": "geheim123"})
+        self.assertIn("Aan.", uit)
+        self.assertIn("bereikbaar vanaf je telefoon", uit)
+        with open(os.path.join(self.map, "telefoon.json")) as f:
+            self.assertTrue(json.load(f)["aan"])
+        self.assertIn("Diensten", self.haal("127.0.0.1", "/status"))   # op de PC zelf: geen inlog
+        if ip:
+            self.assertEqual(self.haal(ip, "/status"), "HTTP 401")       # telefoon: Status met wachtwoord
+            kop = {"Authorization": "Basic " + base64.b64encode(b"beheer:geheim123").decode()}
+            self.assertIn("Diensten", self.haal(ip, "/status", kop=kop))
+            self.assertIn("berichten", self.haal(ip, "/api/berichten"))  # de app: zonder wachtwoord, zoals op de Pi
+            self.assertIn("roepnaam", self.haal(ip, "/status.json"))
+        self.post({"actie": "uit"})
+        self.assertIn("Uit.", self.haal("127.0.0.1", "/status"))
+        if ip:
+            with self.assertRaises(OSError):
+                self.haal(ip, "/status.json")
 
 
 if __name__ == "__main__":

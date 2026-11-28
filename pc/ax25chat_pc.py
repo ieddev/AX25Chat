@@ -4,14 +4,15 @@ ax25chat_pc.py - AX25Chat op een gewone PC (Linux; Windows volgt), zonder Raspbe
 
     python3 pc/ax25chat_pc.py                  start AX25Chat en open het in de browser
     python3 pc/ax25chat_pc.py --geen-browser   alleen starten (open zelf http://localhost:8080)
-    python3 pc/ax25chat_pc.py --thuisnetwerk   ook bereikbaar voor je telefoon/de app (met wachtwoord)
-    python3 pc/ax25chat_pc.py --wachtwoord     wachtwoord instellen voor --thuisnetwerk
+    python3 pc/ax25chat_pc.py --thuisnetwerk   'Bereikbaar vanaf telefoon' aanzetten (kan ook op het tabblad Status)
+    python3 pc/ax25chat_pc.py --wachtwoord     wachtwoord voor Radio en Status op de telefoon
 
 Wat anders is dan op de Pi:
   - AX25Chat start Direwolf en rigctld zelf (geen systemd, geen sudo) en stopt ze weer bij het afsluiten
   - instellingen en logboek staan in ~/.local/share/ax25chat (Windows: %APPDATA%\\AX25Chat)
   - geen hotspot, geen Bijwerken via thuis-wifi en geen Pi uit/herstart
-  - de webpagina is standaard alleen te zien op deze PC (http://localhost:8080), zonder inloggen
+  - de webpagina is standaard alleen te zien op deze PC (http://localhost:8080), zonder inloggen; met
+    Status -> Telefoon en app ook vanaf je telefoon en de app (dan Radio en Status met wachtwoord)
 
 Nodig op Linux:  sudo apt install direwolf libhamlib-utils alsa-utils
 Uitleg: docs/PROCEDURE.md, deel 'AX25Chat op een PC'.
