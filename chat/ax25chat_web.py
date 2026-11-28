@@ -573,7 +573,8 @@ class Handler(BaseHTTPRequestHandler):
             except ValueError:
                 sinds = 0
             nu = time.time()
-            return self._json({"nu": nu, "mij": CHAT.mijn_call(), "berichten": CHAT.opslag.lijst(sinds)})
+            return self._json({"nu": nu, "mij": CHAT.mijn_call(), "toestel": systeem.TOESTEL,
+                               "berichten": CHAT.opslag.lijst(sinds)})
         if pad == "monitor":
             return self._json(CHAT.opslag.monitor(200))
         if pad == "frequenties":

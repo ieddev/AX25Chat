@@ -38,7 +38,7 @@ import java.util.Locale
 import kotlin.concurrent.thread
 
 /**
- * Het hoofdscherm: tabbladen Chat (in de app zelf), Kaart en BBS (de pagina's van de Pi) en Instellingen.
+ * Het hoofdscherm: tabbladen Chat (in de app zelf), Kaart en BBS (de pagina's van AX25Chat op de Pi of PC) en Instellingen.
  * De schermen worden in code opgebouwd, zonder layoutbestanden of extra bibliotheken.
  */
 class MainActivity : Activity() {
@@ -191,7 +191,7 @@ class MainActivity : Activity() {
         }
     }
 
-    /** De pagina's Kaart en BBS van de Pi, zonder de kop en de tabbladen van de webpagina. */
+    /** De pagina's Kaart en BBS van AX25Chat (Pi of PC), zonder de kop en de tabbladen van de webpagina. */
     private fun webScherm(pad: String): View {
         val w = web ?: WebView(this).also { nieuw ->
             nieuw.settings.javaScriptEnabled = true
@@ -226,15 +226,16 @@ class MainActivity : Activity() {
         fun label(t: String) = TextView(this).apply { text = t; typeface = Typeface.DEFAULT_BOLD; setPadding(0, dp(14), 0, dp(4)) }
         fun uitleg(t: String) = TextView(this).apply { text = t; setTextColor(GRIJS); textSize = 13f }
 
-        s.addView(label("Adres van de Pi"))
+        s.addView(label("Adres van AX25Chat (Pi of PC)"))
         val adres = EditText(this).apply {
             setText(Pi.adres(this@MainActivity)); inputType = InputType.TYPE_TEXT_VARIATION_URI; setSingleLine()
         }
         s.addView(adres)
         verbindingStand = uitleg("").also { s.addView(it) }
         tekenChat()
-        s.addView(uitleg("Onderweg via de hotspot van de Pi: 10.42.0.1. Thuis op je eigen wifi: het adres dat je router " +
-            "de Pi geeft (bijv. 192.168.1.50)."))
+        s.addView(uitleg("Pi onderweg, via de hotspot van de Pi: 10.42.0.1. Pi thuis op je eigen wifi: het adres dat je router " +
+            "de Pi geeft (bijv. 192.168.1.50). PC (Linux of Windows): het adres met poort dat op de PC staat onder " +
+            "Status → Telefoon en app (bijv. 192.168.1.20:8080)."))
         s.addView(Button(this).apply {
             text = "Opslaan en opnieuw verbinden"; isAllCaps = false
             setOnClickListener {
@@ -250,13 +251,13 @@ class MainActivity : Activity() {
             text = "Melding bij een nieuw bericht"; isChecked = Pi.meldingenAan(this@MainActivity)
             setOnCheckedChangeListener { _, aan -> Pi.zetMeldingen(this@MainActivity, aan) }
         })
-        s.addView(uitleg("De app blijft op de achtergrond verbonden met de Pi. Android toont daarvoor een vaste melding " +
+        s.addView(uitleg("De app blijft op de achtergrond verbonden met AX25Chat. Android toont daarvoor een vaste melding " +
             "'AX25Chat luistert'; die kun je bij de meldingsinstellingen van Android verbergen."))
 
         s.addView(label("GPS van de telefoon"))
         val gpsStand = uitleg(Chat.gpsStand)
         s.addView(Switch(this).apply {
-            text = "Mijn positie naar de Pi sturen (voor het APRS-baken en de kaart)"; isChecked = Pi.gpsAan(this@MainActivity)
+            text = "Mijn positie naar AX25Chat sturen (voor het APRS-baken en de kaart)"; isChecked = Pi.gpsAan(this@MainActivity)
             setOnCheckedChangeListener { _, aan ->
                 Pi.zetGps(this@MainActivity, aan)
                 if (aan && checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
@@ -269,14 +270,14 @@ class MainActivity : Activity() {
             }
         })
         s.addView(gpsStand)
-        s.addView(uitleg("Zet op de Pi bij het APRS-baken (tabblad Radio) 'Positie uit' op 'GPS van de telefoon' en het " +
+        s.addView(uitleg("Zet in AX25Chat bij het APRS-baken (tabblad Radio) 'Positie uit' op 'GPS van de telefoon' en het " +
             "baken aan. De app stuurt elke 10 seconden je positie, ook met het scherm uit. Dan heb je geen GPS-stickje nodig."))
 
-        s.addView(label("Instellen van de Pi"))
+        s.addView(label("AX25Chat instellen"))
         s.addView(uitleg("Set, roepnaam, Mijn frequenties, de BBS-lijst, het baken en de offline kaart stel je eenmalig in op " +
-            "de webpagina van de Pi (tabblad Radio, gebruiker beheer)."))
+            "de webpagina van de Pi (tabblad Radio, gebruiker beheer) of in het AX25Chat-venster op de PC."))
         s.addView(Button(this).apply {
-            text = "Webpagina van de Pi openen"; isAllCaps = false
+            text = "Webpagina van AX25Chat openen"; isAllCaps = false
             setOnClickListener { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(Pi.basis(this@MainActivity) + "/radio"))) }
         })
 
@@ -342,8 +343,8 @@ class MainActivity : Activity() {
     private fun tekenChat() {
         if (!::chatScherm.isInitialized) return
         kopStand.text = (Chat.mij.ifEmpty { "" }) + (if (Chat.verbonden && Chat.frequentie.isNotEmpty()) " · " + Chat.frequentie else "") +
-            if (Chat.verbonden) "  ●" else "  ○ geen verbinding met de Pi"
-        verbindingStand?.text = if (Chat.verbonden) "Verbonden met " + Pi.adres(this)
+            if (Chat.verbonden) "  ●" else "  ○ geen verbinding met " + Pi.naam(this)
+        verbindingStand?.text = if (Chat.verbonden) "Verbonden met " + Pi.naam(this) + " (" + Pi.adres(this) + ")"
             else Chat.verbindingFout.ifEmpty { "Verbinden met " + Pi.adres(this) + "…" }
 
         gesprekBalk.removeAllViews()
@@ -363,7 +364,7 @@ class MainActivity : Activity() {
 
         val a = Chat.actief
         gesprekKop.text = when (a) {
-            Chat.MONITOR -> "Monitor · alles wat de Pi hoort"
+            Chat.MONITOR -> "Monitor · alles wat " + Pi.naam(this) + " hoort"
             "CQ" -> "CQ · aan iedereen, zonder bevestiging"
             else -> "$a · bericht met bevestiging"
         }
@@ -381,8 +382,9 @@ class MainActivity : Activity() {
         } else {
             val berichten = Chat.vanGesprek(a)
             if (berichten.isEmpty()) lijst.addView(leeg(if (Chat.verbonden) "Nog geen berichten." else
-                "Geen verbinding met de Pi (${Pi.adres(this)}). Ben je verbonden met de wifi van de Pi? " +
-                    "Kies bij de melding 'geen internet' voor Verbonden blijven."))
+                "Geen verbinding met ${Pi.naam(this)} (${Pi.adres(this)}). Pi onderweg: ben je verbonden met de wifi van de Pi? " +
+                    "Kies bij de melding 'geen internet' voor Verbonden blijven. PC: staat 'Bereikbaar vanaf telefoon' aan " +
+                    "en zitten telefoon en PC op dezelfde wifi?"))
             for (b in berichten) lijst.addView(bel(b))
         }
         if (onderaan) lijstScroll.post { lijstScroll.fullScroll(View.FOCUS_DOWN) }
@@ -428,7 +430,7 @@ class MainActivity : Activity() {
             val d = try { Pi.haal(this, "/api/frequenties") } catch (_: Exception) { null }
             runOnUiThread {
                 if (d == null) {
-                    Toast.makeText(this, "Geen verbinding met de Pi", Toast.LENGTH_SHORT).show(); return@runOnUiThread
+                    Toast.makeText(this, "Geen verbinding met " + Pi.naam(this), Toast.LENGTH_SHORT).show(); return@runOnUiThread
                 }
                 val lijst = d.optJSONArray("keuzes") ?: return@runOnUiThread
                 val huidig = d.optLong("huidig")
@@ -438,7 +440,7 @@ class MainActivity : Activity() {
                 }
                 val gekozen = (0 until lijst.length()).firstOrNull { lijst.getJSONObject(it).optLong("hz") == huidig } ?: -1
                 android.app.AlertDialog.Builder(this)
-                    .setTitle(if (d.optBoolean("cat")) "Frequentie (de Pi zet de set erop)" else "Frequentie (zet de set zelf goed: geen CAT)")
+                    .setTitle(if (d.optBoolean("cat")) "Frequentie (" + Pi.naam(this) + " zet de set erop)" else "Frequentie (zet de set zelf goed: geen CAT)")
                     .setSingleChoiceItems(teksten, gekozen) { dlg, i ->
                         dlg.dismiss()
                         zetFrequentie(lijst.getJSONObject(i).optLong("hz"))
@@ -456,7 +458,7 @@ class MainActivity : Activity() {
                 Chat.zetFrequentie(a.optString("tekst", Chat.frequentie))
                 if (a.has("fout")) a.optString("fout") else "Frequentie: " + a.optString("tekst")
             } catch (_: Exception) {
-                "Geen verbinding met de Pi"
+                "Geen verbinding met " + Pi.naam(this)
             }
             runOnUiThread { Toast.makeText(this, melding, Toast.LENGTH_LONG).show() }
         }
@@ -498,7 +500,7 @@ class MainActivity : Activity() {
                     lijstScroll.post { lijstScroll.fullScroll(View.FOCUS_DOWN) }
                 }
             } catch (e: Exception) {
-                runOnUiThread { Toast.makeText(this, "Niet verstuurd: geen verbinding met de Pi", Toast.LENGTH_LONG).show() }
+                runOnUiThread { Toast.makeText(this, "Niet verstuurd: geen verbinding met " + Pi.naam(this), Toast.LENGTH_LONG).show() }
             }
         }
     }
@@ -508,7 +510,7 @@ class MainActivity : Activity() {
             try {
                 Pi.stuur(this, pad, data)
             } catch (_: Exception) {
-                runOnUiThread { Toast.makeText(this, "Geen verbinding met de Pi", Toast.LENGTH_SHORT).show() }
+                runOnUiThread { Toast.makeText(this, "Geen verbinding met " + Pi.naam(this), Toast.LENGTH_SHORT).show() }
             }
         }
     }
@@ -517,14 +519,14 @@ class MainActivity : Activity() {
         val g = Chat.actief
         val naam = when (g) { Chat.MONITOR -> "de Monitor"; "CQ" -> "CQ (iedereen)"; else -> "het gesprek met $g" }
         android.app.AlertDialog.Builder(this)
-            .setMessage("Berichten van $naam wissen? Ook op de Pi.")
+            .setMessage("Berichten van $naam wissen? Ook op ${Pi.naam(this)}.")
             .setPositiveButton("Wissen") { _, _ ->
                 thread {
                     try {
                         Pi.stuur(this, "/api/wis", JSONObject().put("gesprek", g))
                         Chat.wisLokaal(g)
                     } catch (_: Exception) {
-                        runOnUiThread { Toast.makeText(this, "Geen verbinding met de Pi", Toast.LENGTH_SHORT).show() }
+                        runOnUiThread { Toast.makeText(this, "Geen verbinding met " + Pi.naam(this), Toast.LENGTH_SHORT).show() }
                     }
                 }
             }

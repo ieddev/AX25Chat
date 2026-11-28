@@ -27,13 +27,13 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * Houdt de verbinding met de Pi open (/api/live), ook als de app op de achtergrond staat of het scherm uit is.
+ * Houdt de verbinding met AX25Chat (Pi of PC) open (/api/live), ook als de app op de achtergrond staat of het scherm uit is.
  * Een nieuw bericht aan jou of aan CQ geeft een melding. Valt de verbinding weg (buiten bereik van de hotspot,
- * de Pi herstart), dan probeert de service het na 3 seconden opnieuw, na een paar mislukte pogingen elke 10 seconden.
+ * AX25Chat herstart), dan probeert de service het na 3 seconden opnieuw, na een paar mislukte pogingen elke 10 seconden.
  * Komt de wifi terug, dan meteen. De reden staat in Chat.verbindingFout (Instellingen en de vaste melding).
  *
- * Staat 'GPS van de telefoon' aan, dan stuurt de dienst ook elke 10 seconden de positie naar de Pi (/api/positie),
- * voor het APRS-baken (bron 'GPS van de telefoon' op de Pi) en de kaart.
+ * Staat 'GPS van de telefoon' aan, dan stuurt de dienst ook elke 10 seconden de positie naar AX25Chat (/api/positie),
+ * voor het APRS-baken (bron 'GPS van de telefoon' in AX25Chat) en de kaart.
  *
  * Android eist bij zo'n achtergronddienst een vaste melding ("AX25Chat luistert"); die kun je in de
  * instellingen van Android verbergen.
@@ -56,7 +56,7 @@ class LiveService : Service() {
             return START_NOT_STICKY
         }
         kanalen(this)
-        val vast = vasteMelding("Verbinden met de Pi…")
+        val vast = vasteMelding("Verbinden met " + Pi.naam(this) + "…")
         var gps = gpsMag(this)
         if (Build.VERSION.SDK_INT >= 34) {
             try {
@@ -96,9 +96,9 @@ class LiveService : Service() {
                 mislukt = 0
                 Chat.zetFout("")
                 Chat.zetVerbonden(true)
-                werkVastBij("Verbonden met " + Pi.adres(this))
+                werkVastBij("Verbonden met " + Pi.naam(this) + " (" + Pi.adres(this) + ")")
                 Pi.luister(this, { stoppen }) { soort, data -> gebeurtenis(soort, data) }
-                reden = "De Pi heeft de verbinding verbroken (herstart hij?)"
+                reden = Pi.naamHoofd(this) + " heeft de verbinding verbroken (herstart AX25Chat?)"
             } catch (e: Exception) {
                 reden = reden(e)
             }
@@ -116,12 +116,12 @@ class LiveService : Service() {
 
     /** Een foutmelding van Java in gewone woorden. */
     private fun reden(e: Exception): String = when (e) {
-        is SocketTimeoutException -> "De Pi reageert niet op tijd"
-        is ConnectException -> if (Pi.wifi == null) "Geen wifi. Ben je verbonden met de wifi van de Pi?"
-            else "De Pi weigert de verbinding op " + Pi.adres(this) + " (draait AX25Chat, klopt het adres?)"
+        is SocketTimeoutException -> Pi.naamHoofd(this) + " reageert niet op tijd"
+        is ConnectException -> if (Pi.wifi == null) "Geen wifi. Ben je verbonden met de wifi van de Pi, of thuis met je eigen wifi?"
+            else Pi.naamHoofd(this) + " weigert de verbinding op " + Pi.adres(this) + " (draait AX25Chat, klopt het adres? PC: staat 'Bereikbaar vanaf telefoon' aan?)"
         is NoRouteToHostException, is UnknownHostException ->
-            "Pi niet gevonden op " + Pi.adres(this) + ". Ben je verbonden met de wifi van de Pi?"
-        is org.json.JSONException -> "Onverwacht antwoord van " + Pi.adres(this) + " (is dit de Pi?)"
+            "Niets gevonden op " + Pi.adres(this) + ". Ben je verbonden met de wifi van de Pi, of zitten telefoon en PC op dezelfde wifi?"
+        is org.json.JSONException -> "Onverwacht antwoord van " + Pi.adres(this) + " (is dit AX25Chat?)"
         else -> "Verbinding mislukt (" + (e.message ?: e.javaClass.simpleName) + ")"
     }
 
@@ -193,11 +193,11 @@ class LiveService : Service() {
         Thread {
             Chat.gpsStand = try {
                 val a = Pi.stuur(this, "/api/positie", d)
-                if (a.has("fout")) "Pi weigert de positie: " + a.optString("fout")
-                else "Positie naar de Pi gestuurd (" + String.format("%.5f, %.5f", loc.latitude, loc.longitude) + ")" +
-                    if (a.optString("bron") != "telefoon") ". Let op: kies op de Pi bij het baken 'GPS van de telefoon'." else ""
+                if (a.has("fout")) Pi.naamHoofd(this) + " weigert de positie: " + a.optString("fout")
+                else "Positie naar " + Pi.naam(this) + " gestuurd (" + String.format("%.5f, %.5f", loc.latitude, loc.longitude) + ")" +
+                    if (a.optString("bron") != "telefoon") ". Let op: kies in AX25Chat bij het baken 'GPS van de telefoon'." else ""
             } catch (_: Exception) {
-                "GPS werkt, maar geen verbinding met de Pi"
+                "GPS werkt, maar geen verbinding met " + Pi.naam(this)
             }
         }.start()
     }
@@ -243,7 +243,7 @@ class LiveService : Service() {
 
         fun kanalen(ctx: Context) {
             val nm = ctx.getSystemService(NotificationManager::class.java)
-            nm.createNotificationChannel(NotificationChannel(KANAAL_VAST, "Verbinding met de Pi",
+            nm.createNotificationChannel(NotificationChannel(KANAAL_VAST, "Verbinding met AX25Chat",
                 NotificationManager.IMPORTANCE_MIN).apply { description = "Vaste melding zolang AX25Chat luistert" })
             nm.createNotificationChannel(NotificationChannel(KANAAL_BERICHT, "Berichten",
                 NotificationManager.IMPORTANCE_HIGH).apply { description = "Nieuwe berichten aan jou en aan CQ" })

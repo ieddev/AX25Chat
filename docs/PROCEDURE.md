@@ -549,7 +549,10 @@ de kaart twee verschillende stations.
 ## Android-app
 
 De app is voor dagelijks gebruik: chatten, CQ en berichten, de kaart en de BBS. Instellen (set, roepnaam, Mijn
-frequenties, BBS-lijst, baken, offline kaart) doe je eenmalig op de webpagina van de Pi, zoals hierboven.
+frequenties, BBS-lijst, baken, offline kaart) doe je eenmalig op de webpagina van de Pi, of in het AX25Chat-venster
+op de PC, zoals hierboven. De app werkt met beide: met een Pi (onderweg of thuis) en met een Linux- of Windows-PC
+thuis. Zodra de app verbonden is, weet hij waar hij mee praat en zegt hij *de Pi* of *de PC* (bijv. *geen verbinding
+met de PC*); daarvoor, of met een oudere versie van AX25Chat, zegt hij gewoon *AX25Chat*.
 
 **Installeren** (de app staat niet in de Play Store, maar op GitHub):
 
@@ -559,43 +562,44 @@ frequenties, BBS-lijst, baken, offline kaart) doe je eenmalig op de webpagina va
    van onbekende herkomst installeren*): zet dat aan voor je browser, ga terug en tik **Installeren**. Je kunt het
    daarna weer uitzetten.
 3. Play Protect kan waarschuwen dat de app onbekend is: kies *Toch installeren*. De broncode staat open op GitHub.
-4. Een nieuwe versie installeer je op dezelfde manier, over de oude heen. Berichten staan op de Pi, dus er gaat
-   niets verloren.
+4. Een nieuwe versie installeer je op dezelfde manier, over de oude heen. Berichten staan op de Pi of PC, dus er
+   gaat niets verloren.
 
 **Verbinden:**
 
 | Waar | Hoe |
 |---|---|
 | Onderweg | Verbind de telefoon met de wifi **AX25Chat-&lt;roepnaam&gt;** van de Pi. Meldt Android *geen internet*, kies dan **Verbonden blijven**. De app praat via de wifi met de Pi; je andere apps houden internet via 4G. Adres in de app: `10.42.0.1` (standaard). |
-| Thuis | Pi en telefoon op je eigen wifi. Vul bij **Instellingen** in de app het adres in dat je router de Pi geeft (bijv. `192.168.1.50`; je ziet het in je router, of op de Pi met `hostname -I`). |
+| Thuis, Pi | Pi en telefoon op je eigen wifi. Vul bij **Instellingen** in de app het adres in dat je router de Pi geeft (bijv. `192.168.1.50`; je ziet het in je router, of op de Pi met `hostname -I`). |
+| Thuis, PC | Zet op de PC bij **Status → Telefoon en app** *Bereikbaar maken vanaf telefoon* aan (zie [Vanaf je telefoon of de app](#vanaf-je-telefoon-of-de-app) hieronder). Telefoon en PC op dezelfde wifi; vul in de app het adres met poort in dat daar staat (bijv. `192.168.1.20:8080`). |
 
 **In de app:**
 
 | Tabblad | Wat |
 |---|---|
-| **Chat** | Gesprekken bovenaan (CQ, per station, Monitor), *+ Nieuw* voor een ander station. Stuur, Stop en Opnieuw werken zoals op de webpagina. Bovenaan zie je of de app verbonden is met de Pi. |
-| **Kaart** | De kaart van de Pi (zie Kaart hierboven). *Bericht sturen* bij een station opent de chat in de app. |
-| **BBS** | Het tabblad BBS van de Pi: keuzelijst, terminal en snelknoppen. |
-| **Frequentie** (knop bovenaan) | Kies een frequentie uit Mijn frequenties (★) of de voorkeuzelijst (2 m, 70 cm, HF); de Pi zet de set erop (met CAT) en Direwolf op de goede snelheid, net als bij Station op de webpagina. Zonder CAT zet je de set zelf goed. Bovenaan staat de huidige frequentie. |
-| **Instellingen** | Adres van de Pi, meldingen aan of uit, *GPS van de telefoon*, de webpagina van de Pi openen, stoppen. |
+| **Chat** | Gesprekken bovenaan (CQ, per station, Monitor), *+ Nieuw* voor een ander station. Stuur, Stop en Opnieuw werken zoals op de webpagina. Bovenaan zie je of de app verbonden is met de Pi of PC. |
+| **Kaart** | De kaart van AX25Chat (zie Kaart hierboven). *Bericht sturen* bij een station opent de chat in de app. |
+| **BBS** | Het tabblad BBS van AX25Chat: keuzelijst, terminal en snelknoppen. |
+| **Frequentie** (knop bovenaan) | Kies een frequentie uit Mijn frequenties (★) of de voorkeuzelijst (2 m, 70 cm, HF); de Pi of PC zet de set erop (met CAT) en Direwolf op de goede snelheid, net als bij Station op de webpagina. Zonder CAT zet je de set zelf goed. Bovenaan staat de huidige frequentie. |
+| **Instellingen** | Adres van AX25Chat (Pi of PC), meldingen aan of uit, *GPS van de telefoon*, de webpagina van AX25Chat openen, stoppen. |
 
 **GPS van de telefoon voor het baken:**
 
-1. In de app: Instellingen → *Mijn positie naar de Pi sturen* aan. Android vraagt toestemming voor je locatie:
+1. In de app: Instellingen → *Mijn positie naar AX25Chat sturen* aan. Android vraagt toestemming voor je locatie:
    kies *Tijdens gebruik van de app*. Zet *Locatie* van Android aan.
-2. Op de Pi (webpagina, tabblad Radio, APRS-baken): *Positie uit* → **GPS van de telefoon (app AX25Chat)**,
+2. In AX25Chat (webpagina of venster, tabblad Radio, APRS-baken): *Positie uit* → **GPS van de telefoon (app AX25Chat)**,
    *Baken aan*, opslaan.
-3. Onder de schakelaar in de app staat wat de GPS doet (bijv. *Positie naar de Pi gestuurd*). Op de Pi zie je de
-   positie bij het baken, en op het tabblad Kaart sta jij met een groene rand.
+3. Onder de schakelaar in de app staat wat de GPS doet (bijv. *Positie naar de PC gestuurd*). In AX25Chat zie je
+   de positie bij het baken, en op het tabblad Kaart sta jij met een groene rand.
 
 Na een herstart van de telefoon start de GPS pas weer als je de app een keer opent (een regel van Android).
 
-**Meldingen:** de app blijft op de achtergrond verbonden met de Pi en geeft een melding bij een nieuw bericht aan
+**Meldingen:** de app blijft op de achtergrond verbonden met de Pi of PC en geeft een melding bij een nieuw bericht aan
 jou of aan CQ, ook met het scherm uit. Android vereist daarvoor een vaste melding *AX25Chat luistert*. Die kun je
-verbergen: houd hem ingedrukt en zet *Verbinding met de Pi* uit; de meldingen voor berichten blijven werken. Ga je
-buiten bereik van de hotspot of herstart de Pi, dan probeert de app het na 3 seconden opnieuw (na vijf mislukte
+verbergen: houd hem ingedrukt en zet *Verbinding met AX25Chat* uit; de meldingen voor berichten blijven werken. Ga je
+buiten bereik van de wifi of herstart de Pi of PC, dan probeert de app het na 3 seconden opnieuw (na vijf mislukte
 pogingen elke 10 seconden), en meteen zodra de wifi terugkomt. Waarom er geen verbinding is en wanneer de volgende
-poging komt, zie je in Instellingen onder het adres van de Pi en in de vaste melding. Wil je helemaal stoppen:
+poging komt, zie je in Instellingen onder het adres en in de vaste melding. Wil je helemaal stoppen:
 Instellingen, *Stoppen met luisteren*.
 
 **Voor de beheerder van de repository: een nieuwe versie uitbrengen.** GitHub bouwt de APK zelf (Actions,
@@ -802,7 +806,7 @@ Wat anders is dan op de Pi en op Linux:
 | Zoek mijn set vindt niets | Set aan? USB-kabel goed? Bij een Icom: *CI-V USB Port* op *Unlink from [REMOTE]* |
 | Set gaat niet zenden | Tabblad Status → log van Direwolf. Kijk bij Handmatig instellen naar de besturing (CAT, RTS, VOX) |
 | Niets ontvangen | Luistertest doen; ontvangstniveau omhoog; staat de set op de goede frequentie? |
-| App: *geen verbinding met de Pi* | Ben je met de wifi van de Pi verbonden (en *Verbonden blijven* gekozen)? Klopt het adres bij Instellingen? Thuis: het adres van de Pi op je eigen wifi. Met een PC: staat *Bereikbaar vanaf telefoon* aan (Status → Telefoon en app) en staat `:8080` achter het adres? |
+| App: *geen verbinding met de Pi* (of *de PC*, *AX25Chat*) | Ben je met de wifi van de Pi verbonden (en *Verbonden blijven* gekozen)? Klopt het adres bij Instellingen? Thuis: het adres van de Pi op je eigen wifi. Met een PC: staat *Bereikbaar vanaf telefoon* aan (Status → Telefoon en app) en staat `:8080` achter het adres? |
 | App installeert niet over de oude heen | Een test-APK uit Actions heeft een andere sleutel dan een release. Verwijder de app en installeer opnieuw (berichten staan op de Pi). |
 | Kaart blijft grijs | Op het tabblad Radio de offline kaart downloaden (met internet), of bij *Kaart* kiezen voor *Automatisch* of *Alleen online* als je internet hebt. Stations staan er ook zonder op. |
 | Station niet op de kaart | Staat het in de Monitor? Alleen frames met een APRS-positie komen op de kaart (geen berichten of status). |

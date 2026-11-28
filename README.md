@@ -75,7 +75,8 @@ Op het tabblad **Kaart** staan de stations die je hoort met een APRS-positie, op
 Nederland (PDOK). Nodes en BBS'en zonder APRS-positie staan er ook op als hun locator bekend is (uit hun baken,
 of zelf ingevuld), met een eigen symbool op het midden van het locatorvak. Die download je eenmalig met internet op het tabblad Radio; daarna werkt hij zonder internet.
 
-**Android-app:** voor dagelijks gebruik (chat met meldingen, kaart, BBS). Download de APK bij
+**Android-app:** voor dagelijks gebruik (chat met meldingen, kaart, BBS), met de Pi of met AX25Chat op een
+Linux- of Windows-PC. Download de APK bij
 [Releases](https://github.com/ieddev/AX25Chat/releases); uitleg in [docs/PROCEDURE.md](docs/PROCEDURE.md#android-app).
 De broncode staat in `android/`.
 

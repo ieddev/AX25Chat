@@ -31,7 +31,7 @@
             </intent-filter>
         </activity>
 
-        <!-- Houdt de verbinding met de Pi open, ook als de app op de achtergrond staat, voor meldingen -->
+        <!-- Houdt de verbinding met AX25Chat (Pi of PC) open, ook als de app op de achtergrond staat, voor meldingen -->
         <service
             android:name=".LiveService"
             android:exported="false"
