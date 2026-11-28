@@ -34,6 +34,7 @@ GIT = os.environ.get("AX25CHAT_GIT", "git")
 RELEASES = os.environ.get("AX25CHAT_RELEASES_URL", "https://api.github.com/repos/ieddev/AX25Chat/releases?per_page=30")
 AGENT = "AX25Chat-bijwerken"
 _LAATST = {}                                       # uitkomst van de laatste controle (voor de pagina)
+ELKE = 24 * 3600                                   # vanzelf controleren: bij het starten en daarna eens per dag
 
 
 def soort():
@@ -72,18 +73,62 @@ def _nummer(tekst):
 # Controleren
 # ---------------------------------------------------------------------------
 
-def controleer():
-    """Is er een nieuwe versie? Geeft {"nieuw": bool, "tekst": ..., ...} en onthoudt het voor de pagina."""
+def controleer(stil=False):
+    """Is er een nieuwe versie? Geeft {"nieuw": bool, "tekst": ..., ...} en onthoudt het voor de pagina.
+    stil (de controle die vanzelf gaat): lukt het niet, bijvoorbeeld zonder internet, dan blijft alles zoals het was."""
     s = soort()
     try:
         uit = _controleer_git() if s == "git" else _controleer_windows() if s == "windows" else \
             {"nieuw": False, "tekst": "Deze installatie kan niet vanzelf bijwerken. Zie de procedure."}
     except Exception as fout:
+        if stil:
+            return {"nieuw": False, "fout": True, "tekst": str(fout)}
         uit = {"nieuw": False, "fout": True, "tekst": f"Controleren lukte niet: {fout}"}
     uit["tijd"] = time.time()
     _LAATST.clear()
     _LAATST.update(uit)
     return uit
+
+
+def internet(host="github.com", poort=443, wacht=4):
+    """Is GitHub te bereiken? Zo niet, dan slaat de controle die vanzelf gaat stil over."""
+    try:
+        import socket
+        socket.create_connection((host, poort), timeout=wacht).close()
+        return True
+    except OSError:
+        return False
+
+
+def nieuw():
+    """Weet AX25Chat dat er een nieuwe versie is? (voor de balk bovenin)"""
+    return bool(_LAATST.get("nieuw"))
+
+
+def start_automatisch(eerst=15, elke=ELKE):
+    """Op de achtergrond: na het starten en daarna eens per dag kijken of er een nieuwe versie is. Zonder internet
+    gebeurt er niets. Alleen op een PC die vanzelf kan bijwerken (Linux git-kopie of Windows-installer)."""
+    if not soort():
+        return None
+
+    def ronde():
+        time.sleep(eerst)
+        while True:
+            if not _LAATST.get("nieuw") and internet():
+                uit = controleer(stil=True)
+                if uit.get("nieuw"):
+                    print("Nieuwe versie van AX25Chat beschikbaar: " + uit.get("tekst", ""), flush=True)
+            time.sleep(elke)
+    t = threading.Thread(target=ronde, daemon=True, name="versiecontrole")
+    t.start()
+    return t
+
+
+def html_balk():
+    """Melding bovenin de pagina als er een nieuwe versie is."""
+    if not nieuw():
+        return ""
+    return '<a class="nieuwversie" href="/status#bijwerken">Nieuwe versie beschikbaar · Bijwerken</a>'
 
 
 def _controleer_git():
@@ -204,7 +249,7 @@ def html_sectie(verborgen):
               }.get(s, "Deze installatie kan niet vanzelf bijwerken. Draai het installatiescript opnieuw (zie de procedure).")
     l = _LAATST
     uitslag = ""
-    if l and time.time() - l.get("tijd", 0) < 3600:
+    if l and (l.get("nieuw") or time.time() - l.get("tijd", 0) < 3600):
         soort_m = "fout" if l.get("fout") else ("let" if l.get("nieuw") else "ok")
         lijst = "".join(f"<li>{e(x)}</li>" for x in l.get("wijzigingen", []))
         extra = f" Download: {l['mb']} MB." if l.get("mb") else ""

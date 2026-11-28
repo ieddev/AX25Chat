@@ -677,14 +677,51 @@ Zonder eigen venster, alleen in de browser: `python3 ~/AX25Chat/pc/ax25chat_pc.p
 
 Wat anders is dan op de Pi:
 
-- **Geen inloggen.** De webpagina is alleen te zien op deze PC zelf, dus een wachtwoord is niet nodig.
+- **Geen inloggen.** De webpagina is standaard alleen te zien op deze PC zelf, dus een wachtwoord is niet nodig.
+  Wil je AX25Chat ook vanaf je telefoon gebruiken? Zie *Vanaf je telefoon of de app* hieronder.
 - **Geen hotspot en geen Pi uitzetten.** Die onderdelen staan niet op het tabblad Status.
 - **Instellingen apart.** Je instellingen, berichten, de kaart en het logboek van Direwolf staan in
   `~/.local/share/ax25chat`. Het tabblad Status laat zien waar precies.
 - **Bijwerken:** tabblad **Status**, blok *Bijwerken*: **Controleren op nieuwe versie**, daarna **Nu bijwerken**. AX25Chat haalt de nieuwste versie van GitHub en start vanzelf opnieuw (ook Direwolf). Het installatiescript nog een keer draaien kan ook. `sudo apt update` werkt alleen Direwolf en Hamlib bij, niet AX25Chat.
+- **Melding bij een nieuwe versie:** AX25Chat kijkt zelf of er een nieuwe versie op GitHub staat: kort na het
+  starten en daarna eens per dag, zolang hij draait. Is er een nieuwe, dan staat er bovenin de blauwe balk
+  **Nieuwe versie beschikbaar · Bijwerken**. Tik erop: je komt bij *Bijwerken* op het tabblad Status, waar de
+  wijzigingen staan en de knop **Nu bijwerken**. AX25Chat werkt nooit vanzelf bij; dat doe jij. Zonder internet
+  gebeurt er niets en zie je ook geen foutmelding. (Linux kijkt met `git fetch` naar GitHub; Windows kijkt naar de
+  nieuwste release `win-v…`.)
 - **Kaart downloaden** gaat gewoon via het internet van de PC.
 - Draait er al een andere Direwolf (bijvoorbeeld voor een ander programma), sluit die dan eerst. AX25Chat gebruikt
   de poorten 8000 (AGW) en 8001 (KISS).
+
+### Vanaf je telefoon of de app
+
+Thuis vanuit de huiskamer werken terwijl de set in de shack aan de PC hangt: zet op het tabblad **Status**, blok
+**Telefoon en app**, *Bereikbaar vanaf telefoon* aan. Dat werkt net als een Pi die op je thuis-wifi zit.
+
+1. Tabblad **Status** → **Telefoon en app**. De eerste keer kies je een wachtwoord (minstens 8 tekens, twee keer
+   invullen). Tik op **Bereikbaar maken vanaf telefoon**.
+2. Onder *Aan* staat het adres van de PC met de poort, bijvoorbeeld **192.168.1.50:8080**.
+3. In de **Android-app**: *Instellingen*, vul dat adres in (met `:8080` erachter) en sla op. In de **browser** van
+   je telefoon: `http://192.168.1.50:8080`.
+4. Telefoon en PC moeten op hetzelfde netwerk zitten (je eigen wifi; de PC mag met een kabel aan de router).
+
+Wat je dan hebt:
+
+- **Chat, BBS, Kaart en de app** werken op je telefoon zonder inloggen, net als op de Pi. Iedereen op je thuis-wifi
+  kan ze dus gebruiken; zet het uit als je dat niet wilt.
+- **Radio en Status** vragen op de telefoon om inloggen: gebruiker `beheer` en jouw wachtwoord. Een goede inlog
+  onthoudt AX25Chat 12 uur.
+- **Op de PC zelf** blijft alles zonder inloggen.
+- De keuze blijft bewaard: start je AX25Chat opnieuw, dan is hij weer bereikbaar. De poort blijft dan altijd 8080
+  (of wat je met `--poort` kiest), want de app rekent erop.
+- **Wachtwoord wijzigen:** in hetzelfde blok onder *Wachtwoord wijzigen*.
+- **Uitzetten:** knop **Uitzetten**. Daarna is AX25Chat weer alleen op de PC te zien.
+- Het adres van de PC kan veranderen als de router hem een ander adres geeft. Kijk dan opnieuw bij *Telefoon en
+  app*. Wil je dat het vast blijft, geef de PC dan in je router een vast adres (*DHCP-reservering*).
+- **Werkt het niet?** Kijk of er een firewall op de PC aan staat. Op Linux met `ufw`: `sudo ufw allow 8080/tcp`.
+  Op Windows vraagt de Windows Firewall de eerste keer of AX25Chat het netwerk mag gebruiken: kies *Toegang
+  toestaan* bij **privénetwerken**. Heb je toen *Annuleren* gekozen, zet het dan aan bij *Windows Defender
+  Firewall, Een app toestaan*.
 
 **Opties bij het starten** (achter `ax25chat` of achter `ax25chat_pc.py`):
 
@@ -692,8 +729,8 @@ Wat anders is dan op de Pi:
 |---|---|
 | `--geen-browser` | Alleen bij `ax25chat_pc.py`: start zonder de browser te openen. Open zelf `http://localhost:8080`. |
 | `--poort 8090` | Een andere poort voor de webpagina, als 8080 al bezet is. |
-| `--thuisnetwerk` | De PC is ook bereikbaar voor je telefoon of de Android-app op je thuisnetwerk, via `http://<adres van de PC>:8080`. Dan is wel inloggen nodig: stel eerst een wachtwoord in met `python3 ~/AX25Chat/pc/ax25chat_pc.py --wachtwoord` (gebruiker `beheer`). |
-| `--wachtwoord` | Wachtwoord instellen of wijzigen voor `--thuisnetwerk`. |
+| `--thuisnetwerk` | Zet *Bereikbaar vanaf telefoon* aan (zie hierboven) en houdt dat zo. Er moet al een wachtwoord zijn. Makkelijker: de knop op het tabblad Status. |
+| `--wachtwoord` | Wachtwoord instellen of wijzigen in de terminal (gebruiker `beheer`). Kan ook op het tabblad Status, blok *Telefoon en app*. |
 
 ## AX25Chat op Windows
 
@@ -705,7 +742,8 @@ SCU-17 of de USB-kabel van een Icom.
 onbekend is: kies *Meer informatie* en *Toch uitvoeren*. Direwolf en Hamlib (rigctld) zitten in de installer; je
 hoeft niets anders te installeren. Daarna staat **AX25Chat** in het Startmenu (en eventueel op het bureaublad).
 
-**Bijwerken:** tabblad **Status**, blok *Bijwerken*: **Controleren op nieuwe versie**, daarna **Nu bijwerken**. AX25Chat downloadt de nieuwe installer, sluit en start de installer; daarna start AX25Chat vanzelf weer. Met de hand kan ook: download de nieuwe installer en installeer over de oude heen. **Verwijderen:** via Instellingen, Apps. Je
+**Bijwerken:** is er een nieuwe versie, dan staat bovenin **Nieuwe versie beschikbaar · Bijwerken** (AX25Chat
+kijkt bij het starten en daarna eens per dag, alleen met internet). Of zelf: tabblad **Status**, blok *Bijwerken*: **Controleren op nieuwe versie**, daarna **Nu bijwerken**. AX25Chat downloadt de nieuwe installer, sluit en start de installer; daarna start AX25Chat vanzelf weer. Met de hand kan ook: download de nieuwe installer en installeer over de oude heen. **Verwijderen:** via Instellingen, Apps. Je
 instellingen staan apart in `%APPDATA%\AX25Chat` en blijven bewaard.
 
 Wat anders is dan op de Pi en op Linux:
@@ -735,8 +773,11 @@ Wat anders is dan op de Pi en op Linux:
   duren; daarna onthoudt AX25Chat het een halve minuut. **Zoek mijn set** kijkt altijd opnieuw.
 - In het Startmenu staat ook **AX25Chat (in de browser)**: dat opent AX25Chat zonder eigen venster in je gewone
   browser (`AX25Chat.exe --browser`). Handig als het eigen venster niet wil.
+- **Vanaf je telefoon of de app:** net als op Linux, tabblad Status, blok *Telefoon en app* (zie hierboven). Windows
+  vraagt dan de eerste keer of AX25Chat het netwerk mag gebruiken: kies *Toegang toestaan* bij privénetwerken.
 - Is poort 8080 al in gebruik door een ander programma, dan kiest het venster vanzelf een andere vrije poort. Met
-  `--thuisnetwerk` of `--poort` blijft de poort vast, want de telefoon en de app rekenen erop.
+  *Bereikbaar vanaf telefoon*, `--thuisnetwerk` of `--poort` blijft de poort vast, want de telefoon en de app
+  rekenen erop.
 - **AX25Chat start niet of verdwijnt meteen:** start het als gewone gebruiker, niet als administrator. Kijk in
   *Taakbeheer* of er nog een `AX25Chat.exe` hangt en beëindig die. Lukt het daarna nog niet, stuur dan
   `%APPDATA%\AX25Chat\logboek\ax25chat.log` op (plak dat pad in de adresbalk van de Verkenner). Daarin staat per
@@ -752,7 +793,7 @@ Wat anders is dan op de Pi en op Linux:
 | Zoek mijn set vindt niets | Set aan? USB-kabel goed? Bij een Icom: *CI-V USB Port* op *Unlink from [REMOTE]* |
 | Set gaat niet zenden | Tabblad Status → log van Direwolf. Kijk bij Handmatig instellen naar de besturing (CAT, RTS, VOX) |
 | Niets ontvangen | Luistertest doen; ontvangstniveau omhoog; staat de set op de goede frequentie? |
-| App: *geen verbinding met de Pi* | Ben je met de wifi van de Pi verbonden (en *Verbonden blijven* gekozen)? Klopt het adres bij Instellingen? Thuis: het adres van de Pi op je eigen wifi. |
+| App: *geen verbinding met de Pi* | Ben je met de wifi van de Pi verbonden (en *Verbonden blijven* gekozen)? Klopt het adres bij Instellingen? Thuis: het adres van de Pi op je eigen wifi. Met een PC: staat *Bereikbaar vanaf telefoon* aan (Status → Telefoon en app) en staat `:8080` achter het adres? |
 | App installeert niet over de oude heen | Een test-APK uit Actions heeft een andere sleutel dan een release. Verwijder de app en installeer opnieuw (berichten staan op de Pi). |
 | Kaart blijft grijs | Op het tabblad Radio de offline kaart downloaden (met internet), of bij *Kaart* kiezen voor *Automatisch* of *Alleen online* als je internet hebt. Stations staan er ook zonder op. |
 | Station niet op de kaart | Staat het in de Monitor? Alleen frames met een APRS-positie komen op de kaart (geen berichten of status). |

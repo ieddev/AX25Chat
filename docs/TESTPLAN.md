@@ -156,3 +156,16 @@ TNC of via geluid), of een set met APRS-berichten. Spreek een frequentie af.
 | J9 | GPS van de telefoon | App: Instellingen → positie naar de Pi aan; Pi: baken *Positie uit* = telefoon, aan | App: *Positie naar de Pi gestuurd*; Pi: status baken met de positie; baken in de Monitor en op aprs.fi | ☐ |
 | J10 | GPS op de achtergrond | Scherm uit, een stuk rijden | Bakens tijdens het rijden (vaker bij hogere snelheid); jij beweegt op het tabblad Kaart | ☐ |
 | J11 | Frequentie wisselen | Knop *Frequentie*, kies een eigen frequentie (★) | Set gaat erop (CAT), bovenaan staat de nieuwe frequentie; webpagina Radio → Station toont hem ook | ☐ |
+
+## K. PC: telefoon en nieuwe versie
+
+| # | Wat | Hoe | Verwacht | OK |
+|---|-----|-----|----------|----|
+| K1 | Standaard uit | PC: tabblad Status → Telefoon en app | *Uit*; vanaf de telefoon is `http://<adres PC>:8080` niet te openen | ☐ |
+| K2 | Aanzetten | Wachtwoord twee keer, **Bereikbaar maken vanaf telefoon** | *Aan* met het adres van de PC (bijv. 192.168.1.50:8080) | ☐ |
+| K3 | App | App → Instellingen: dat adres met `:8080`, opslaan | *● verbonden*; Chat, CQ, BBS, Kaart en frequentie wisselen werken | ☐ |
+| K4 | Inloggen | Browser op de telefoon: Radio | Vraagt om inloggen (beheer + wachtwoord); op de PC zelf niet | ☐ |
+| K5 | Blijft bewaard | AX25Chat sluiten en weer starten | Nog steeds *Aan*, zelfde adres; app verbindt weer | ☐ |
+| K6 | Uitzetten | **Uitzetten** | App: *geen verbinding*; op de PC werkt alles gewoon | ☐ |
+| K7 | Nieuwe versie | Linux: `git -C ~/AX25Chat reset --hard HEAD~1`, AX25Chat opnieuw starten, half minuutje wachten, pagina verversen | Bovenin *Nieuwe versie beschikbaar · Bijwerken*; tik → Status, Bijwerken met **Nu bijwerken** | ☐ |
+| K8 | Zonder internet | Internet uit, AX25Chat starten | Geen balk en geen foutmelding | ☐ |
