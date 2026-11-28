@@ -1,6 +1,7 @@
 """
 ax25chat_over.py - het venster "Over AX25Chat" (knop Over in de menubalk): naam, versie, makers, contact,
 licentie en de onderdelen van anderen die AX25Chat gebruikt. Alleen standaard-Python.
+De Android-app toont hetzelfde (android/.../Over.kt); tests/test_over.py controleert dat ze gelijk blijven.
 """
 
 import html

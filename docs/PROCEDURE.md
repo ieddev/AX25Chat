@@ -581,7 +581,8 @@ met de PC*); daarvoor, of met een oudere versie van AX25Chat, zegt hij gewoon *A
 | **Kaart** | De kaart van AX25Chat (zie Kaart hierboven). *Bericht sturen* bij een station opent de chat in de app. |
 | **BBS** | Het tabblad BBS van AX25Chat: keuzelijst, terminal en snelknoppen. |
 | **Frequentie** (knop bovenaan) | Kies een frequentie uit Mijn frequenties (★) of de voorkeuzelijst (2 m, 70 cm, HF); de Pi of PC zet de set erop (met CAT) en Direwolf op de goede snelheid, net als bij Station op de webpagina. Zonder CAT zet je de set zelf goed. Bovenaan staat de huidige frequentie. |
-| **Instellingen** | Adres van AX25Chat (Pi of PC), meldingen aan of uit, *GPS van de telefoon*, de webpagina van AX25Chat openen, stoppen. |
+| **Instellingen** | Adres van AX25Chat (Pi of PC), meldingen aan of uit, *GPS van de telefoon*, de webpagina van AX25Chat openen, *Over AX25Chat…*, stoppen. |
+| **Over AX25Chat** | Knop *Over AX25Chat…* bij Instellingen, of tik bovenin op de naam **AX25Chat**. Je ziet de versie van de app, waarmee hij verbonden is (Pi of PC), de makers, het e-mailadres voor vragen, de link naar GitHub, de licentie (EUPL-1.2) en de onderdelen van anderen (Direwolf, Hamlib, Leaflet, PDOK). Links openen in je mail-app of browser. |
 
 **GPS van de telefoon voor het baken:**
 
