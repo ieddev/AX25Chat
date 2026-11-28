@@ -114,6 +114,24 @@ class TestWindowsUsb(unittest.TestCase):
         self.assertIn("PTT COM6 RTS", conf)
         self.assertNotIn("PTT RIG", conf)                         # Direwolf voor Windows heeft geen Hamlib
 
+    def test_met_hamlib_zendt_via_cat(self):
+        """Vanaf win-v0.9 heeft Direwolf Hamlib: zenden via CAT zoals op Linux. IC-7300 (één USB-poort) zendt dan."""
+        import ax25chat_radio as radio
+        os.environ["AX25CHAT_DW_HAMLIB"] = "1"
+        try:
+            g7300 = {"soort": "icom", "naam": "Icom IC-7300", "kaart": "USB Audio CODEC", "poorten": [("COM9", "icom")]}
+            v = radio.voorstellen([g7300], [("COM9", 3073, 115200, 14102500)])[0]
+            self.assertEqual((v["ptt_methode"], v["cat_poort"], v["ptt_poort"]), ("CAT", "COM9", ""))
+            self.assertNotIn("VOX", v["_uitleg"])
+            conf = radio.direwolf_tekst("PD3PAM", v)
+            self.assertIn("\nPTT RIG 2 127.0.0.1:4532\n", conf)
+            # IC-9700 die al op RTS via poort B stond (vóór win-v0.9): blijft zo
+            oud = dict(v, cat_model=3081, cat_poort="COM5", ptt_poort="COM6")
+            self.assertIn("PTT COM6 RTS", radio.direwolf_tekst("PD3PAM", oud))
+        finally:
+            os.environ.pop("AX25CHAT_DW_HAMLIB", None)
+        self.assertFalse(radio.dw_heeft_hamlib())                   # zonder libhamlib naast direwolf.exe
+
     def test_hub(self):
         self.assertEqual(self.usb.win_hub(R + "#USB(3)#USB(2)"), R + "#USB(3)")
         self.assertEqual(self.usb.win_hub(R + "#USB(3)"), "")        # direct aan de PC: geen hubje

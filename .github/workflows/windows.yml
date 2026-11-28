@@ -101,24 +101,76 @@ jobs:
             --add-data "versie.txt;." \
             pc/ax25chat_venster.py
 
-      - name: Direwolf en Hamlib ophalen
+      - name: Hamlib ophalen (rigctld, en headers + lib om Direwolf mee te bouwen)
         run: |
-          mkdir -p ophalen/dw ophalen/hl
-          gh release download --repo wb2osz/direwolf --pattern '*x86_64*.zip' --dir ophalen/dw \
-            || gh release download --repo wb2osz/direwolf --pattern '*win*64*.zip' --dir ophalen/dw
+          mkdir -p ophalen/hl
           gh release download --repo Hamlib/Hamlib --pattern 'hamlib-w64-*.zip' --dir ophalen/hl
-          ls -l ophalen/dw ophalen/hl
-          (cd ophalen/dw && unzip -q *.zip && rm -f *.zip)
+          ls -l ophalen/hl
           (cd ophalen/hl && unzip -q *.zip && rm -f *.zip)
-          dw="$(dirname "$(find ophalen/dw -iname direwolf.exe | head -1)")"
+          find ophalen/hl -maxdepth 3 | head -40
+          inc="$(dirname "$(dirname "$(find ophalen/hl -path '*hamlib/rig.h' | head -1)")")"
+          lib="$(find ophalen/hl \( -iname 'libhamlib*.dll.a' -o -iname 'libhamlib*.a' \) | head -1)"
+          [ -n "$inc" ] && [ -n "$lib" ] || { echo "headers of lib van Hamlib niet gevonden"; exit 1; }
+          echo "HL_INC=$PWD/$inc" >> "$GITHUB_ENV"
+          echo "HL_LIB=$PWD/$lib" >> "$GITHUB_ENV"
+          echo "include: $inc  lib: $lib"
+
+      # Direwolf zelf bouwen, mét Hamlib: de officiële Direwolf voor Windows heeft geen Hamlib, en zonder kan
+      # Direwolf de set niet via CAT laten zenden (PTT RIG). Nodig voor sets met één USB-poort, zoals de IC-7300.
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: false
+          install: >-
+            git
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-ninja
+
+      - name: Direwolf bouwen met Hamlib (MSYS2)
+        shell: msys2 {0}
+        run: |
+          git clone -q --depth 1 --branch 1.8.1 https://github.com/wb2osz/direwolf.git dw-bron
+          cmake -S dw-bron -B dw-bouw -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$PWD/dw-klaar" \
+            -DHAMLIB_INCLUDE_DIR="$(cygpath -m "$HL_INC")" -DHAMLIB_LIBRARY="$(cygpath -m "$HL_LIB")" | tee cmake.txt
+          grep -q "Found hamlib" cmake.txt || { echo "Hamlib niet gevonden door CMake"; exit 1; }
+          cmake --build dw-bouw
+          cmake --install dw-bouw
+          # DLL's van MSYS2 die direwolf.exe nodig heeft ernaast zetten (libhamlib-4.dll, libusb, libwinpthread ...)
+          for exe in dw-klaar/*.exe; do
+            ldd "$exe" | awk '/mingw64/ {print $3}'
+          done | sort -u | while read -r dll; do cp -v "$dll" dw-klaar/; done
+          # libhamlib-4.dll (en wat die nodig heeft) uit de officiële Hamlib-zip
+          cp -nv "$(dirname "$(find ophalen/hl -iname rigctld.exe | head -1)")"/*.dll dw-klaar/
+          ls dw-klaar
+          ls dw-klaar | grep -qi '^libhamlib.*\.dll$' || { echo "libhamlib ontbreekt naast direwolf.exe"; exit 1; }
+
+      - name: Direwolf en Hamlib in het pakket zetten
+        run: |
           hl="$(dirname "$(find ophalen/hl -iname rigctld.exe | head -1)")"
-          [ -f "$dw/direwolf.exe" ] && [ -f "$hl/rigctld.exe" ] || { echo "direwolf.exe of rigctld.exe niet gevonden"; exit 1; }
+          [ -f dw-klaar/direwolf.exe ] && [ -f "$hl/rigctld.exe" ] || { echo "direwolf.exe of rigctld.exe niet gevonden"; exit 1; }
           mkdir -p dist/AX25Chat/direwolf dist/AX25Chat/hamlib
-          cp -r "$dw"/. dist/AX25Chat/direwolf/
+          cp -r dw-klaar/. dist/AX25Chat/direwolf/
           cp "$hl"/*.exe "$hl"/*.dll dist/AX25Chat/hamlib/
           for f in COPYING COPYING.LIB LICENSE README; do
             find ophalen/hl -maxdepth 2 -name "$f*" -exec cp {} dist/AX25Chat/hamlib/ \; ; done
           ls dist/AX25Chat dist/AX25Chat/direwolf dist/AX25Chat/hamlib
+          ./dist/AX25Chat/direwolf/direwolf.exe -h 2>&1 | head -5 | tee dw-h.txt || true
+          grep -qi hamlib dw-h.txt || { echo "Direwolf zegt niets over Hamlib"; exit 1; }
+
+      - name: PTT via CAT testen (Direwolf → rigctld met nep-set)
+        continue-on-error: true           # de runner heeft geen geluidskaart; dit is ter informatie
+        run: |
+          hl=dist/AX25Chat/hamlib dw=dist/AX25Chat/direwolf
+          "$hl/rigctld.exe" -m 1 -T 127.0.0.1 -t 4532 &
+          sleep 2
+          printf 'ADEVICE udp:7355 default\nACHANNELS 1\nCHANNEL 0\nMYCALL N0CALL\nMODEM 1200\nPTT RIG 2 127.0.0.1:4532\nKISSPORT 8001\nAGWPORT 0\n' > ptt-test.conf
+          "$dw/direwolf.exe" -c ptt-test.conf -t 0 > ptt-test.log 2>&1 &
+          sleep 8
+          cat ptt-test.log
+          ! grep -qi "Hamlib.*error\|not available\|not included" ptt-test.log
+          taskkill //F //IM direwolf.exe || true
+          taskkill //F //IM rigctld.exe || true
 
       - name: Zelftest van AX25Chat.exe (zonder venster)
         run: |
@@ -127,7 +179,6 @@ jobs:
           for i in $(seq 1 60); do [ -s "$AX25CHAT_ZELFTEST" ] && break; sleep 2; done
           cat "$AX25CHAT_ZELFTEST" || { echo "geen uitslag; logboek:"; cat "$AX25CHAT_MAP/logboek/ax25chat.log"; exit 1; }
           ! grep -q FOUT "$AX25CHAT_ZELFTEST"
-          ./dist/AX25Chat/direwolf/direwolf.exe -h 2>&1 | head -5 || true
 
       - name: Venstertest van AX25Chat.exe (echt venster met WebView2)
         run: |
@@ -163,4 +214,4 @@ jobs:
           body: |
             AX25Chat voor Windows (testfase). Download AX25Chat-setup-${{ env.VERSIE_NAAM }}.exe en start het.
             Windows kan waarschuwen dat de uitgever onbekend is: kies "Meer informatie" en "Toch uitvoeren".
-            Direwolf en Hamlib (rigctld) zitten erin. Uitleg: docs/PROCEDURE.md, deel "AX25Chat op Windows".
+            Direwolf (gebouwd met Hamlib, dus zenden via CAT) en Hamlib (rigctld) zitten erin. Uitleg: docs/PROCEDURE.md, deel "AX25Chat op Windows".
