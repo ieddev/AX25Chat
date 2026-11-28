@@ -994,6 +994,29 @@ def html_radio(verborgen, bovenaan="", luister=None, test=""):
             html_luister(verborgen, luister) + html_test(verborgen, r, test) + html_handmatig(verborgen, r))
 
 
+def stand(r=None):
+    """Frequentie, mode en snelheid voor de balk bovenaan (webpagina en app). Dit is wat AX25Chat heeft ingesteld
+    (met CAT zet de bewaker de set daar ook op); het korte uitstapje van het baken naar 144,800 telt niet mee.
+    Geeft {'hz', 'mhz', 'mode', 'baud', 'kort'}; kort = '144,925 · FM-D · 1200 Bd' (past op een smal scherm)."""
+    r = r or instellingen()
+    hz = rig.ingestelde_frequentie() or 0
+    d = lees(STATION_FILE, {}) or {}
+    mode = rig.MODE_NAAM.get(rig.doelmode(r, hz)) if hz or d.get("mode") in rig.MODE_NAAM else ""
+    baud = modem(r, hz)
+    kort = " · ".join(x for x in (rig.mhz(hz).replace(" MHz", "") if hz else "freq. op de set", mode, f"{baud} Bd") if x)
+    return {"hz": hz, "mhz": rig.mhz(hz) if hz else "", "mode": mode or "", "baud": baud, "kort": kort,
+            "cat": bool(rig.cat_actief(r))}
+
+
+def html_stand(st=None):
+    """De balk-tekst als HTML; op een smal scherm vallen 'MHz' en 'baud' weg (CSS: .breed)."""
+    st = st or stand()
+    delen = ([f"<b>{e(st['mhz'].replace(' MHz', ''))}</b><span class=breed> MHz</span>"] if st["hz"]
+             else ["freq. op de set"]) + ([e(st["mode"])] if st["mode"] else []) + \
+        [f"{st['baud']}<span class=breed> baud</span><span class=smal> Bd</span>"]
+    return " · ".join(delen)
+
+
 def html_set_kort(r=None):
     """Eén regel voor het tabblad Status."""
     r = r or instellingen()

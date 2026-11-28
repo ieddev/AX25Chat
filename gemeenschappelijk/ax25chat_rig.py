@@ -95,8 +95,11 @@ TIJDELIJK = None        # Hz: de set staat even ergens anders (het APRS-baken op
 
 def doelfrequentie():
     """Frequentie in Hz uit station.json, of None als de gebruiker de set zelf instelt."""
-    if TIJDELIJK:
-        return TIJDELIJK
+    return TIJDELIJK or ingestelde_frequentie()
+
+
+def ingestelde_frequentie():
+    """Zoals doelfrequentie, maar zonder het korte uitstapje van het baken naar 144,800."""
     d = _lees(STATION_FILE)
     if isinstance(d, dict) and "frequentie" in d:
         try:
@@ -324,12 +327,13 @@ def is_hf(hz):
     return bool(hz) and hz < HF_GRENS
 
 
-def doelmode(r):
+def doelmode(r, doel=None):
     """De mode waarin de set moet staan: die van de frequentie (Mijn frequenties of voorkeuzelijst), anders de keuze bij
-    Station, anders automatisch op basis van de frequentie."""
-    if TIJDELIJK:
-        return "PKTFM"
-    doel = doelfrequentie()
+    Station, anders automatisch op basis van de frequentie. Met doel: de mode bij die frequentie (0 = zelf ingesteld)."""
+    if doel is None:
+        if TIJDELIJK:
+            return "PKTFM"
+        doel = doelfrequentie()
     x = instelling(doel) if doel else None
     if x and x["mode"]:
         return x["mode"]

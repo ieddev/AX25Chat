@@ -107,7 +107,7 @@ function haal() {
 }
 tekenSnel();
 haal();
-var bron = new EventSource('/api/live');
+var bron = (window.axLive ? axLive() : new EventSource('/api/live'));
 bron.addEventListener('bbs', function (e) {
   var d = JSON.parse(e.data);
   if (d.gewist) { $('.term').textContent = ''; }

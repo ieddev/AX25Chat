@@ -384,8 +384,9 @@ class MainActivity : Activity() {
 
     private fun tekenChat() {
         if (!::chatScherm.isInitialized) return
-        kopStand.text = (Chat.mij.ifEmpty { "" }) + (if (Chat.verbonden && Chat.frequentie.isNotEmpty()) " · " + Chat.frequentie else "") +
-            if (Chat.verbonden) "  ●" else "  ○ geen verbinding met " + Pi.naam(this)
+        // Regel 1: roepnaam en verbinding; regel 2: frequentie · mode · snelheid (past zo ook op een smal scherm)
+        kopStand.text = (Chat.mij.ifEmpty { "" }) + (if (Chat.verbonden) "  ●" else "  ○ geen verbinding met " + Pi.naam(this)) +
+            if (Chat.verbonden && Chat.frequentie.isNotEmpty()) "\n" + Chat.frequentie else ""
         verbindingStand?.text = if (Chat.verbonden) "Verbonden met " + Pi.naam(this) + " (" + Pi.adres(this) + ")"
             else Chat.verbindingFout.ifEmpty { "Verbinden met " + Pi.adres(this) + "…" }
 
@@ -497,8 +498,8 @@ class MainActivity : Activity() {
         thread {
             val melding = try {
                 val a = Pi.stuur(this, "/api/frequentie", JSONObject().put("hz", hz))
-                Chat.zetFrequentie(a.optString("tekst", Chat.frequentie))
-                if (a.has("fout")) a.optString("fout") else "Frequentie: " + a.optString("tekst")
+                if (!a.has("fout") || a.has("kort")) Chat.zetFrequentie(Chat.standVan(a).ifEmpty { Chat.frequentie })
+                if (a.has("fout")) a.optString("fout") else "Frequentie: " + Chat.standVan(a)
             } catch (_: Exception) {
                 "Geen verbinding met " + Pi.naam(this)
             }

@@ -35,7 +35,10 @@ object Chat {
     @Volatile var verbonden = false
     @Volatile var zichtbaar = false          // MainActivity staat op het scherm: dan geen melding nodig
     var actief = "CQ"
-    @Volatile var frequentie = ""            // bijv. '144,925 MHz', van /api/frequenties
+    @Volatile var frequentie = ""            // bijv. '144,925 · FM-D · 1200 Bd', van /api/frequenties
+
+    /** Frequentie, mode en snelheid voor de kop; een oudere Pi/PC kent 'kort' nog niet en geeft alleen de frequentie. */
+    fun standVan(d: JSONObject): String = d.optString("kort").ifEmpty { d.optString("tekst") }
     @Volatile var gpsStand = ""              // wat de GPS van de telefoon doet (Instellingen)
     @Volatile var verbindingFout = ""        // waarom er geen verbinding is, en wanneer de volgende poging is
 
@@ -98,7 +101,7 @@ object Chat {
             }
         }
         try {
-            frequentie = Pi.haal(ctx, "/api/frequenties").optString("tekst")
+            frequentie = standVan(Pi.haal(ctx, "/api/frequenties"))
         } catch (_: Exception) {
         }
         val m = try { Pi.haalLijst(ctx, "/api/monitor") } catch (_: Exception) { null }

@@ -188,7 +188,7 @@ laad();
 setInterval(teken, 60000);                                         // "x min geleden" en vervagen bijwerken
 setInterval(laad, 300000);                                         // eigen positie (GPS) bijwerken
 if (window.EventSource) {
-  var bron = new EventSource('/api/live');
+  var bron = (window.axLive ? axLive() : new EventSource('/api/live'));
   bron.addEventListener('station', function (ev) {
     var s = JSON.parse(ev.data); stations[s.call] = s; teken();
   });

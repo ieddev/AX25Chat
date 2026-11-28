@@ -68,7 +68,11 @@ CSS = """
 @media (prefers-color-scheme:dark){:root{--bg:#14171b;--kaart:#1d2126;--tekst:#e8eaed;--zacht:#a0a8b3;--lijn:#30353c;
 --rood-z:#3b1d1b;--groen-z:#16301f;--oranje-z:#3a2a12;--blauw:#8ab4f8;--blauw-z:#1c2a40;--knop:#3d6fb6}}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tekst);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-header{background:#1d4f91;color:#fff;padding:12px 16px}header b{font-size:18px}header span{opacity:.85;font-size:14px;margin-left:8px}
+header{background:#1d4f91;color:#fff;padding:12px 16px;display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px}
+header b{font-size:18px}header>span{opacity:.85;font-size:14px}
+header .stand{margin-left:auto;opacity:1;background:rgba(255,255,255,.16);padding:2px 10px;border-radius:999px;
+white-space:nowrap;font-variant-numeric:tabular-nums}header .stand b{font-size:15px}header .smal{display:none}
+@media(max-width:560px){header{padding:10px 12px}header .breed{display:none}header .smal{display:inline}}
 nav{display:flex;flex-wrap:wrap;gap:4px;padding:8px 12px;background:var(--kaart);border-bottom:1px solid var(--lijn);position:sticky;top:0;z-index:1100}
 nav a{padding:8px 12px;border-radius:8px;color:var(--tekst);text-decoration:none;font-weight:500}nav a.actief{background:var(--blauw-z);color:var(--blauw)}
 main{max-width:880px;margin:0 auto;padding:16px}
@@ -106,7 +110,7 @@ nav a.overknop{margin-left:auto}
 dialog#over{border:1px solid var(--lijn);border-radius:12px;padding:18px 20px;max-width:min(480px,calc(100vw - 32px));
 background:var(--kaart);color:var(--tekst);box-shadow:0 10px 40px rgba(0,0,0,.25)}
 dialog#over::backdrop{background:rgba(0,0,0,.35)}
-header a.nieuwversie{float:right;background:#fff3e0;color:#a85d00;padding:3px 10px;border-radius:999px;
+header a.nieuwversie{order:5;background:#fff3e0;color:#a85d00;padding:3px 10px;border-radius:999px;
 font-size:14px;font-weight:600;text-decoration:none;margin-left:8px}
 table.over{border-collapse:collapse;width:100%}table.over th{text-align:left;font-weight:600;padding:3px 12px 3px 0;
 white-space:nowrap;vertical-align:top}table.over td{padding:3px 0}ul.over{margin:0;padding-left:20px}
@@ -159,6 +163,16 @@ PAGINA_JS = """(function () {
     }
     doel.scrollIntoView();
     if (history.replaceState) history.replaceState(null, '', location.pathname + '#' + bij);
+  }
+  // Frequentie, mode en snelheid in de balk: live bijwerken als ze wisselen (ook vanuit de app)
+  var stand = document.getElementById('stand');
+  function zetStand(d) { if (d && d.html) stand.innerHTML = d.html; }
+  if (stand && window.EventSource) {
+    var bron = axLive();
+    bron.addEventListener('frequentie', function (ev) { zetStand(JSON.parse(ev.data)); });
+    bron.addEventListener('open', function () {           // na een onderbreking: misschien iets gemist
+      fetch('/api/frequenties').then(function (r) { return r.json(); }).then(zetStand).catch(function () {});
+    });
   }
   var begin = Date.now();
   document.querySelectorAll('[data-deel]').forEach(function (el) {
@@ -283,8 +297,10 @@ def pagina(actief, inhoud, melding="", bij=""):
     rn = "" if str(s.get("roepnaam")).startswith("N0CALL") else s.get("roepnaam")
     return f"""<!doctype html><html lang="nl"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>AX25Chat {e(rn or '')}</title>
-<style>{CSS}</style></head><body data-mij="{e(rn or '')}"{f' data-bij="{bij}"' if bij else ''}>
-<header>{pcbijwerken.html_balk()}<b>AX25Chat</b><span>{e(rn or 'roepnaam nog niet ingesteld')}{' · versie ' + e(versie()) if versie() else ''}</span></header>
+<style>{CSS}</style>
+<script>window.axLive = function () {{ return window._axLive || (window._axLive = new EventSource('/api/live')); }};</script></head><body data-mij="{e(rn or '')}"{f' data-bij="{bij}"' if bij else ''}>
+<header>{pcbijwerken.html_balk()}<b>AX25Chat</b><span>{e(rn or 'roepnaam nog niet ingesteld')}{'<span class=breed> · versie ' + e(versie()) + '</span>' if versie() else ''}</span>
+<span class="stand" id="stand" title="Frequentie, mode en snelheid">{radio.html_stand()}</span></header>
 <nav>{nav}</nav><main><div id="meld">{melding}</div>{inhoud}</main>{over.html_dialoog(versie())}
 <script>{PAGINA_JS}</script></body></html>"""
 
@@ -370,6 +386,7 @@ def station_opslaan(f):
     mis = radio.pas_toe(r, s2["roepnaam"], met_rig=False) if r.get("geluidskaart") else []
     if rig.cat_actief(r) and rig.doelfrequentie():
         mis += rig.zet_set(r)
+    STAND_WEK.set()
     return [], mis
 
 
@@ -386,8 +403,30 @@ def frequenties():
             keuzes.append({"hz": hz, "tekst": tekst, "eigen": False})
     keuzes.sort(key=lambda k: (not k["eigen"], k["hz"]) if k["hz"] else (False, -1))
     s = radio.station()
+    st = radio.stand()
     return {"huidig": s.get("frequentie") or 0, "tekst": rig.mhz(s.get("frequentie")), "keuzes": keuzes,
-            "cat": bool(rig.cat_actief(radio.instellingen()))}
+            "cat": st["cat"], "stand": st, "kort": st["kort"], "html": radio.html_stand(st)}
+
+
+STAND_WEK = threading.Event()               # meteen kijken (na Opslaan), niet pas na een paar seconden
+
+
+def volg_stand(interval=3):
+    """Houdt frequentie, mode en snelheid in de gaten (webpagina, app, BBS-lijst, met de hand in station.json) en
+    meldt een wijziging live aan de balk van de webpagina en de app. Kost alleen het lezen van twee kleine bestanden."""
+    def lus():
+        vorige = None
+        while True:
+            try:
+                st = radio.stand()
+                if vorige is not None and st != vorige and CHAT:
+                    CHAT._meld("frequentie", frequenties())
+                vorige = st
+            except Exception:
+                pass
+            STAND_WEK.wait(interval)
+            STAND_WEK.clear()
+    threading.Thread(target=lus, daemon=True, name="balk").start()
 
 
 def stations_kaart(sinds=0):
@@ -652,7 +691,6 @@ class Handler(BaseHTTPRequestHandler):
             uit = frequenties()
             if mis:
                 uit["fout"] = "Opgeslagen, maar " + "; ".join(mis)
-            CHAT._meld("frequentie", uit)
             return self._json(uit)
         if pad == "locator":                       # locator per station zelf invullen of weghalen (tabblad Kaart)
             s = radio.station()
@@ -914,6 +952,7 @@ def main(argv=None):
     if r.get("geluidskaart") and not radio.direwolf_met_agw():     # oudere direwolf.conf: AGW-poort en v2.0 erbij
         print("direwolf.conf bijwerken (AGW-poort 8000 en AX.25 v2.0 voor BBS'en)", flush=True)
         radio.pas_toe(r, met_rig=False)
+    volg_stand()
     global BBS
     BBS = bbs.Sessie(radio.station, CHAT._meld, log=lambda t: print(t, flush=True), bezet=lambda: bool(BAKEN and BAKEN.weg))
     global BAKEN

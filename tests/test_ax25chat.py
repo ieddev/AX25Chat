@@ -292,6 +292,31 @@ class TestRadio(unittest.TestCase):
         self.assertIn("Mijn frequenties", radio.html_eigen(""))
         radio.verwerk_station({"roepnaam": "PD3PAM-7", "frequentie": "144900000", "mode": ""})
 
+    def test_stand_in_de_balk(self):
+        r = {"cat_model": 0, "modem": "auto"}
+        radio.verwerk_station({"roepnaam": "PD3PAM-7", "frequentie": "144925000", "mode": ""})
+        st = radio.stand(r)
+        self.assertEqual((st["hz"], st["mode"], st["baud"], st["kort"]),
+                         (144925000, "FM-D", 1200, "144,925 · FM-D · 1200 Bd"))
+        self.assertIn("<b>144,925</b><span class=breed> MHz</span> · FM-D · 1200", radio.html_stand(st))
+        radio.verwerk_station({"roepnaam": "PD3PAM-7", "frequentie": "14102500", "mode": ""})
+        self.assertEqual(radio.stand(r)["kort"], "14,1025 · USB-D · 300 Bd")              # HF: USB-D, 300 baud
+        radio.verwerk_station({"roepnaam": "PD3PAM-7", "frequentie": "438175000", "mode": ""})
+        self.assertEqual(radio.stand(r)["kort"], "438,175 · FM-D · 9600 Bd")              # uit de voorkeuzelijst
+        rig.TIJDELIJK = rig.APRS_FREQ                                                     # baken even op 144,800
+        try:
+            self.assertEqual(radio.stand(r)["hz"], 438175000)
+        finally:
+            rig.TIJDELIJK = None
+        radio.verwerk_station({"roepnaam": "PD3PAM-7", "frequentie": "0", "mode": ""})   # zelf ingesteld, geen CAT
+        self.assertEqual(radio.stand(r)["kort"], "freq. op de set · 1200 Bd")
+        radio.verwerk_station({"roepnaam": "PD3PAM-7", "frequentie": "144900000", "mode": ""})
+        import ax25chat_web as web
+        tekst = web.pagina("chat", "")
+        self.assertIn('id="stand"', tekst)
+        self.assertIn("144,900", tekst)
+        self.assertEqual(web.frequenties()["kort"], "144,900 · FM-D · 1200 Bd")
+
     def test_meet_geluid(self):
         stil = array.array("h", [0] * 4800).tobytes()
         self.assertEqual(radio.advies_luister(*radio.meet_geluid(stil))[0], "fout")

@@ -105,7 +105,7 @@ function haal() {
 fetch('/api/monitor').then(function (r) { return r.json(); }).then(function (d) { monitor = d; teken(); }).catch(function () {});
 haal();
 function live() {
-  var bron = new EventSource('/api/live');
+  var bron = (window.axLive ? axLive() : new EventSource('/api/live'));
   bron.addEventListener('bericht', function (e) { var b = JSON.parse(e.data); berichten[b.id] = b; teken(); });
   bron.addEventListener('gewist', function (e) {
     var d = JSON.parse(e.data);
