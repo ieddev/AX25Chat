@@ -132,8 +132,8 @@ jobs:
         run: |
           git clone -q --depth 1 --branch 1.8.1 https://github.com/wb2osz/direwolf.git dw-bron
           cmake -S dw-bron -B dw-bouw -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$PWD/dw-klaar" \
-            -DHAMLIB_INCLUDE_DIR="$(cygpath -m "$HL_INC")" -DHAMLIB_LIBRARY="$(cygpath -m "$HL_LIB")"
-          grep -q "USE_HAMLIB" dw-bouw/CMakeCache.txt || { echo "Hamlib niet gevonden door CMake"; exit 1; }
+            -DHAMLIB_INCLUDE_DIR="$(cygpath -m "$HL_INC")" -DHAMLIB_LIBRARY="$(cygpath -m "$HL_LIB")" | tee cmake.txt
+          grep -q "Found hamlib" cmake.txt || { echo "Hamlib niet gevonden door CMake"; exit 1; }
           cmake --build dw-bouw
           cmake --install dw-bouw
           # DLL's van MSYS2 die direwolf.exe nodig heeft ernaast zetten (libhamlib-4.dll, libusb, libwinpthread ...)
